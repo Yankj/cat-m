@@ -24,9 +24,11 @@ export function edgeHandler(kind:'api'|'tick',get:(name:string)=>string|undefine
     const authenticate=createSupabaseSessionVerifier({projectUrl:config.projectUrl,scopeAuthority:new AppScopeAuthority(pool),remoteUserVerifier:officialUserVerifier({projectUrl:config.projectUrl,publishableKey:config.publishableKey})});
     const verifyToken=createSupabaseTokenVerifier({projectUrl:config.projectUrl});
     selectedRuntime=verifyDedicatedPool(pool).then(async()=>next.review?await createGemmaNextShortTextProbeRuntime({repository,authenticate,config,retain,verifyToken,subjectID:selected.subjectID,scopeID:selected.scopeID,fetchImpl:globalThis.fetch,liveNetworkEnabled:true}):selected.review?await createGemmaShortTextProbeRuntime({repository,authenticate,config,retain,verifyToken,subjectID:selected.subjectID,scopeID:selected.scopeID,fetchImpl:globalThis.fetch,liveNetworkEnabled:true}):await createCloudRuntime({repository,authenticate,config,retain,verifyToken,proactiveStore:readFeatureGate(get('CATPAW_PROACTIVE_TOOLS_ENABLED'),'on')!=='off'?createPgStore(sql):null,...memoryStores(config,sql,createPgAgentMemoryStore),enrollmentStore:createPgEnrollmentStore(sql)}));
-    if(next.review)nextReviewRuntime=selectedRuntime;else if(selected.review)reviewRuntime=selectedRuntime;else runtime=selectedRuntime;
+    const slot=next.review?'next':selected.review?'review':'main';const assign=(v:Promise<any>|undefined)=>{if(slot==='next')nextReviewRuntime=v;else if(slot==='review')reviewRuntime=v;else runtime=v;};
+    const attempt:Promise<any>=selectedRuntime.catch(async(error:unknown)=>{if((slot==='next'?nextReviewRuntime:slot==='review'?reviewRuntime:runtime)===attempt)assign(undefined);try{await sql.end({timeout:1});}catch{}throw error;});
+    selectedRuntime=attempt;assign(attempt);
    }
    const r=await selectedRuntime;return kind==='api'?r.api(selected.request):r.tick(selected.request);
-  }catch{return Response.json({schema_version:1,error:{code:'server_configuration_or_database_unavailable',retryable:false}},{status:503});}
+  }catch{return Response.json({schema_version:1,error:{code:'server_configuration_or_database_unavailable',retryable:true}},{status:503});}
  };
 }

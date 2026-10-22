@@ -32,7 +32,11 @@ export function createPgAgentMemoryStore(sql) {
       return this.getSettings(uid);
     },
     async putSettings(uid, s) { await sql.unsafe('insert into agent_memory.memory_settings(user_id,use_memory,auto_save,consented_at,updated_at) values($1,$2,$3,$4,now()) on conflict(user_id) do update set use_memory=excluded.use_memory,auto_save=excluded.auto_save,consented_at=excluded.consented_at,updated_at=now()', [uid, s.use_memory, s.auto_save, s.consented_at]); return { ...s }; },
-    async insert(uid, r) {
+    async clearGeneration(uid) { const r = await sql.unsafe('select generation from agent_memory.clear_generations where user_id=$1', [uid]); return Number(r[0]?.generation ?? 0); },
+    async insert(uid, r, { fence } = {}) {
+      // M1 MEM-03/04: refuse a write fenced on an older clear generation, or replaying a deleted operation_id.
+      if (fence !== undefined && Number((await sql.unsafe('select generation from agent_memory.clear_generations where user_id=$1', [uid]))[0]?.generation ?? 0) !== fence) return { row: null, created: false, refused: 'cleared' };
+      if (r.operation_id && (await sql.unsafe('select 1 from agent_memory.memory_tombstones where user_id=$1 and operation_id=$2 limit 1', [uid, r.operation_id])).length) return { row: null, created: false, refused: 'deleted' };
       const ins = await sql.unsafe(`insert into agent_memory.memories(id,user_id,kind,content,embedding,pinned,expires_at,source_conversation_id,source_turn_id,operation_id,created_by,undo_token_hash,undo_expires_at,created_at,updated_at)
         values($1,$2,$3,$4,$5::extensions.vector,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) on conflict(user_id,operation_id) do nothing returning ${COLS}`,
         [r.id, uid, r.kind, r.content, vec(r.embedding), r.pinned, r.expires_at, r.source_conversation_id, r.source_turn_id, r.operation_id, r.created_by, r.undo_token_hash, r.undo_expires_at, r.created_at, r.updated_at]);
@@ -42,10 +46,15 @@ export function createPgAgentMemoryStore(sql) {
     async get(uid, id) { return fix((await sql.unsafe(`select ${COLS} from agent_memory.memories where user_id=$1 and id=$2`, [uid, id]))[0] ?? null); },
     async list(uid) { return (await sql.unsafe(`select ${COLS} from agent_memory.memories where user_id=$1 order by updated_at desc limit 1000`, [uid])).map(fix); },
     async count(uid) { return Number((await sql.unsafe('select count(*)::int as n from agent_memory.memories where user_id=$1', [uid]))[0].n); },
-    async update(uid, id, f) {
+    async update(uid, id, f, { expectVersion } = {}) {
       const sets = [], args = [uid, id];
       for (const [k, v] of Object.entries(f)) { if (!['content', 'pinned', 'updated_at', 'embedding'].includes(k)) continue; args.push(k === 'embedding' ? vec(v) : v); sets.push(`${k}=$${args.length}${k === 'embedding' ? '::extensions.vector' : ''}`); }
-      return fix((await sql.unsafe(`update agent_memory.memories set ${sets.join(',')} where user_id=$1 and id=$2 returning ${COLS}`, args))[0] ?? null);
+      let cas = '';
+      if (expectVersion !== undefined) { args.push(expectVersion); cas = ` and updated_at=$${args.length}::timestamptz`; }
+      const row = (await sql.unsafe(`update agent_memory.memories set ${sets.join(',')} where user_id=$1 and id=$2${cas} returning ${COLS}`, args))[0];
+      if (row) return fix(row);
+      if (expectVersion !== undefined && (await sql.unsafe('select 1 from agent_memory.memories where user_id=$1 and id=$2', [uid, id])).length) return { conflict: true };
+      return null;
     },
     async changedSince(uid, sinceIso) {
       const rows = (await sql.unsafe(`select ${COLS} from agent_memory.memories where user_id=$1 and updated_at > $2::timestamptz order by updated_at limit 500`, [uid, sinceIso])).map(fix);
@@ -53,9 +62,10 @@ export function createPgAgentMemoryStore(sql) {
       return { rows, deleted };
     },
     async remove(uid, ids) { return ids.length ? (await sql.unsafe('delete from agent_memory.memories where user_id=$1 and id = any($2::uuid[]) returning id', [uid, ids])).length : 0; },
-    async removeAll(uid) { await sql.unsafe('delete from agent_memory.journal_fragments where user_id=$1', [uid]); return (await sql.unsafe('delete from agent_memory.memories where user_id=$1 returning id', [uid])).length; },
+    async removeAll(uid) { await sql.unsafe('insert into agent_memory.clear_generations(user_id, generation) values($1, 1) on conflict(user_id) do update set generation = agent_memory.clear_generations.generation + 1', [uid]); await sql.unsafe('delete from agent_memory.journal_fragments where user_id=$1', [uid]); return (await sql.unsafe('delete from agent_memory.memories where user_id=$1 returning id', [uid])).length; },
     async byUndoHash(uid, h) { return fix((await sql.unsafe(`select ${COLS} from agent_memory.memories where user_id=$1 and undo_token_hash=$2`, [uid, h]))[0] ?? null); },
     async appendFragment(uid, f) { return (await sql.unsafe('insert into agent_memory.journal_fragments(user_id,day,turn_id,conversation_id,text,at) values($1,$2,$3,$4,$5,$6) on conflict do nothing returning turn_id', [uid, f.day, f.turn_id, f.conversation_id, f.text, f.at])).length > 0; },
+    async restoreFragments(groups) { for (const { user_id, items } of groups) for (const f of items) await sql.unsafe('insert into agent_memory.journal_fragments(user_id,turn_id,conversation_id,text,at,day) values($1,$2,$3,$4,$5,$6) on conflict do nothing', [user_id, f.turn_id, f.conversation_id, f.text, f.at, f.day]); },
     async takeFragments(day) {
       const rows = await sql.unsafe('delete from agent_memory.journal_fragments where day=$1 returning user_id,turn_id,conversation_id,text,at', [day]); const out = new Map();
       for (const r of rows.sort((a, b) => String(a.at).localeCompare(String(b.at)))) { if (!out.has(r.user_id)) out.set(r.user_id, []); out.get(r.user_id).push({ ...r, day }); }

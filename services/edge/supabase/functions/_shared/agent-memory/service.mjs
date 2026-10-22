@@ -43,7 +43,8 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
     const row = { id: crypto.randomUUID(), kind, content: content.trim(), pinned: pinned === true, expires_at: expires_at ? new Date(Date.parse(expires_at)).toISOString() : null,
       embedding: await vector(content), source_conversation_id: ctx.conversation_id ?? null, source_turn_id: ctx.turn_id ?? null, operation_id: ctx.operation_id ?? null,
       created_by: ctx.created_by ?? 'agent', undo_token_hash: await sha256(token), undo_expires_at: new Date(now() + LIMITS.undo_ttl_ms).toISOString(), created_at: ts, updated_at: ts };
-    const { row: saved, created } = await store.insert(uid, row);
+    const { row: saved, created, refused } = await store.insert(uid, row, ctx.fence !== undefined ? { fence: ctx.fence } : undefined);
+    if (refused) return { row: null, undo_token: null, refused };
     // A replayed operation (retry/resume) returns the original row; its undo token is not re-issued.
     return { row: saved, undo_token: created ? token : null };
   }
@@ -54,10 +55,16 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
   }
   async function update(uid, id, fields) {
     const prior = await store.get(uid, id); if (!prior) throw bad('memory_not_found', 404);
+    // M1 MEM-01: compare-and-set on the version the edit started from (or the client's expected_version).
+    const expectVersion = fields.expected_version ?? prior.updated_at;
+    if (fields.expected_version !== undefined && fields.expected_version !== prior.updated_at) throw bad('memory_conflict', 409);
     const next = { updated_at: iso() };
     if (fields.content !== undefined) { next.content = fields.content.trim(); next.embedding = await vector(fields.content); }
     if (fields.pinned !== undefined) next.pinned = fields.pinned;
-    return store.update(uid, id, next);
+    const out = await store.update(uid, id, next, { expectVersion });
+    if (out?.conflict) throw bad('memory_conflict', 409);
+    if (!out) throw bad('memory_not_found', 404);
+    return out;
   }
   async function forgetTargets(uid, { ids, query }) {
     if (ids) { const out = []; for (const id of ids) { const r = await store.get(uid, id); if (r) out.push(r); } return out; }
@@ -98,7 +105,8 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
       // auto_save off: save only for a turn whose admission detected an explicit 「记住」 command, at most once per turn.
       if (!s.auto_save && ctx.explicit_save !== true) return { result: { status: 'not_saved', reason: 'auto_save_off' }, events: [] };
       if (!s.auto_save && ctx.saved_this_turn > 0) return { result: { status: 'not_saved', reason: 'explicit_save_limit' }, events: [] };
-      const { row, undo_token } = await save(uid, args, ctx);
+      const { row, undo_token, refused } = await save(uid, args, ctx);
+      if (refused) return { result: { status: 'not_saved', reason: refused === 'deleted' ? 'previously_deleted' : 'memory_cleared' }, events: [] };
       return { result: { status: 'saved', id: row.id }, events: undo_token ? [{ type: 'memory_saved', data: { memory: { id: row.id, kind: row.kind, content: row.content }, undo_token } }, memUpdate('saved', [row])] : [] };
     }
     if (name === 'memory_search') return { result: { memories: (await rank(uid, args.query, args.k ?? 5)).map(r => ({ id: r.id, kind: r.kind, content: r.content, updated_at: r.updated_at })) }, events: [] };
@@ -110,11 +118,21 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
   /** Daily journal (pg_cron → POST /memory/journal/tick). Compresses the day's non-ephemeral user messages into one entry. */
   async function journalTick(day = shanghaiDay(now() - 86400000)) {
     let written = 0;
-    for (const { user_id, items } of await store.takeFragments(day)) {
-      if (!allow(user_id)) continue; const s = await settings(user_id); if (!active(s) || !s.auto_save) continue;
-      let text = null; if (summarize) { try { text = String(await summarize(items.map(i => i.text))).slice(0, LIMITS.content_chars); } catch { text = null; } }
-      text ??= `${day} 聊了：` + items.map(i => i.text.replace(/\s+/g, ' ').slice(0, 60)).join('；').slice(0, LIMITS.content_chars - 20);
-      await save(user_id, { kind: 'journal', content: text, expires_at: new Date(now() + 90 * 86400000).toISOString() }, { operation_id: `journal:${day}`, created_by: 'journal' }); written++;
+    const groups = await store.takeFragments(day);
+    for (let gi = 0; gi < groups.length; gi++) {
+      const { user_id, items } = groups[gi];
+      try {
+        if (!allow(user_id)) continue; const s = await settings(user_id); if (!active(s) || !s.auto_save) continue;
+        const fence = store.clearGeneration ? await store.clearGeneration(user_id) : undefined;
+        let text = null; if (summarize) { try { text = String(await summarize(items.map(i => i.text))).slice(0, LIMITS.content_chars); } catch { text = null; } }
+        text ??= `${day} 聊了：` + items.map(i => i.text.replace(/\s+/g, ' ').slice(0, 60)).join('；').slice(0, LIMITS.content_chars - 20);
+        const r = await save(user_id, { kind: 'journal', content: text, expires_at: new Date(now() + 90 * 86400000).toISOString() }, { operation_id: `journal:${day}`, created_by: 'journal', ...(fence !== undefined ? { fence } : {}) });
+        if (r.row) written++;
+      } catch (e) {
+        // M1 MEM-05: a failed write returns this and every unprocessed group's fragments for a later retry.
+        if (store.restoreFragments) await store.restoreFragments(groups.slice(gi)).catch(() => {});
+        throw e;
+      }
     }
     return { day, written };
   }
@@ -178,7 +196,7 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
       return json(201, { memory: publicMemory((await save(uid, { ...rest, pinned }, { created_by: 'user' })).row) });
     }
     const item = p.match(/^\/memory\/items\/([^/]+)$/);
-    if (item && isUUID(item[1]) && m === 'PATCH') { const b = await body(req); const keys = Object.keys(b ?? {}); if (!keys.length || keys.some(k => !['content', 'pinned'].includes(k)) || (b.content !== undefined && !(typeof b.content === 'string' && b.content.trim() && b.content.length <= LIMITS.content_chars)) || (b.pinned !== undefined && typeof b.pinned !== 'boolean')) throw bad('memory_schema_invalid'); return json(200, { memory: publicMemory(await update(uid, item[1], b)) }); }
+    if (item && isUUID(item[1]) && m === 'PATCH') { const b = await body(req); const keys = Object.keys(b ?? {}); if (!keys.length || keys.some(k => !['content', 'pinned', 'expected_version'].includes(k)) || (b.expected_version !== undefined && typeof b.expected_version !== 'string') || (b.content !== undefined && !(typeof b.content === 'string' && b.content.trim() && b.content.length <= LIMITS.content_chars)) || (b.pinned !== undefined && typeof b.pinned !== 'boolean')) throw bad('memory_schema_invalid'); return json(200, { memory: publicMemory(await update(uid, item[1], b)) }); }
     if (item && isUUID(item[1]) && m === 'DELETE') { if (!await store.remove(uid, [item[1]])) throw bad('memory_not_found', 404); return json(200, { deleted: 1 }); }
     if (p === '/memory/undo' && m === 'POST') { const b = await body(req); if (typeof b.undo_token !== 'string' || b.undo_token.length > 100) throw bad('memory_schema_invalid'); const r = await store.byUndoHash(uid, await sha256(b.undo_token)); if (!r || Date.parse(r.undo_expires_at) <= now()) throw bad('undo_unavailable', 410); await store.remove(uid, [r.id]); return json(200, { deleted: 1, id: r.id }); }
     if (p === '/memory/clear' && m === 'POST') { const b = await body(req); if (b.confirm !== 'delete_all') throw bad('confirmation_required'); return json(200, { deleted: await store.removeAll(uid) }); }
