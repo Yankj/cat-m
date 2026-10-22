@@ -88,14 +88,16 @@ export function createMemoryRoute() {
       const empty = { household_id: hh, top_k: 6, results: [], snapshot: { refs: [], at }, answer: planAnswer([], false, { disabled: true }), memory_reads: 0, memory_writes: 0 };
       // client-declared policy: memory off on this device, or an ephemeral conversation -> no read, no write
       if (url.searchParams.get('use_memory') === 'false' || url.searchParams.get('ephemeral') === 'true') return J(200, empty);
-      const cands = await ctx.store.recallCandidates(actor, hh, at, member, 'household');
+      // visibility=private: the owner's own private conversation may also use private memories (grantees never)
+      const vis = url.searchParams.get('visibility') === 'private' && reader.role === 'owner' ? 'all' : 'household';
+      const cands = await ctx.store.recallCandidates(actor, hh, at, member, vis);
       if (cands === null) throw new FamilyError(404, 'not_found');
       const usable = cands.filter(m => conditionMet(m.conditions, at, 'Asia/Shanghai', context, q));
       const top = rank(q, usable, 6);
       // relevant but not answerable (unconfirmed / outside validity) -> ask instead of guessing
       let pending = false;
       if (!top.length || top[0].score < ASSERT_MIN) {
-        const listing = (await ctx.store.recallCandidates(actor, hh, null, member, 'household')) ?? [];
+        const listing = (await ctx.store.recallCandidates(actor, hh, null, member, vis)) ?? [];
         const ids = new Set(usable.map(m => m.memory_id));
         pending = rank(q, listing.filter(m => !ids.has(m.memory_id)), 1).some(m => m.score >= ASSERT_MIN);
       }
