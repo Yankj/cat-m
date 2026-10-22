@@ -20,5 +20,7 @@
   "legacy_shared_files_must_not_be_deduplicated_as_identical": true,
   "second_active_app_allowed": false,
   "component_owned_model_or_auth_allowed": false,
-  "deployment_implied_by_checks": false
+  "deployment_implied_by_checks": false,
+  "website": "apps/website",
+  "website_role": "Static product website; independent build and deployment; no native host or backend authority"
 }
