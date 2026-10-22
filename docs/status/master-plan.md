@@ -2,7 +2,7 @@
 
 ## 2026-10-22 cat 品牌本地迁移
 
-独立分支 `chore/cat-brand` 基于 `cb3bc90` 完成当前显示文案、工程/模块/文件、后端助理身份和两张品牌位图迁移。构建、472项兼容、双语、组件包、SwiftData跨模块合成数据往返及后端874PASS/2SKIP通过。首轮26失败全部基线复现；最终全量528PASS/27FAIL/4SKIP，已确认品牌新增失败0、仍有1项全套上下文失败未归因，独立等待用例两边5/5通过但全套等待边界保留。原设计规则8项基线失败，不签收完整产品。Library上传被自动审批拒绝，未创建附件，等直接用户授权；无发布、部署或手机安装。详见[最终本地记录](../acceptance/cat-brand-2026-10-22.md)、[逐项归因](../acceptance/cat-brand-attribution-2026-10-22.json)和[兼容说明](../development/cat-brand-migration.md)。
+独立分支 `chore/cat-brand` 基于 `cb3bc90` 完成当前显示文案、工程/模块/文件、后端助理身份和两张品牌位图迁移。构建、472项兼容、双语、组件包、SwiftData跨模块合成数据往返及后端874PASS/2SKIP通过。首轮26失败全部基线复现；最终全量528PASS/27FAIL/4SKIP，已确认品牌新增失败0、仍有1项全套上下文失败未归因，独立等待用例两边5/5通过但全套等待边界保留。原设计规则8项基线失败，不签收完整产品。用户2026-10-22明确批准分支推送/draft PR与三张Library预览保存。品牌提交`4dafaeac`已推送，已创建[draft PR #110](https://github.com/Yankj/catpaw-m/pull/110)，未合并。该提交CI [39733200994](https://github.com/Yankj/catpaw-m/actions/runs/39733200994)和基线main CI均在job启动前受账户计费/支出限额限制，steps为空，下游构建/测试跳过，非代码测试通过。未更改付费、权限或凭据设置。Library对应原上传在新增授权后重试一次，官方helper返回`Library prepare_uploads is not available`，未创建附件、无附件ID，已停止且不换路径；无部署或手机安装。详见[最终本地记录](../acceptance/cat-brand-2026-10-22.md)、[逐项归因](../acceptance/cat-brand-attribution-2026-10-22.json)和[兼容说明](../development/cat-brand-migration.md)。
 
 更新：2026-10-16；唯一实时状态页。旧主计划完整保存在[2026-10-12快照](master-plan-2026-10-12.md)，旧失败与证据边界不改写。16:07交接事实与待提交文件见[handoff](../../handoff.md)和[快照](handoff-snapshot-2026-10-13.json)；快照不另维护实时进度。
 
