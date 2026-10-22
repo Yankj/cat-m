@@ -16,11 +16,11 @@ import SwiftUI
     var body: some View {
         ZStack {
             if dictation.dictating {
-                Image(systemName: "waveform").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
+                Image(systemName: "waveform").font(catTypography.Role.body.font.weight(.semibold)).foregroundStyle(catColors.sendIcon)
                     .symbolEffect(.variableColor.iterative, isActive: !reduceMotion)
-                    .frame(width: size, height: size).background(CatpawBrand.paw, in: Circle())
+                    .frame(width: size, height: size).background(catBrand.paw, in: Circle())
             } else {
-                Image(systemName: "mic").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                Image(systemName: "mic").font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                     .frame(width: size, height: size)
             }
         }
@@ -92,30 +92,30 @@ import SwiftUI
     var body: some View {
         HStack(spacing: 10) {
             Button { dictation.cancel() } label: {
-                Image(systemName: "xmark").font(CatpawTypography.Role.body.font.weight(.semibold))
-                    .foregroundStyle(dictation.zone == .cancel ? CatpawColors.sendIcon : CatpawColors.ink)
+                Image(systemName: "xmark").font(catTypography.Role.body.font.weight(.semibold))
+                    .foregroundStyle(dictation.zone == .cancel ? catColors.sendIcon : catColors.ink)
                     .frame(width: 40, height: 40)
-                    .background(dictation.zone == .cancel ? CatpawColors.ink : CatpawColors.ink.opacity(0.10), in: Circle())
+                    .background(dictation.zone == .cancel ? catColors.ink : catColors.ink.opacity(0.10), in: Circle())
             }
-            .buttonStyle(CatpawPressButtonStyle()).touchTarget()
+            .buttonStyle(catPressButtonStyle()).touchTarget()
             .accessibilityLabel(ui("取消听写")).accessibilityIdentifier("chat.composer.dictation.cancel")
 
             if hold {
                 Label(ui("向左滑动取消"), systemImage: "chevron.left")
-                    .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
-                    .padding(.horizontal, 10).padding(.vertical, 6).background(CatpawColors.ink.opacity(0.06), in: Capsule())
+                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
+                    .padding(.horizontal, 10).padding(.vertical, 6).background(catColors.ink.opacity(0.06), in: Capsule())
                     .fixedSize().accessibilityIdentifier("chat.composer.dictation.cancelHint")
             }
             DottedWaveform(levels: levels).frame(maxWidth: .infinity, minHeight: 24).accessibilityHidden(true)
 
             Button { dictation.stop() } label: {
-                Image(systemName: "checkmark").font(CatpawTypography.Role.body.font.weight(.semibold))
-                    .foregroundStyle(dictation.zone == .send ? CatpawColors.sendIcon : CatpawColors.ink)
+                Image(systemName: "checkmark").font(catTypography.Role.body.font.weight(.semibold))
+                    .foregroundStyle(dictation.zone == .send ? catColors.sendIcon : catColors.ink)
                     .frame(width: 40, height: 40)
-                    .background(dictation.zone == .send ? CatpawBrand.paw : CatpawColors.panel, in: Circle())
-                    .overlay(Circle().strokeBorder(CatpawColors.ink.opacity(0.08), lineWidth: 0.5))
+                    .background(dictation.zone == .send ? catBrand.paw : catColors.panel, in: Circle())
+                    .overlay(Circle().strokeBorder(catColors.ink.opacity(0.08), lineWidth: 0.5))
             }
-            .buttonStyle(CatpawPressButtonStyle()).touchTarget()
+            .buttonStyle(catPressButtonStyle()).touchTarget()
             .accessibilityLabel(ui("完成听写")).accessibilityIdentifier("chat.composer.dictation.confirm")
         }
         .padding(.horizontal, 6)
@@ -124,7 +124,7 @@ import SwiftUI
         .overlay(alignment: .topTrailing) {
             if hold {
                 Label(ui("向上滑动发送"), systemImage: "chevron.up")
-                    .font(CatpawTypography.Role.caption.font).foregroundStyle(dictation.zone == .send ? CatpawBrand.paw : CatpawColors.secondary)
+                    .font(catTypography.Role.caption.font).foregroundStyle(dictation.zone == .send ? catBrand.paw : catColors.secondary)
                     .fixedSize().offset(x: -8, y: -28).accessibilityIdentifier("chat.composer.dictation.sendHint")
             }
         }
@@ -143,7 +143,7 @@ struct DottedWaveform: View {
             for (i, level) in levels.enumerated() {
                 let h = max(dot, CGFloat(level) * size.height)
                 let rect = CGRect(x: CGFloat(i) * step + (step - dot) / 2, y: (size.height - h) / 2, width: dot, height: h)
-                context.fill(Path(roundedRect: rect, cornerRadius: dot / 2), with: .color(CatpawColors.ink.opacity(0.25 + Double(level) * 0.6)))
+                context.fill(Path(roundedRect: rect, cornerRadius: dot / 2), with: .color(catColors.ink.opacity(0.25 + Double(level) * 0.6)))
             }
         }
     }

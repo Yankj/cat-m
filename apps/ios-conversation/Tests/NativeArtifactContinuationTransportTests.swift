@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 private final class ContinuationWireProtocol:URLProtocol,@unchecked Sendable {
     static var handler:((URLRequest)throws->(Int,[String:Any]))?

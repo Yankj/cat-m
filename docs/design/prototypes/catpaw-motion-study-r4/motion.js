@@ -1,4 +1,4 @@
-/* Catpaw UX R4 — presentation-only motion primitives, no network or effect authority.
+/* cat UX R4 — presentation-only motion primitives, no network or effect authority.
  *
  * spring({ initial, stiffness=420, damping=38, mass=1, precision=.1,
  *          velocityPrecision=1, reducedMotion, onUpdate, onSettle })
@@ -394,7 +394,7 @@
     };
   }
 
-  global.CatpawMotion = Object.freeze({
+  global.catMotion = Object.freeze({
     Spring, spring: options => new Spring(options),
     bindPan, pan: bindPan, rubberBand, project, decideSnap,
     prefersReducedMotion: () => !!(reducedQuery && reducedQuery.matches)

@@ -14,7 +14,7 @@ actor RestartFixtureTransport: OpenMuseTaskTransport {
     func loseNextAdmissionBeforeTaskExists() { omitNextAdmission = true }
     func create(_ request: OpenMuseFrozenRequest) async throws -> OpenMuseTaskBinding {
         publicCreateRequests += 1
-        if omitNextAdmission { omitNextAdmission = false; throw CatpawError.unavailable("Synthetic admission lost before task creation; original GET returns missing.") }
+        if omitNextAdmission { omitNextAdmission = false; throw catError.unavailable("Synthetic admission lost before task creation; original GET returns missing.") }
         let binding = OpenMuseTaskBinding(request: request, taskID: "synthetic-task-\(request.input.operationID)")
         var projection = OpenMuseTaskProjection(binding: binding, revision: 1, status: .running, workerRunID: "synthetic-worker-run")
         projection.grantRevision = request.input.grantRevision; projection.contextEpoch = request.input.contextEpoch
@@ -22,7 +22,7 @@ actor RestartFixtureTransport: OpenMuseTaskTransport {
         return binding
     }
     func readOriginal(_ request: OpenMuseFrozenRequest, knownTaskID: String?) async throws -> OpenMuseTaskProjection {
-        guard let value = tasks[request.requestHash], knownTaskID == nil || value.binding.taskID == knownTaskID else { throw CatpawError.missing }
+        guard let value = tasks[request.requestHash], knownTaskID == nil || value.binding.taskID == knownTaskID else { throw catError.missing }
         if holdRead {
             holdRead = false; bufferedProjection = value
             return await withCheckedContinuation { continuation in
@@ -32,7 +32,7 @@ actor RestartFixtureTransport: OpenMuseTaskTransport {
         return value
     }
     func control(_ request: OpenMuseFrozenRequest, knownTaskID: String?, command: OpenMuseControlCommand, expectedRevision: Int, expectedGrantEpoch: Int) async throws -> OpenMuseControlReceipt {
-        guard var value = tasks[request.requestHash] else { throw CatpawError.missing }
+        guard var value = tasks[request.requestHash] else { throw catError.missing }
         value.revision += 1; value.status = command == .pause ? .paused : command == .resume ? .running : .cancelled
         tasks[request.requestHash] = value
         return OpenMuseControlReceipt(binding: value.binding, control: command == .pause ? .paused : command == .resume ? .active : .revoked,
@@ -74,22 +74,22 @@ actor RestartFixtureTransport: OpenMuseTaskTransport {
     func decisionRequestCount() -> Int { publicDecisionRequests }
     func readApproval(_ request: OpenMuseFrozenRequest, taskID: String, proposalID: String) async throws -> OpenMuseApprovalSnapshot {
         guard let value = tasks[request.requestHash], value.binding.taskID == taskID,
-              let approval = value.approvals.first(where: { $0.proposalID == proposalID }) else { throw CatpawError.missing }
+              let approval = value.approvals.first(where: { $0.proposalID == proposalID }) else { throw catError.missing }
         return approval
     }
     func decide(_ preview: OpenMuseApprovalPreview, decision: OpenMuseDecision) async throws -> OpenMuseDecisionReceipt {
         publicDecisionRequests += 1
         decisions[preview.snapshot.proposalID] = OpenMuseDecisionReceipt(binding: preview.snapshot.binding, proposalID: preview.snapshot.proposalID,
             serverActionDigest: preview.snapshot.serverActionDigest, status: .accepted, providerStatus: "succeeded")
-        throw CatpawError.unavailable("synthetic response lost after a synthetic-only decision")
+        throw catError.unavailable("synthetic response lost after a synthetic-only decision")
     }
     func readReceipt(_ request: OpenMuseFrozenRequest, approval: OpenMuseApprovalSnapshot) async throws -> OpenMuseDecisionReceipt {
-        guard let receipt = decisions[approval.proposalID] else { throw CatpawError.missing }
+        guard let receipt = decisions[approval.proposalID] else { throw catError.missing }
         return receipt
     }
 }
 func omCheck(_ value: Bool, _ description: String) throws {
-    guard value else { throw CatpawError.invalid("FAIL: " + description) }
+    guard value else { throw catError.invalid("FAIL: " + description) }
     print("PASS: " + description)
 }
 @main struct OpenMuseTaskRunner {

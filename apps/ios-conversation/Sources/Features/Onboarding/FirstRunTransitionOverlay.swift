@@ -276,18 +276,18 @@ private struct ComposerMorph: View, Animatable {
         let corner = 28 + (26 - 28) * q   // CTA r28 → ComposerChrome pill r26
         let shape = RoundedRectangle(cornerRadius: max(0, corner), style: .continuous)
         ZStack {
-            shape.fill(CatpawColors.composerPill).overlay(shape.strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
-            shape.fill(LinearGradient(colors: [CatpawColors.calmCTATop, CatpawColors.calmCTABottom], startPoint: .topLeading, endPoint: .bottomTrailing))
+            shape.fill(catColors.composerPill).overlay(shape.strokeBorder(catColors.hairline, lineWidth: 0.5))
+            shape.fill(LinearGradient(colors: [catColors.calmCTATop, catColors.calmCTABottom], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .opacity(fill)
             HStack(spacing: 8) {
-                Image(systemName: "hand.tap.fill").font(CatpawTypography.Role.body.font.weight(.semibold))
-                Text(title).font(CatpawTypography.Role.heading.font.weight(.semibold))
+                Image(systemName: "hand.tap.fill").font(catTypography.Role.body.font.weight(.semibold))
+                Text(title).font(catTypography.Role.heading.font.weight(.semibold))
             }
-            .foregroundStyle(CatpawColors.calmGlyph)
+            .foregroundStyle(catColors.calmGlyph)
             .opacity(label)
             HStack(spacing: 2) {
                 icon("plus", on: icons[0])
-                Text(placeholder).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary)
+                Text(placeholder).font(catTypography.Role.body.font).foregroundStyle(catColors.secondary)
                     .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 6)
                     .opacity(placeholderOn ? 1 : 0)
                 icon("mic", on: icons[1])
@@ -295,12 +295,12 @@ private struct ComposerMorph: View, Animatable {
             }
             .padding(6)
         }
-        .shadow(color: CatpawColors.orbDeep.opacity(0.32 * fill), radius: 16, y: 7)
+        .shadow(color: catColors.orbDeep.opacity(0.32 * fill), radius: 16, y: 7)
         .frame(width: max(1, r.width), height: max(1, r.height))
         .position(x: r.midX, y: r.midY)
     }
     private func icon(_ name: String, on: Bool) -> some View {
-        Image(systemName: name).font(CatpawTypography.Role.body.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
+        Image(systemName: name).font(catTypography.Role.body.font.weight(.medium)).foregroundStyle(catColors.ink)
             .frame(width: 36, height: 36)
             .scaleEffect(on ? 1 : 0.7).opacity(on ? 1 : 0)
     }
@@ -310,7 +310,7 @@ private struct ComposerMorph: View, Animatable {
 
 /// The gate's landing/chat branch wrapped so both trees are mounted during the transition (SPEC-E §5.3):
 ///     FirstRunTransitionHost(onboarding: auth.needsOnboarding, chat: chatViewOrNil,
-///                            ctaTitle: ui("开始使用"), placeholder: ui("问问 Catpaw")) { NativeLoginView(auth: auth) }
+///                            ctaTitle: ui("开始使用"), placeholder: ui("问问 cat")) { NativeLoginView(auth: auth) }
 /// `chat` is nil while the chat shell is still attaching.
 struct FirstRunTransitionHost<Landing: View, Chat: View>: View {
     let onboarding: Bool

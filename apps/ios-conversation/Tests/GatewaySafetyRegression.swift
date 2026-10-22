@@ -19,9 +19,9 @@ actor AcceptedThenEOFProvider: AgentProvider {
             }
         }
     }
-    func start(_ request: TaskRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> { throw CatpawError.unavailable("test") }
-    func observe(operationID: UUID, context: ProviderContext) async throws -> ProviderEvent { throw CatpawError.unavailable("test") }
-    func cancel(operationID: UUID, context: ProviderContext) async throws -> ProviderEvent { throw CatpawError.unavailable("test") }
+    func start(_ request: TaskRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> { throw catError.unavailable("test") }
+    func observe(operationID: UUID, context: ProviderContext) async throws -> ProviderEvent { throw catError.unavailable("test") }
+    func cancel(operationID: UUID, context: ProviderContext) async throws -> ProviderEvent { throw catError.unavailable("test") }
 }
 
 @main struct GatewaySafetyRegression {
@@ -39,18 +39,18 @@ actor AcceptedThenEOFProvider: AgentProvider {
         await runtime.awaitCompletion(operationID: operation)
         let snapshot = await repo.read(scope: Profiles.demo)
         let record = snapshot.list("task", scope: Profiles.demo).first { $0.task?.operationID == operation }!
-        guard record.task?.state == .outcomeUnknown, record.task?.results.isEmpty == true else { throw CatpawError.invalid("Accepted EOF became retryable or published a result") }
+        guard record.task?.state == .outcomeUnknown, record.task?.results.isEmpty == true else { throw catError.invalid("Accepted EOF became retryable or published a result") }
         print("PASS accepted remote EOF stays outcomeUnknown without a result")
         var retryRejected = false
         do { try await runtime.retry(scope: Profiles.demo, taskID: record.id, scenario: .success) }
         catch { retryRejected = true }
-        guard retryRejected, await provider.count() == 1 else { throw CatpawError.invalid("Unknown request was resent or invoked provider twice") }
+        guard retryRejected, await provider.count() == 1 else { throw catError.invalid("Unknown request was resent or invoked provider twice") }
         print("PASS unknown result refuses a new epoch/provider invocation")
         let reopened = try Repository(persistence: FilePersistence(url: directory.appendingPathComponent("store.json")))
         let reopenedRuntime = ChatRuntime(repository: reopened, service: WorkspaceService(repository: reopened, blobs: service.blobs), provider: provider, providerMode: .gateway)
         try await reopenedRuntime.recoverInterrupted(scope: Profiles.demo)
         let recovered = try await reopened.record(record.id, scope: Profiles.demo)
-        guard recovered.task?.state == .outcomeUnknown else { throw CatpawError.invalid("Restart erased unknown status") }
+        guard recovered.task?.state == .outcomeUnknown else { throw catError.invalid("Restart erased unknown status") }
         print("PASS restart preserves original unknown operation for verification")
         let interrupted = try await repo.record(record.id, scope: Profiles.demo)
         var inFlight = interrupted.task!; inFlight.state = .running
@@ -59,7 +59,7 @@ actor AcceptedThenEOFProvider: AgentProvider {
         let recoveringRuntime = ChatRuntime(repository: interruptedStore, service: WorkspaceService(repository: interruptedStore, blobs: service.blobs), provider: provider, providerMode: .gateway)
         try await recoveringRuntime.recoverInterrupted(scope: Profiles.demo)
         let interruptedRecovery = try await interruptedStore.record(record.id, scope: Profiles.demo)
-        guard interruptedRecovery.task?.state == .outcomeUnknown, await provider.count() == 1 else { throw CatpawError.invalid("In-flight accepted recovery changed outcome or invoked the provider") }
+        guard interruptedRecovery.task?.state == .outcomeUnknown, await provider.count() == 1 else { throw catError.invalid("In-flight accepted recovery changed outcome or invoked the provider") }
         print("PASS recovery of accepted in-flight work becomes unknown without resending")
         let candidateService = WorkspaceService(repository: interruptedStore, blobs: service.blobs)
         for ending in [AcceptedThenEOFProvider.Ending.brokenConnection, .waitForCancellation] {
@@ -76,13 +76,13 @@ actor AcceptedThenEOFProvider: AgentProvider {
             } else { await candidateRuntime.awaitCompletion(operationID: candidateOperation) }
             let current = await interruptedStore.read(scope: Profiles.demo)
             guard let task = current.list("task", scope: Profiles.demo).first(where: { $0.task?.operationID == candidateOperation })?.task,
-                  task.state == .outcomeUnknown, task.results.isEmpty else { throw CatpawError.invalid("Transport loss or local cancel claimed remote failure/success/cancellation") }
+                  task.state == .outcomeUnknown, task.results.isEmpty else { throw catError.invalid("Transport loss or local cancel claimed remote failure/success/cancellation") }
             print(ending == .brokenConnection ? "PASS accepted connection loss preserves unknown" : "PASS local cancel stops observation and retains unknown remote outcome")
         }
         var externalRejected = false
         do { _ = try GatewayConfiguration(baseURL: URL(string: "https://example.com")!, localSynthetic: true) }
         catch { externalRejected = error.localizedDescription.contains("loopback") }
-        guard externalRejected else { throw CatpawError.invalid("Synthetic mode accepted external host") }
+        guard externalRejected else { throw catError.invalid("Synthetic mode accepted external host") }
         print("PASS synthetic mode cannot route demo data to an external HTTPS host")
     }
 }

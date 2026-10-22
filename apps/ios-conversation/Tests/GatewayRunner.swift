@@ -1,7 +1,7 @@
 import Foundation
 
 func check(_ value: Bool, _ label: String) throws {
-    guard value else { throw CatpawError.invalid("FAIL: " + label) }
+    guard value else { throw catError.invalid("FAIL: " + label) }
     print("PASS: " + label)
 }
 struct MockGatewayTransport: GatewayTransport {
@@ -29,9 +29,9 @@ struct RemoteSyntheticProvider: AgentProvider {
             c.finish()
         }
     }
-    func start(_ request: TaskRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> { throw CatpawError.missing }
-    func observe(operationID: EntityID, context: ProviderContext) async throws -> ProviderEvent { throw CatpawError.missing }
-    func cancel(operationID: EntityID, context: ProviderContext) async throws -> ProviderEvent { throw CatpawError.missing }
+    func start(_ request: TaskRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> { throw catError.missing }
+    func observe(operationID: EntityID, context: ProviderContext) async throws -> ProviderEvent { throw catError.missing }
+    func cancel(operationID: EntityID, context: ProviderContext) async throws -> ProviderEvent { throw catError.missing }
 }
 #endif
 @main struct GatewayRunner {
@@ -41,18 +41,18 @@ struct RemoteSyntheticProvider: AgentProvider {
         let frozen = FrozenRequestConfiguration(conversationID: conversation, userMessageID: message, environmentID: env, projectID: nil, configuration: ConversationConfiguration(model: "dots-free", safety: true, subagents: false), expertRevisions: [:], skillRevisions: [:])
         let request = ChatRequest(context: ProviderContext(scope: Profiles.demo, operationID: operation, environmentID: env, providerID: "catpaw.gateway.v1", runtimeEpoch: 1, authorizationReferences: []), conversationID: conversation, userMessageID: message, frozenText: "synthetic", frozenTextHash: textHash("synthetic"), conversationRevision: 1, frozenConfiguration: frozen)
         var data = try wire(operation, 1, "accepted", ["provider_operation_id": "mock"])
-        data.append(try wire(operation, 2, "text_delta", ["text": "猫爪"]))
-        data.append(try wire(operation, 3, "message_completed", ["final_text_hash": textHash("猫爪"), "finish_reason": "stop"]))
+        data.append(try wire(operation, 2, "text_delta", ["text": "cat"]))
+        data.append(try wire(operation, 3, "message_completed", ["final_text_hash": textHash("cat"), "finish_reason": "stop"]))
         data.append(try wire(operation, 4, "task_completed", ["receipt_reference": "mock-response:synthetic"]))
         let provider = GatewayAgentProvider(configuration: config, transport: MockGatewayTransport(bytes: data))
         var reducer = OperationReducer(operationID: operation, epoch: 1)
         for try await event in try await provider.reply(to: request) { _ = reducer.accept(event) }
         reducer.endOfStream()
-        try check(reducer.text == "猫爪" && reducer.taskState == .succeeded, "SSE byte fragments map into existing ProviderEvent/reducer")
+        try check(reducer.text == "cat" && reducer.taskState == .succeeded, "SSE byte fragments map into existing ProviderEvent/reducer")
         let incomplete = GatewayAgentProvider(configuration: config, transport: MockGatewayTransport(bytes: try wire(operation, 1, "text_delta", ["text": "partial"])))
-        do { for try await _ in try await incomplete.reply(to: request) {} ; throw CatpawError.invalid("missing terminal accepted") }
+        do { for try await _ in try await incomplete.reply(to: request) {} ; throw catError.invalid("missing terminal accepted") }
         catch { try check(error.localizedDescription.contains("explicit task terminal"), "native adapter rejects missing terminal") }
-        do { _ = try GatewayConfiguration(baseURL: URL(string: "http://example.com")!); throw CatpawError.invalid("HTTP accepted") }
+        do { _ = try GatewayConfiguration(baseURL: URL(string: "http://example.com")!); throw catError.invalid("HTTP accepted") }
         catch { try check(error.localizedDescription.contains("HTTPS"), "native configuration refuses insecure non-loopback endpoint") }
 
         let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("evidence/swift-state")
@@ -79,7 +79,7 @@ struct RemoteSyntheticProvider: AgentProvider {
         try check((await restarted.read(scope: Profiles.demo)).list("run", scope: Profiles.demo).count == 2, "native imported runs recover after restart")
         var wrongScopeRejected = false
         do { _ = try await importer.apply(projection, expectedScope: Profiles.user, environmentID: environment) }
-        catch CatpawError.scopeMismatch { wrongScopeRejected = true }
+        catch catError.scopeMismatch { wrongScopeRejected = true }
         try check(wrongScopeRejected, "projection rejects other profile scope")
         var corrupt = try JSONSerialization.jsonObject(with: projection) as! [String: Any]
         var artifacts = corrupt["artifacts"] as! [[String: Any]]

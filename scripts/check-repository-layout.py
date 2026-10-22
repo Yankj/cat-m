@@ -27,7 +27,7 @@ for package in layout['swift_packages']:
     assert (ROOT / package / 'Package.swift').is_file(), package
     for source in (ROOT / package / 'Sources').rglob('*.swift'):
         text = source.read_text()
-        assert not re.search(r'^\s*import\s+(CatpawM|Supabase)\b', text, re.M), source
+        assert not re.search(r'^\s*import\s+(cat|Supabase)\b', text, re.M), source
         assert 'URLSession' not in text, source
 entries = [p for p in (ROOT / layout['native_host'] / 'Sources').rglob('*.swift')
            if re.search(r'@main\b', p.read_text())]

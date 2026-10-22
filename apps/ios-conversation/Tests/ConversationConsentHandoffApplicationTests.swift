@@ -2,8 +2,8 @@ import Combine
 import Foundation
 import UIKit
 import XCTest
-import CatpawImageComposer
-@testable import CatpawM
+import catImageComposer
+@testable import cat
 
 /// Real model/service entry points with explicitly injected local consent replies.
 /// No HTTP, Auth, model, photo-library, image understanding or UI acceptance.

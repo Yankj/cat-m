@@ -20,8 +20,8 @@ STREAM = HOST + "Features/StreamingConversationText.swift"
 READER = HOST + "Features/ConversationArtifactReaderView.swift"
 COMPOSER = HOST + "Features/NativeConversationComposer.swift"
 CHROME = HOST + "Features/Composer/ComposerChrome.swift"
-SIDEBAR = "packages/ios-navigation/Sources/CatpawNavigation/SidebarTheme.swift"
-PANEL = "packages/ios-navigation/Sources/CatpawNavigation/SidebarPanel.swift"
+SIDEBAR = "packages/ios-navigation/Sources/catNavigation/SidebarTheme.swift"
+PANEL = "packages/ios-navigation/Sources/catNavigation/SidebarPanel.swift"
 POLICY = importlib.util.spec_from_file_location("catpaw_typography_policy", ROOT / "scripts/check-typography.py")
 TYPOGRAPHY = importlib.util.module_from_spec(POLICY)
 POLICY.loader.exec_module(TYPOGRAPHY)
@@ -57,10 +57,10 @@ def body(text, declaration):
     return ""
 
 
-TOKENS_PATH = HOST + "DesignSystem/CatpawBrandTokens.swift"
+TOKENS_PATH = HOST + "DesignSystem/catBrandTokens.swift"
 
 def load_brand_tokens(sources):
-    """Resolve CatpawBrandTokens hex constants so Components can reference them."""
+    """Resolve catBrandTokens hex constants so Components can reference them."""
     code = masked(sources.get(TOKENS_PATH, ""))
     found = {
         name: value.upper()
@@ -75,7 +75,7 @@ def resolve_hex(token_or_hex, tokens):
     raw = token_or_hex.strip()
     if re.fullmatch(r"0x[0-9a-fA-F]{6}", raw):
         return raw[2:].upper()
-    match = re.fullmatch(r"CatpawBrandTokens\.(\w+)", raw)
+    match = re.fullmatch(r"catBrandTokens\.(\w+)", raw)
     if match and match.group(1) in tokens:
         return tokens[match.group(1)]
     return None
@@ -84,7 +84,7 @@ def adaptive_values(code, declaration, tokens=None):
     tokens = tokens or {}
     pattern = (
         declaration
-        + r"\s*=\s*adaptive\s*\(\s*light\s*:\s*(0x[0-9a-fA-F]{6}|CatpawBrandTokens\.\w+)\s*,\s*dark\s*:\s*(0x[0-9a-fA-F]{6}|CatpawBrandTokens\.\w+)\s*\)"
+        + r"\s*=\s*adaptive\s*\(\s*light\s*:\s*(0x[0-9a-fA-F]{6}|catBrandTokens\.\w+)\s*,\s*dark\s*:\s*(0x[0-9a-fA-F]{6}|catBrandTokens\.\w+)\s*\)"
     )
     out = []
     for light, dark in re.findall(pattern, masked(code)):
@@ -101,7 +101,7 @@ def luminance(value):
 
 
 # r9 (design-owner approved 2026-10-15): r9 palette replaces r5 values for these roles.
-# Brand sheet 2026-10 (Primary/Deep/Background/Ink/Grey). Hex authority: CatpawBrandTokens.
+# Brand sheet 2026-10 (Primary/Deep/Background/Ink/Grey). Hex authority: catBrandTokens.
 R9_OVERRIDES = {
     # first-run-polish 2026-10-17 (user steering 12:33): one dark canvas #0E0C0A for launch screen, splash and chat.
     "bg": ("#FFFCF8", "#0E0C0A"),
@@ -128,7 +128,7 @@ def check(sources, spec):
     palette = sources[COMPONENTS]
     tokens = load_brand_tokens(sources)
     if not tokens.get("primary"):
-        issue(TOKENS_PATH, "CatpawBrandTokens must define brand sheet hex (primary/deep/background/ink/grey)")
+        issue(TOKENS_PATH, "catBrandTokens must define brand sheet hex (primary/deep/background/ink/grey)")
     values = {}
     for role, key in ROLES.items():
         actual = adaptive_values(palette, r"\bstatic\s+let\s+" + role + r"\b", tokens)
@@ -151,33 +151,33 @@ def check(sources, spec):
         index = ("light", "dark").index(mode)
         actual = contrast(values[foreground][index], values[background][index])
         # r9 decision (2026-10-16): paw orange is for fills/icons/non-text only → WCAG 1.4.11 non-text 3:1.
-        # Orange text must use ink, or CatpawColors.actionText (#C4511F) where unavoidable (checked below).
+        # Orange text must use ink, or catColors.actionText (#C4511F) where unavoidable (checked below).
         minimum = 3.0 if foreground == "tint" else pair["minimum"]
         if actual < minimum:
             issue(COMPONENTS, f"{mode} {pair['role']} contrast {actual:.3f} is below {pair['minimum']}")
 
-    require(COMPONENTS, masked(palette), r"\bstatic\s+let\s+actionText\s*=\s*adaptive\(\s*light:\s*(?:0xC64A0B|CatpawBrandTokens\.deep)\b", "orange text token actionText must be Deep #C64A0B in light mode")
+    require(COMPONENTS, masked(palette), r"\bstatic\s+let\s+actionText\s*=\s*adaptive\(\s*light:\s*(?:0xC64A0B|catBrandTokens\.deep)\b", "orange text token actionText must be Deep #C64A0B in light mode")
     for path, code in sources.items():
         for number, line in enumerate(code.splitlines(), 1):
-            if "Text(" in line and re.search(r"\.foregroundStyle\(\s*CatpawColors\.(action|accent)\s*\)", line):
-                issue(path, f"line {number}: orange text must use CatpawColors.ink or CatpawColors.actionText, not action/accent")
+            if "Text(" in line and re.search(r"\.foregroundStyle\(\s*catColors\.(action|accent)\s*\)", line):
+                issue(path, f"line {number}: orange text must use catColors.ink or catColors.actionText, not action/accent")
 
-    primary = body(palette, r"\bstruct\s+CatpawPrimaryButtonStyle\s*:")
-    require(COMPONENTS, primary, r"\.foregroundStyle\(\s*isEnabled\s*\?\s*CatpawColors\.onInk\b", "primary action foreground must use onInk")
-    require(COMPONENTS, primary, r"\.background\(\s*isEnabled\s*\?\s*CatpawColors\.ink\b", "primary approval/action background must use ink")
+    primary = body(palette, r"\bstruct\s+catPrimaryButtonStyle\s*:")
+    require(COMPONENTS, primary, r"\.foregroundStyle\(\s*isEnabled\s*\?\s*catColors\.onInk\b", "primary action foreground must use onInk")
+    require(COMPONENTS, primary, r"\.background\(\s*isEnabled\s*\?\s*catColors\.ink\b", "primary approval/action background must use ink")
 
     # r8 composer (design-owner approved): one ComposerTrailingControls view owns send/stop/voice.
     # Send = paw brand token + sendIcon glyph; stop and voice = ink circle; queue badge ink on background.
     # No controlEdge separator requirement (single pill with hairline).
     trailing = body(sources[CHROME], r"\bstruct\s+ComposerTrailingControls\b")
-    require(CHROME, trailing, r"\.foregroundStyle\(\s*CatpawColors\.sendIcon\s*\)\s*\n\s*\.frame\(width:\s*size,\s*height:\s*size\)\s*\n?\s*\.background\(\s*canSend", "enabled send glyph must use sendIcon")
-    require(CHROME, trailing, r"\.background\(\s*canSend\s*\?\s*CatpawBrand\.paw\b", "enabled send background must use the paw brand token")
-    require(CHROME, trailing, r"RoundedRectangle\([^\n]*\n[^\n]*\.background\(\s*CatpawColors\.ink\s*,\s*in:\s*Circle\(\)\)", "stop background must be ink")
-    require(CHROME, trailing, r"\.foregroundStyle\(\s*CatpawColors\.ink\s*\)\s*\n\s*\.padding\(2\)\.background\(\s*CatpawColors\.background", "composer queue badge must be ink on background")
+    require(CHROME, trailing, r"\.foregroundStyle\(\s*catColors\.sendIcon\s*\)\s*\n\s*\.frame\(width:\s*size,\s*height:\s*size\)\s*\n?\s*\.background\(\s*canSend", "enabled send glyph must use sendIcon")
+    require(CHROME, trailing, r"\.background\(\s*canSend\s*\?\s*catBrand\.paw\b", "enabled send background must use the paw brand token")
+    require(CHROME, trailing, r"RoundedRectangle\([^\n]*\n[^\n]*\.background\(\s*catColors\.ink\s*,\s*in:\s*Circle\(\)\)", "stop background must be ink")
+    require(CHROME, trailing, r"\.foregroundStyle\(\s*catColors\.ink\s*\)\s*\n\s*\.padding\(2\)\.background\(\s*catColors\.background", "composer queue badge must be ink on background")
     message = body(sources[FIRST], r"\bfunc\s+messageView\s*\(")
     user = body(message, r"\bif\s+message\.role\s*==\s*\.user\b")
-    require(FIRST, user, r"\.foregroundStyle\(\s*CatpawColors\.userMessageInk\s*\)", "user text must use its paired userMessageInk")
-    require(FIRST, user, r"\.background\(\s*CatpawColors\.userMessageBackground\b", "user bubble must use userMessageBackground, independently of inputs")
+    require(FIRST, user, r"\.foregroundStyle\(\s*catColors\.userMessageInk\s*\)", "user text must use its paired userMessageInk")
+    require(FIRST, user, r"\.background\(\s*catColors\.userMessageBackground\b", "user bubble must use userMessageBackground, independently of inputs")
 
     # SF semantic styles are the native mapping, not browser px copied as points.
     typography = sources[TYPE]
@@ -186,11 +186,11 @@ def check(sources, spec):
         for role, semantic in ROLE_MAP.items():
             require(TYPE, switch, r"case\s+\." + role + r"\s*:\s*\." + semantic + r"\b", f"{role} must map to semantic {semantic} in SwiftUI and UIKit")
     require(TYPE, masked(typography), r"\bfunc\s+readingLineSpacing\s*\(", "reading line spacing must have one shared semantic-font owner")
-    require(STREAM, masked(sources[STREAM]), r"paragraph\.lineSpacing\s*=\s*CatpawTypography\.readingLineSpacing\(for\s*:\s*newFont\)", "streaming TextKit must use shared spacing with its rendered UIFont")
-    require(READER, masked(sources[READER]), r"\.lineSpacing\(\s*CatpawTypography\.readingLineSpacing\(", "artifact reading must use the same shared spacing")
-    require(COMPOSER, masked(sources[COMPOSER]), r"CatpawTypography\.font\(\s*(?:\.body\s*,\s*)?size\s*:\s*size\)", "UIKit composer/stream font bridge must use the semantic body owner")
+    require(STREAM, masked(sources[STREAM]), r"paragraph\.lineSpacing\s*=\s*catTypography\.readingLineSpacing\(for\s*:\s*newFont\)", "streaming TextKit must use shared spacing with its rendered UIFont")
+    require(READER, masked(sources[READER]), r"\.lineSpacing\(\s*catTypography\.readingLineSpacing\(", "artifact reading must use the same shared spacing")
+    require(COMPOSER, masked(sources[COMPOSER]), r"catTypography\.font\(\s*(?:\.body\s*,\s*)?size\s*:\s*size\)", "UIKit composer/stream font bridge must use the semantic body owner")
 
-    sidebar = body(sources[SIDEBAR], r"\bstatic\s+var\s+catpaw\s*:")
+    sidebar = body(sources[SIDEBAR], r"\bstatic\s+var\s+cat\s*:")
     for role, key in {"panel": "drawer", "input": "panel", "ink": "ink", "secondary": "secondary"}.items():
         found = re.findall(r"\b" + role + r"\s*:\s*adaptive\(\s*light\s*:\s*0x([0-9a-fA-F]{6})\s*,\s*dark\s*:\s*0x([0-9a-fA-F]{6})\s*\)", sidebar)
         expected = tuple(spec["colors"][mode][key][1:].upper() for mode in ("light", "dark"))
@@ -198,7 +198,7 @@ def check(sources, spec):
             issue(SIDEBAR, f"default SidebarTheme.{role} must match R5 {key}")
     require(SIDEBAR, sidebar, r"selection\s*:\s*adaptive\(\s*light\s*:\s*0xE8E8E8\s*,\s*dark\s*:\s*0x202020\s*\)", "selected sidebar row must retain its reviewed neutral selection role")
     require(PANEL, masked(sources[PANEL]), r"selected\s*\?\s*theme\.selection\s*:\s*Color\.clear", "sidebar selection must not inherit the search input surface")
-    require(FIRST, masked(sources[FIRST]), r"SidebarTheme\.catpaw\.typography\(", "host must use the shared sidebar default plus semantic typography")
+    require(FIRST, masked(sources[FIRST]), r"SidebarTheme\.cat\.typography\(", "host must use the shared sidebar default plus semantic typography")
 
     # New host code cannot quietly introduce an unreviewed parallel RGB palette.
     # Transparent clears, semantic system labels, images and package defaults remain valid.
@@ -216,15 +216,15 @@ def self_test(sources, spec):
     # These are guard regressions, not product/visual tests.
     sources = {path: sources[path] for path in (COMPONENTS, TYPE, FIRST, STREAM, READER, COMPOSER, CHROME, SIDEBAR, PANEL)}
     tests = [
-        (COMPONENTS, "light: CatpawBrandTokens.background, dark: CatpawBrandTokens.canvasDark", "light: 0xF7F8FA, dark: 0x111214", "R5 role background"),
+        (COMPONENTS, "light: catBrandTokens.background, dark: catBrandTokens.canvasDark", "light: 0xF7F8FA, dark: 0x111214", "R5 role background"),
         (COMPONENTS, "static let accent = action", "static let accent = ink", "compatibility alias"),
-        (CHROME, ".foregroundStyle(CatpawColors.sendIcon)\n                            .frame", ".foregroundStyle(CatpawColors.onInk)\n                            .frame", "enabled send glyph"),
-        (CHROME, "canSend ? CatpawBrand.paw", "canSend ? CatpawColors.action", "enabled send background"),
-        (CHROME, "frame(width: 12, height: 12)\n                        .frame(width: size, height: size).background(CatpawColors.ink", "frame(width: 12, height: 12)\n                        .frame(width: size, height: size).background(CatpawBrand.paw", "stop background"),
-        (CHROME, ".foregroundStyle(CatpawColors.ink)\n                                .padding(2)", ".foregroundStyle(CatpawBrand.paw)\n                                .padding(2)", "queue badge"),
-        (FIRST, "CatpawColors.userMessageInk", "CatpawColors.ink", "user text"),
-        (FIRST, "CatpawColors.userMessageBackground", "CatpawColors.input", "user bubble"),
-        (STREAM, "CatpawTypography.readingLineSpacing(for:newFont)", "6", "streaming TextKit"),
+        (CHROME, ".foregroundStyle(catColors.sendIcon)\n                            .frame", ".foregroundStyle(catColors.onInk)\n                            .frame", "enabled send glyph"),
+        (CHROME, "canSend ? catBrand.paw", "canSend ? catColors.action", "enabled send background"),
+        (CHROME, "frame(width: 12, height: 12)\n                        .frame(width: size, height: size).background(catColors.ink", "frame(width: 12, height: 12)\n                        .frame(width: size, height: size).background(catBrand.paw", "stop background"),
+        (CHROME, ".foregroundStyle(catColors.ink)\n                                .padding(2)", ".foregroundStyle(catBrand.paw)\n                                .padding(2)", "queue badge"),
+        (FIRST, "catColors.userMessageInk", "catColors.ink", "user text"),
+        (FIRST, "catColors.userMessageBackground", "catColors.input", "user bubble"),
+        (STREAM, "catTypography.readingLineSpacing(for:newFont)", "6", "streaming TextKit"),
         (SIDEBAR, "light: 0xF5F5F5, dark: 0x141414", "light: 0xFFFFFF, dark: 0x1B1D21", "SidebarTheme.panel"),
         (PANEL, "selected ? theme.selection", "selected ? theme.input", "sidebar selection"),
     ]
@@ -235,7 +235,7 @@ def self_test(sources, spec):
         assert any(expected in message for _, message in check(changed, spec)), (path, expected)
     # A comment/string mentioning the right role cannot satisfy a missing binding.
     changed = dict(sources)
-    changed[CHROME] = sources[CHROME].replace("canSend ? CatpawBrand.paw", "canSend ? CatpawColors.action") + '\n// .background(canSend ? CatpawBrand.paw\nlet decoy = ".background(canSend ? CatpawBrand.paw"\n'
+    changed[CHROME] = sources[CHROME].replace("canSend ? catBrand.paw", "canSend ? catColors.action") + '\n// .background(canSend ? catBrand.paw\nlet decoy = ".background(canSend ? catBrand.paw"\n'
     assert any("enabled send background" in message for _, message in check(changed, spec))
     changed = dict(sources)
     changed[STREAM] += "\nlet rogue = Color(red: 0.1, green: 0.2, blue: 0.3)\n"

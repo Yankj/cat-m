@@ -11,7 +11,7 @@ private struct RevisionWireStrings:Decodable {
     let request:Request,conversation_before:Envelope
 }
 @main private enum NativeRevisionWorkWireRunner {
-    static func check(_ condition:Bool,_ label:String) throws {guard condition else {throw CatpawError.invalid(label)};print("PASS: "+label)}
+    static func check(_ condition:Bool,_ label:String) throws {guard condition else {throw catError.invalid(label)};print("PASS: "+label)}
     static func data(_ value:Any) throws -> Data {try JSONSerialization.data(withJSONObject:value,options:[.sortedKeys,.withoutEscapingSlashes])}
     static func stats(_ origin:URL) async throws -> [String:Int] {
         var request=URLRequest(url:origin.appendingPathComponent("wire-test-stats"));request.setValue("Bearer explicit-wire-test-only",forHTTPHeaderField:"Authorization")
@@ -22,7 +22,7 @@ private struct RevisionWireStrings:Decodable {
         let (_,response)=try await URLSession.shared.data(for:request);guard (response as? HTTPURLResponse)?.statusCode==200 else {throw ConversationSessionError.invalidEvent}
     }
     static func main() async throws {
-        guard CommandLine.arguments.count==4,let origin=URL(string:CommandLine.arguments[1]),origin.scheme=="http",origin.host=="127.0.0.1" else {throw CatpawError.invalid("explicit loopback origin, evidence directory and maintained fixture required")}
+        guard CommandLine.arguments.count==4,let origin=URL(string:CommandLine.arguments[1]),origin.scheme=="http",origin.host=="127.0.0.1" else {throw catError.invalid("explicit loopback origin, evidence directory and maintained fixture required")}
         let output=URL(fileURLWithPath:CommandLine.arguments[2]),bytes=try Data(contentsOf:URL(fileURLWithPath:CommandLine.arguments[3])),fixture=try ConversationStrictJSON.object(bytes,maxBytes:2_000_000),strings=try JSONDecoder().decode(RevisionWireStrings.self,from:bytes)
         let scope=fixture["scope"] as! [String:Any],principal=fixture["principal"] as! [String:Any],wrapper=fixture["request"] as! [String:Any],turn=wrapper["turn"] as! [String:Any],work=wrapper["work"] as! [String:Any],limits=work["limits"] as! [String:Int],snapshot=(fixture["turn"] as! [String:Any])["turn"] as! [String:Any]
         let sid=UUID(uuidString:scope["scope_id"] as! String)!,subject=UUID(uuidString:principal["subject_id"] as! String)!,cid=UUID(uuidString:fixture["conversation_id"] as! String)!,operation=UUID(uuidString:turn["turn_id"] as! String)!

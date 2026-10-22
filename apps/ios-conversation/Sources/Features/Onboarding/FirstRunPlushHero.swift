@@ -31,7 +31,7 @@ struct FirstRunPlushHero: View {
         ZStack {
             // Static glow (§1 calmGlow), fixed frame; only its opacity ever animates.
             Circle()
-                .fill(RadialGradient(colors: [CatpawColors.calmGlow, CatpawColors.calmGlow.opacity(0)], center: .center, startRadius: 0, endRadius: size * 0.95))
+                .fill(RadialGradient(colors: [catColors.calmGlow, catColors.calmGlow.opacity(0)], center: .center, startRadius: 0, endRadius: size * 0.95))
                 .frame(width: size * 1.9, height: size * 1.9)
                 .opacity(visible && !leaving ? 1 : 0)
                 .animation(leaving ? .linear(duration: 0.40).delay(0.05)
@@ -61,7 +61,7 @@ struct FirstRunPlushHero: View {
         let pop: Animation = reduceMotion ? .easeOut(duration: 0.2).delay(s("hero")) : .spring(response: 0.50, dampingFraction: 0.72).delay(s("hero"))
         return ZStack {
             Ellipse()
-                .fill(CatpawColors.calmGround)
+                .fill(catColors.calmGround)
                 .frame(width: 90, height: 16)
                 .scaleEffect(pose.shadow)
                 .scaleEffect(visible || reduceMotion ? 1 : 0.6)

@@ -1,4 +1,4 @@
-# Catpaw R4.1 配色与界面细节
+# cat R4.1 配色与界面细节
 
 2026-10-13。用户提供《移动端 Agent 对话交互研究》后，对 [UX-1](ios-codex-experience-spec.md) 的当前视觉方向作局部修订。使用中性白／灰／炭黑阅读面，紫色仅强调可操作位置。连续交互仍沿 [R4 原生实施附录](native-interaction-motion-r4.md)，完整对象状态仍沿 R3；不新增功能或验收门。
 

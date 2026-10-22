@@ -1,5 +1,5 @@
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 final class ConversationConsentPresentationTests:XCTestCase {
     private final class Owner {}

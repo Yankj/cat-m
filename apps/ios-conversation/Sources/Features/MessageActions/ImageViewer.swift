@@ -24,7 +24,7 @@ import UIKit
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                CatpawColors.background.ignoresSafeArea().opacity(shown ? 1 - dragProgress * 0.8 : 0)
+                catColors.background.ignoresSafeArea().opacity(shown ? 1 - dragProgress * 0.8 : 0)
                 Image(uiImage: image).resizable().scaledToFit()
                     .frame(width: geo.size.width, height: geo.size.height)
                     .scaleEffect(scale * (1 - dragProgress * 0.25))
@@ -36,7 +36,7 @@ import UIKit
                     .accessibilityAction(named: Text(ui("放大"))) { withAnimation { scale = scale > 1 ? 1 : 2.5; lastScale = scale; offset = .zero; lastOffset = .zero } }
                 if chrome && dismissDrag == .zero { controls.transition(.opacity) }
                 if let toastKey {
-                    Text(ui(toastKey)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.ink)
+                    Text(ui(toastKey)).font(catTypography.Role.secondary.font).foregroundStyle(catColors.ink)
                         .padding(.horizontal, 14).padding(.vertical, 8).background(.regularMaterial, in: Capsule())
                 }
             }
@@ -62,9 +62,9 @@ import UIKit
     }
     private func circleButton(_ symbol: String, _ key: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Image(systemName: symbol).font(.body.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+            Image(systemName: symbol).font(.body.weight(.semibold)).foregroundStyle(catColors.ink)
                 .frame(width: 44, height: 44).background(.regularMaterial, in: Circle())
-        }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(Text(ui(key)))
+        }.buttonStyle(catPressButtonStyle()).accessibilityLabel(Text(ui(key)))
     }
 
     private var magnify: some Gesture {

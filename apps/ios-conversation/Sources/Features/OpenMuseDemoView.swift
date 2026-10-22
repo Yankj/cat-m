@@ -95,13 +95,13 @@ enum OpenMuseDemoMode: String, CaseIterable { case fixture, loopback }
             } else {
                 Panel {
                     Text(ui("合成任务演示")).font(.title2.weight(.semibold))
-                    Text(ui("固定合成资料，主动提交；真实云端与模型尚未接入。")).font(.subheadline).foregroundStyle(CatpawColors.secondary)
+                    Text(ui("固定合成资料，主动提交；真实云端与模型尚未接入。")).font(.subheadline).foregroundStyle(catColors.secondary)
                     Picker(ui("执行来源"), selection: Binding(get: { demo.mode }, set: { demo.select($0) })) {
                         Text(ui("具名 Fixture")).tag(OpenMuseDemoMode.fixture)
                         Text(ui("本机 Facade · 8796")).tag(OpenMuseDemoMode.loopback)
                     }.pickerStyle(.menu).disabled(demo.busy).accessibilityIdentifier("openmuse.mode")
                     if demo.mode == .loopback {
-                        Text(ui("仅连接 127.0.0.1:8796。合成身份不是账号授权。")).font(.footnote).foregroundStyle(CatpawColors.secondary)
+                        Text(ui("仅连接 127.0.0.1:8796。合成身份不是账号授权。")).font(.footnote).foregroundStyle(catColors.secondary)
                         Button(ui("检查本机服务")) { demo.connect() }.touchTarget().disabled(demo.busy)
                             .accessibilityIdentifier("openmuse.connect")
                         if demo.connected { StatusLabel(text: ui("合同能力已读回 · 本机合成服务"), tone: .success) }
@@ -109,7 +109,7 @@ enum OpenMuseDemoMode: String, CaseIterable { case fixture, loopback }
                     Button(ui("准备合成任务")) { demo.prepare(environmentID: appModel.environmentID) }
                         .primaryAction().disabled(demo.busy || !demo.mayWrite).accessibilityIdentifier("openmuse.prepare")
                 }
-                if let error = demo.error { Panel { Text(ui("操作未完成")).font(.headline); Text(error).font(.footnote).textSelection(.enabled).foregroundStyle(CatpawColors.failure) }.accessibilityIdentifier("openmuse.error") }
+                if let error = demo.error { Panel { Text(ui("操作未完成")).font(.headline); Text(error).font(.footnote).textSelection(.enabled).foregroundStyle(catColors.failure) }.accessibilityIdentifier("openmuse.error") }
                 if demo.sessions.isEmpty { EmptyState(title: ui("尚无任务"), detail: ui("先保存独立身份与冻结请求，再主动提交。")) }
                 ForEach(demo.sessions, id: \.request.input.operationID) { session in recovery(session) }
             }
@@ -156,8 +156,8 @@ enum OpenMuseDemoMode: String, CaseIterable { case fixture, loopback }
                 identity("Server Task", s.serverTaskID ?? "—")
                 identity("Client request SHA-256", s.request.requestHash)
                 identity("Server request SHA-256", s.projection?.binding.serverRequestHash ?? "—")
-            }.font(.footnote).tint(CatpawColors.ink)
-            if let note = s.note { Text(note).font(.footnote).foregroundStyle(CatpawColors.secondary) }
+            }.font(.footnote).tint(catColors.ink)
+            if let note = s.note { Text(note).font(.footnote).foregroundStyle(catColors.secondary) }
             if s.admission == .notSent {
                 Button(ui("提交已保存请求")) { demo.perform { _ = try await $0.admit(operationID: op, scope: Profiles.demo) } }
                     .primaryAction().disabled(demo.busy || !demo.mayWrite).accessibilityIdentifier("openmuse.admit.\(op)")
@@ -170,14 +170,14 @@ enum OpenMuseDemoMode: String, CaseIterable { case fixture, loopback }
                 }.disabled(demo.busy || !demo.mayWrite)
             } else if s.control == .paused, s.serverControlConfirmed {
                 if s.resumeRequiresNewRun {
-                    Text(ui("新 Run 需要显式准备与提交；旧任务不会重新派发。")).font(.footnote).foregroundStyle(CatpawColors.secondary)
+                    Text(ui("新 Run 需要显式准备与提交；旧任务不会重新派发。")).font(.footnote).foregroundStyle(catColors.secondary)
                     Button(ui("准备新 Run")) { demo.perform { _ = try await $0.prepareFreshRunAfterResume(operationID: op, scope: Profiles.demo) } }.touchTarget().disabled(demo.busy)
                 } else {
                     Button(ui("恢复委托 · 准备新 Run")) { demo.perform { _ = try await $0.control(operationID: op, scope: Profiles.demo, command: .resume) } }.touchTarget().disabled(demo.busy || !demo.mayWrite)
                 }
             }
             if s.control != .active, !s.serverControlConfirmed {
-                Text(ui("本机已拦截；服务控制结果未确认。保持原记录，等待诊断。")).font(.footnote).foregroundStyle(CatpawColors.attention)
+                Text(ui("本机已拦截；服务控制结果未确认。保持原记录，等待诊断。")).font(.footnote).foregroundStyle(catColors.attention)
             }
             ForEach(s.approvals.keys.sorted(), id: \.self) { id in
                 if let entry = s.approvals[id] {
@@ -187,13 +187,13 @@ enum OpenMuseDemoMode: String, CaseIterable { case fixture, loopback }
                             .disabled(demo.busy || s.needsRead || s.control != .active).accessibilityIdentifier("openmuse.preview.\(op)")
                     } else {
                         Text(entry.state.rawValue).font(.subheadline.weight(.semibold)).accessibilityIdentifier("openmuse.receiptState.\(op)")
-                        Text(ui("审批已消费；不会提供重新发送。")).font(.footnote).foregroundStyle(CatpawColors.secondary)
+                        Text(ui("审批已消费；不会提供重新发送。")).font(.footnote).foregroundStyle(catColors.secondary)
                         if [.accepted, .unknown, .dispatchCommitted].contains(entry.state) {
                             Button(ui("读回原审批回执")) { demo.perform { _ = try await $0.reconcileReceipt(operationID: op, scope: Profiles.demo, proposalID: id) } }.touchTarget().disabled(demo.busy).accessibilityIdentifier("openmuse.receipt.\(op)")
                             Button(ui("检查本机效果记录")) { demo.perform { _ = try await $0.reconcileReceipt(operationID: op, scope: Profiles.demo, proposalID: id, performEvidenceCheck: true) } }.touchTarget().disabled(demo.busy).accessibilityIdentifier("openmuse.check.\(op)")
                         }
                         if let receipt = entry.receipt {
-                            Text(receipt.providerStatus).font(.caption).foregroundStyle(CatpawColors.secondary)
+                            Text(receipt.providerStatus).font(.caption).foregroundStyle(catColors.secondary)
                             ForEach(receipt.verificationEvidence, id: \.self) { Text($0).font(.caption).textSelection(.enabled) }
                         }
                     }
@@ -209,7 +209,7 @@ enum OpenMuseDemoMode: String, CaseIterable { case fixture, loopback }
             Page {
                 Panel {
                     Text(ui("审批预览")).font(.title2.weight(.semibold))
-                    Text(ui("仅本机合成预览。确认绑定当前正文、版本、hash 与目的地。")).font(.subheadline).foregroundStyle(CatpawColors.secondary)
+                    Text(ui("仅本机合成预览。确认绑定当前正文、版本、hash 与目的地。")).font(.subheadline).foregroundStyle(catColors.secondary)
                     identity(ui("目的地"), frozen.snapshot.destination)
                     identity(ui("成果版本"), "v\(frozen.artifact.reference.version)")
                     identity("SHA-256", frozen.artifact.reference.contentHash)
@@ -219,7 +219,7 @@ enum OpenMuseDemoMode: String, CaseIterable { case fixture, loopback }
                 Button(ui("确认本机合成预览")) { demo.decide(frozen, decision: .approve) }.primaryAction().disabled(demo.busy).accessibilityIdentifier("openmuse.approve")
                 Button(ui("拒绝此审批"), role: .destructive) { demo.decide(frozen, decision: .deny) }.touchTarget().disabled(demo.busy)
             }.navigationTitle(ui("审批预览")).toolbar { Button(ui("关闭")) { demo.preview = nil } }
-        }.tint(CatpawColors.ink)
+        }.tint(catColors.ink)
     }
     private func provenance(_ s: OpenMuseTaskSession) -> some View {
         NavigationStack {
@@ -227,7 +227,7 @@ enum OpenMuseDemoMode: String, CaseIterable { case fixture, loopback }
                 Panel {
                     Text(ui("成果与来源")).font(.title2.weight(.semibold))
                     StatusLabel(text: s.provenance == .fixtureTransport ? ui("纯 Fixture · 无网络与真实模型") : ui("本机合成 Facade · 真实云模型未验证"), tone: .attention)
-                    Text(ui("本机服务记录不证明云端持久执行或独立副作用核验。")).font(.footnote).foregroundStyle(CatpawColors.secondary)
+                    Text(ui("本机服务记录不证明云端持久执行或独立副作用核验。")).font(.footnote).foregroundStyle(catColors.secondary)
                     identity("Execution layer", s.projection?.executionLayer ?? s.provenance.rawValue)
                     identity("Server Task", s.serverTaskID ?? "—")
                     identity("Worker attempts", String(s.projection?.attempts ?? 0))
@@ -241,11 +241,11 @@ enum OpenMuseDemoMode: String, CaseIterable { case fixture, loopback }
                     }
                 }
             }.navigationTitle(ui("成果与来源")).toolbar { Button(ui("关闭")) { demo.source = nil } }
-        }.tint(CatpawColors.ink)
+        }.tint(catColors.ink)
     }
     private func identity(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.caption).foregroundStyle(CatpawColors.secondary)
+            Text(title).font(.caption).foregroundStyle(catColors.secondary)
             Text(value).font(.footnote.monospaced()).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         }
     }

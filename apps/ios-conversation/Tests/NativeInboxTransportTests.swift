@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 private final class InboxWireProtocol:URLProtocol,@unchecked Sendable {
     struct Reply {var status:Int=200;var data:Data;var type="application/json"}
@@ -43,7 +43,7 @@ final class NativeInboxTransportTests:XCTestCase {
         let (reference,_,_)=try fixture(),backend=try backend(reference);var count=0
         InboxWireProtocol.handler={_ in count+=1;throw URLError(.unsupportedURL)};defer{InboxWireProtocol.handler=nil}
         for wrong in [ConversationInboxReference(scope:reference.scope,serverScopeID:UUID(),subjectID:reference.subjectID),.init(scope:reference.scope,serverScopeID:reference.serverScopeID,subjectID:UUID())] {
-            do{_=try await backend.readInbox(reference:wrong,cursor:nil,limit:20);XCTFail("Foreign partition was read")}catch CatpawError.scopeMismatch {}catch{XCTFail("Wrong error: "+String(describing:error))}
+            do{_=try await backend.readInbox(reference:wrong,cursor:nil,limit:20);XCTFail("Foreign partition was read")}catch catError.scopeMismatch {}catch{XCTFail("Wrong error: "+String(describing:error))}
         }
         XCTAssertEqual(count,0);await backend.close()
     }

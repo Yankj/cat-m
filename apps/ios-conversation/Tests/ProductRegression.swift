@@ -40,7 +40,7 @@ actor CleanupGateProvider: AgentProvider {
 enum ProductRegression {
     @MainActor static func runAudioNotifications() throws -> Int {
         var passed = 0
-        func check(_ value: Bool, _ label: String) throws { guard value else { throw CatpawError.invalid("FAIL: \(label)") }; passed += 1; print("PASS \(label)") }
+        func check(_ value: Bool, _ label: String) throws { guard value else { throw catError.invalid("FAIL: \(label)") }; passed += 1; print("PASS \(label)") }
         let source = QueuedAudioNotificationSource()
         var voice = VoiceGuard(), interruptions = 0
         let notifications = AudioSessionNotifications(source: source) { interruptions += 1; voice.abort(); voice.stopPlayback() }
@@ -70,7 +70,7 @@ enum ProductRegression {
     }
     static func runLocalization() throws -> Int {
         var passed = 0
-        func check(_ value: Bool, _ label: String) throws { guard value else { throw CatpawError.invalid("FAIL: \(label)") }; passed += 1; print("PASS \(label)") }
+        func check(_ value: Bool, _ label: String) throws { guard value else { throw catError.invalid("FAIL: \(label)") }; passed += 1; print("PASS \(label)") }
         let url = URL(fileURLWithPath: "Resources/UIStrings.json")
         let catalog = try UICatalog(data: Data(contentsOf: url))
         try check(catalog.entries.count >= 401 && catalog.entries.values.allSatisfy { Set($0.keys) == ["zh-Hans", "en"] && !$0.values.contains(where: { $0.isEmpty }) }, "L10 UI resources retain baseline and have nonempty Chinese and English values")
@@ -89,8 +89,8 @@ enum ProductRegression {
     }
     static func run(root: URL) async throws -> Int {
         var passed = 0
-        func check(_ value: Bool, _ label: String) throws { guard value else { throw CatpawError.invalid("FAIL: \(label)") }; passed += 1; print("PASS \(label)") }
-        func rejects(_ label: String, _ body: () async throws -> Void) async throws { do { try await body() } catch { try check(true, label); return }; throw CatpawError.invalid("FAIL: \(label) expected rejection") }
+        func check(_ value: Bool, _ label: String) throws { guard value else { throw catError.invalid("FAIL: \(label)") }; passed += 1; print("PASS \(label)") }
+        func rejects(_ label: String, _ body: () async throws -> Void) async throws { do { try await body() } catch { try check(true, label); return }; throw catError.invalid("FAIL: \(label) expected rejection") }
         let driver = FailingPersistence(root.appendingPathComponent("product-regression.json"))
         let repo = try Repository(persistence: driver)
         let blobs = try BlobStore(root: root.appendingPathComponent("product-blobs"))
@@ -109,7 +109,7 @@ enum ProductRegression {
         let demoPrefs = await repo.profilePreferences(profileID: Profiles.demo.profileID)
         try check(demoPrefs.isEmpty, "A1 preferences isolated across profiles")
         let configRecord = try await repo.record(stableID("config-\(conversation)"), scope: local)
-        guard case .preference(let configText) = configRecord.payload else { throw CatpawError.missing }
+        guard case .preference(let configText) = configRecord.payload else { throw catError.missing }
         let oldConfig = try JSONDecoder().decode(ConversationConfiguration.self, from: Data(configText.value.utf8))
         try check(!oldConfig.subagents, "A1 existing conversation ignores new Subagents default")
         let canonical = await repo.read(scope: ProfilePreferences.scope(local.profileID))
@@ -138,7 +138,7 @@ enum ProductRegression {
         let delegation = try await service.createDelegation(scope: local, goal: "原始目标", stop: "本周停止", requirements: "短稿保留来源")
         let artifactID = try await service.runDelegation(scope: local, id: delegation)
         let artifactRecord = try await repo.record(artifactID, scope: local)
-        guard case .artifact(let artifact) = artifactRecord.payload else { throw CatpawError.missing }
+        guard case .artifact(let artifact) = artifactRecord.payload else { throw catError.missing }
         let v1 = artifact.documentReference
         let actionID = try await service.prepareAction(scope: local, document: v1, destination: "review@example.invalid")
         let actionBefore = try await repo.record(actionID, scope: local)
@@ -153,7 +153,7 @@ enum ProductRegression {
         try check(viewed.records[artifactID]?.header.revision == artifactRecord.header.revision && viewed.records[delegation]?.header.revision == delegationBefore.header.revision && viewed.records[actionID]?.header.revision == actionBefore.header.revision, "A2 viewed does not change ready delegation or approval")
         try await service.markDocumentOpened(scope: local, reference: v1, now: openedAt.addingTimeInterval(100))
         let repeated = await repo.read(scope: local)
-        guard case .viewReceipt(let receipt) = repeated.records[ViewReceipt.id(scope: local, reference: v1)]?.payload else { throw CatpawError.missing }
+        guard case .viewReceipt(let receipt) = repeated.records[ViewReceipt.id(scope: local, reference: v1)]?.payload else { throw catError.missing }
         try check(receipt.openedAt == openedAt && repeated.sequence == viewed.sequence, "A2 repeated open keeps original durable receipt")
         let receiptRestart = try Repository(persistence: driver)
         let reloadedReceipt = await receiptRestart.read(scope: local)
@@ -226,7 +226,7 @@ enum ProductRegression {
         try await service.saveSchedule(scope: local, id: nil, revision: nil, title: "ISO Monday", spec: monday, template: ScheduleTemplate(prompt: "检查", projectID: project, environmentID: env, configuration: oldConfig))
         let scheduleRestart = try Repository(persistence: driver)
         let scheduleSnapshot = await scheduleRestart.read(scope: local)
-        guard case .core(.schedule(let saved)) = scheduleSnapshot.list("schedule", scope: local).first?.payload else { throw CatpawError.missing }
+        guard case .core(.schedule(let saved)) = scheduleSnapshot.list("schedule", scope: local).first?.payload else { throw catError.missing }
         try check(saved.schedule.weekdayConvention == "iso8601" && saved.schedule.weekdays == [1], "A5 explicit ISO convention survives persistence")
         let cancelledProvider = SequenceProvider([.cancelled, .success])
         let cancelledRuntime = ChatRuntime(repository: repo, service: service, provider: cancelledProvider)
@@ -280,7 +280,7 @@ enum ProductRegression {
         let freshTask = try await repo.record(stableID("task-\(cleanupClient)"), scope: local)
         try check(freshTask.task?.state == .succeeded, "R6 old worker cleanup cannot remove new retry attempt")
         let activeRequestRecord = try await repo.record(stableID("reply-request-\(cleanupOperation)"), scope: local)
-        guard case .preference(let activeJSON) = activeRequestRecord.payload else { throw CatpawError.missing }
+        guard case .preference(let activeJSON) = activeRequestRecord.payload else { throw catError.missing }
         let activeRequest = try JSONDecoder().decode(ChatRequest.self, from: Data(activeJSON.value.utf8))
         var staleReducer = OperationReducer(operationID: cleanupOperation, epoch: activeRequest.context.runtimeEpoch - 1); staleReducer.fail("stale")
         let replySnapshot = await repo.read(scope: local)
@@ -317,7 +317,7 @@ enum ProductRegression {
         try check(draft.reality == .simulated && draft.text.contains("未执行真实模型改写"), "A6 voice rewrite adapter identifies deterministic fixture")
         let revised = try await service.editDocument(scope: local, id: privateDocument.documentID, expectedVersion: 1, text: draft.text, voiceTurn: editTurn, adapterID: draft.adapterID)
         let postVoice = await repo.read(scope: local)
-        guard case .action(let invalidated) = postVoice.records[pendingAction]?.payload else { throw CatpawError.missing }
+        guard case .action(let invalidated) = postVoice.records[pendingAction]?.payload else { throw catError.missing }
         try check(revised.documentID == privateDocument.documentID && revised.version == 2 && invalidated.status == .invalidated, "A6 voice edit binds same document version and invalidates old approval")
         let duplicateRevision = try await service.editDocument(scope: local, id: privateDocument.documentID, expectedVersion: 1, text: draft.text, voiceTurn: editTurn, adapterID: draft.adapterID)
         let afterDuplicate = await repo.read(scope: local)

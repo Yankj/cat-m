@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
-#if canImport(CatpawM)
-@testable import CatpawM
+#if canImport(cat)
+@testable import cat
 #endif
 
 actor P0ScriptedBackend: ConversationBackend {
@@ -26,16 +26,16 @@ actor P0ScriptedBackend: ConversationBackend {
     func isConsentWaiting()->Bool{consentWaiting}
     func setWrongObservation(){wrongObservation=true}
     func delta(_ id:UUID,_ value:String) throws{
-        guard let r=requests[id] else{throw CatpawError.missing};let e=ConversationTurnEvent(operationID:id,epoch:r.epoch,sequence:events[id]!.count+1,payload:.textDelta(messageID:stableID("p0-assistant-"+id.uuidString),text:value));events[id]!.append(e);streams[id]?.yield(e)
+        guard let r=requests[id] else{throw catError.missing};let e=ConversationTurnEvent(operationID:id,epoch:r.epoch,sequence:events[id]!.count+1,payload:.textDelta(messageID:stableID("p0-assistant-"+id.uuidString),text:value));events[id]!.append(e);streams[id]?.yield(e)
     }
     func finish(_ id:UUID,_ suffix:String) throws{
-        guard let r=requests[id] else{throw CatpawError.missing};var rest=suffix
+        guard let r=requests[id] else{throw catError.missing};var rest=suffix
         while !rest.isEmpty{let piece=String(rest.prefix(128));rest=String(rest.dropFirst(piece.count));try delta(id,piece)}
         let full=events[id]!.compactMap{e->String? in if case .textDelta(_,let t)=e.payload{return t};return nil}.joined()
         let e=ConversationTurnEvent(operationID:id,epoch:r.epoch,sequence:events[id]!.count+1,payload:.completed(messageID:stableID("p0-assistant-"+id.uuidString),finalTextHash:textHash(full)));events[id]!.append(e);streams[id]?.yield(e);streams[id]?.finish()
     }
     func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation{
-        reads+=1;guard let saved=requests[r.operationID] else{throw CatpawError.missing}
+        reads+=1;guard let saved=requests[r.operationID] else{throw catError.missing}
         let request=wrongObservation ? ConversationTurnRequest(scope:r.scope,conversationID:r.conversationID,threadID:r.threadID,operationID:UUID(),epoch:r.epoch,history:r.history):saved
         return .init(request:request,events:events[r.operationID]!,requestHash:textHash("p0:"+r.operationID.uuidString),grantEpoch:1,goals:[])
     }
@@ -43,7 +43,7 @@ actor P0ScriptedBackend: ConversationBackend {
 
 @MainActor enum P0ConversationScenarios {
     static func until(_ body:() async throws->Bool) async throws{
-        for _ in 0..<2000{if try await body(){return};try await Task.sleep(nanoseconds:1_000_000)};throw CatpawError.invalid("QA phase deadline")
+        for _ in 0..<2000{if try await body(){return};try await Task.sleep(nanoseconds:1_000_000)};throw catError.invalid("QA phase deadline")
     }
     static func run(root:URL) async -> [[String:Any]] {
         var result:[[String:Any]]=[]

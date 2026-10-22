@@ -1,4 +1,6 @@
-# Catpaw-m workspace instructions
+# cat workspace instructions
+
+- Brand name is lowercase `cat`. See [brand compatibility](docs/development/cat-brand-migration.md) before changing installation IDs, storage or wire names. Historical evidence and upstream copyright retain their original identity.
 
 ## Quick context (human + AI)
 
@@ -34,7 +36,7 @@
 
 ## Fixed local integration checkout
 
-- Current native maintenance entry is `apps/ios-conversation/CatpawM.xcodeproj`; historical `apps/ios` and `apps/ios-openmuse-demo` remain frozen.
+- Current native maintenance entry is `apps/ios-conversation/cat.xcodeproj`; historical `apps/ios` and `apps/ios-openmuse-demo` remain frozen.
 - Backend entry is `services/edge/supabase/functions/`; `packages/ios-navigation` and `packages/ios-image-composer` are checked-in local Swift packages connected to the native host; their independent tests do not replace host acceptance.
 - Read `docs/README.md`, `docs/status/local-integration-source.json` and `docs/acceptance/local-fixed-directory.md` for checkout provenance and exact local validation scope.
 - Do not import canonical untracked candidates/assets/research/tooling during routine work. Changes in other owner worktrees are not automatically present here.

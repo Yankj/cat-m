@@ -74,7 +74,7 @@ struct ReplyActionControl {
             Button { control.onStep(-1) } label: { Image(systemName: "chevron.left").answerActionIcon() }
                 .disabled(control.index == 0).accessibilityLabel(ui("上一个回答")).accessibilityIdentifier("chat.answer.variant.prev")
             Text(verbatim: "\(control.index + 1)/\(control.count)")
-                .font(CatpawTypography.Role.secondary.font.monospacedDigit()).foregroundStyle(CatpawColors.ink)
+                .font(catTypography.Role.secondary.font.monospacedDigit()).foregroundStyle(catColors.ink)
                 .accessibilityLabel(ui("第 {0} 个回答，共 {1} 个", [String(control.index + 1), String(control.count)]))
                 .accessibilityIdentifier("chat.answer.variant.position")
             Button { control.onStep(1) } label: { Image(systemName: "chevron.right").answerActionIcon() }
@@ -98,13 +98,13 @@ struct ReplyActionControl {
             ForEach(Array(questions.enumerated()), id: \.offset) { i, q in
                 Button { NotificationCenter.default.post(name: FollowUpSuggestions.tapNotification, object: q) } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "arrow.turn.down.right").imageScale(.small).foregroundStyle(CatpawColors.secondary).accessibilityHidden(true)
-                        Text(q).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.ink).multilineTextAlignment(.leading)
+                        Image(systemName: "arrow.turn.down.right").imageScale(.small).foregroundStyle(catColors.secondary).accessibilityHidden(true)
+                        Text(q).font(catTypography.Role.secondary.font).foregroundStyle(catColors.ink).multilineTextAlignment(.leading)
                     }
                     .padding(.horizontal, 12).padding(.vertical, 8).frame(minHeight: 44)
-                    .background(CatpawColors.panel, in: Capsule()).overlay(Capsule().strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
+                    .background(catColors.panel, in: Capsule()).overlay(Capsule().strokeBorder(catColors.hairline, lineWidth: 0.5))
                 }
-                .buttonStyle(CatpawPressButtonStyle())
+                .buttonStyle(catPressButtonStyle())
                 .accessibilityLabel(ui("追问：{0}", [q])).accessibilityHint(ui("发送这个问题")).accessibilityIdentifier("chat.followup.\(i)")
             }
         }

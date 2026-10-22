@@ -911,11 +911,11 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         await DeviceCallStore(defaults: d0).run(DeviceCall(call_id: "c-out", tool: "calendar_create", args: [:]))
         DeviceCallGate.epoch = savedGateEpoch
         expect(ex0.executed.isEmpty, "PR91 #2 device call while signed out is refused (no account → no execute)")
-        // P0-2 server side: the switch travels as X-Catpaw-Use-Memory.
+        // P0-2 server side: the switch travels as X-cat-Use-Memory.
         MemoryRecallLoader.record(off: true, owner: .account("h"))
-        expect(ConversationMemorySwitch.headerValue == "0", "PR91 P0-2 client sends X-Catpaw-Use-Memory: 0 when off")
+        expect(ConversationMemorySwitch.headerValue == "0", "PR91 P0-2 client sends X-cat-Use-Memory: 0 when off")
         MemoryRecallLoader.record(off: false, owner: .account("h"))
-        expect(ConversationMemorySwitch.headerValue == "1", "PR91 P0-2 client sends X-Catpaw-Use-Memory: 1 when on")
+        expect(ConversationMemorySwitch.headerValue == "1", "PR91 P0-2 client sends X-cat-Use-Memory: 1 when on")
         // #2 AccountEpoch contract as used here: a token captured before sign-out can never commit; accounts are UUID.uuidString.
         signIn(a)
         let preOut = AccountEpoch.shared.capture()

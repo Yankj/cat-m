@@ -1,7 +1,7 @@
 #if DEBUG && canImport(UIKit)
 import Foundation
 import UIKit
-import CatpawImageComposer
+import catImageComposer
 
 /// Explicit in-process QA composition only. No HTTP/Auth/provider, Photos access,
 /// upload or send is available. Only permission metadata is exercised by the UI.
@@ -26,9 +26,9 @@ import CatpawImageComposer
               model.loaded, let conversation = model.conversationID else { throw ConversationSessionError.invalidEvent }
         let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
         let bytes = UIGraphicsImageRenderer(size: CGSize(width: 32, height: 24), format: format).pngData { context in
-            UIColor(CatpawColors.action).setFill()
+            UIColor(catColors.action).setFill()
             context.fill(CGRect(x: 0, y: 0, width: 32, height: 24))
-            UIColor(CatpawColors.userMessageBackground).setFill()
+            UIColor(catColors.userMessageBackground).setFill()
             context.fill(CGRect(x: 16, y: 0, width: 16, height: 24))
         }
         let image = try await SystemImageAttachmentEncoder().encode(bytes, id: stableID("consent-handoff-image:" + conversation.uuidString), format: .png, limits: .init())
@@ -66,7 +66,7 @@ private actor ConsentHandoffBackend: ConversationBackend {
         .init(state: scope == self.scope ? .providerUnverified : .notConfigured, provider: "Synthetic in-process consent handoff", detail: "No HTTP, Auth, model or image upload")
     }
     func imageCapabilities(scope: DataScope, conversationID: UUID) async throws -> ConversationImageCapability {
-        guard scope == self.scope else { throw CatpawError.scopeMismatch }
+        guard scope == self.scope else { throw catError.scopeMismatch }
         return .init(available: true, liveTransmissionAvailable: true, routeHash: imageRoute,
                      state: "synthetic_inprocess_only", detail: "Explicit local consent fixture. Image bytes never leave this process.")
     }

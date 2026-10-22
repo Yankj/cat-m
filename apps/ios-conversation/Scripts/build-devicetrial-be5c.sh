@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 DD=/tmp/dd-v2
 rm -rf "$DD"
-xcodebuild -project CatpawM.xcodeproj -scheme DeviceTrial \
+xcodebuild -project cat.xcodeproj -scheme DeviceTrial \
   -destination 'id=BE5C60E0-B415-4BF4-8F36-8975FB5314AA' -derivedDataPath "$DD" clean build
-APP=$(find "$DD/Build/Products" -maxdepth 2 -name CatpawM.app -type d | head -1)
+APP=$(find "$DD/Build/Products" -maxdepth 2 -name cat.app -type d | head -1)
 /usr/bin/python3 Scripts/app-version.py check --app "$APP"

@@ -1,7 +1,7 @@
 import XCTest
 import SwiftUI
 import UIKit
-@testable import CatpawM
+@testable import cat
 
 final class ConversationReadingAnchorTests:XCTestCase {
     private let a=UUID(),b=UUID(),c=UUID()

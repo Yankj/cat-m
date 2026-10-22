@@ -1,4 +1,4 @@
-# CatpawImageComposer：单图本地输入组件
+# catImageComposer：单图本地输入组件
 
 独立SwiftPM package，最低iOS17 / macOS14。iOS提供PhotosPicker，macOS仅用于合成codec/状态测试。基于后端 `vision-chat-contract-v2.md` 的已提交来源 **8ce77b450f51c93faf5e1fee100d7c0968086b98**；本package不包含该后端提交、网络client或宿主接线。
 

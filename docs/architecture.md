@@ -41,7 +41,7 @@ flowchart TB
 ## 对话链路要点（catpaw-api v53）
 
 - **流式与落库**：`text-batcher.mjs` 按 512 字符 / 250 ms 批量落库并推送持久化事件；断线后按原 turn 与最后 sequence 恢复。
-- **实时预览**：客户端带 `X-Catpaw-Live-Text: 1` 时，`live-text.mjs` 在两次落库之间约每 100 ms 推一次 `text_preview`（不入库，sequence 等于最后一次持久化事件）；旧客户端收到的帧不变。
+- **实时预览**：客户端带 `X-cat-Live-Text: 1` 时，`live-text.mjs` 在两次落库之间约每 100 ms 推一次 `text_preview`（不入库，sequence 等于最后一次持久化事件）；旧客户端收到的帧不变。
 - **上下文窗口**：`context-window.mjs` 只在真实用户 turn 处截断，窗口最多 40 条 / 80 kB；超预算依次省略旧工具结果、缩小窗口、返回 `413 conversation_too_long`；完整历史保留，窗口前缀用哈希冻结，冲突返回 `409 model_history_conflict`。
 - **图片**：`vision-route-chain.mjs` 按 `CATPAW_VISION_ROUTE`（`chain` / `legacy`）选择视觉路由，链路内逐级回退。
 

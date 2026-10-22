@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-@MainActor final class ConversationTextView: CatpawEditingTextView {
+@MainActor final class ConversationTextView: catEditingTextView {
     private let placeholderLabel=UILabel()
     var submit: (() -> Void)?
     var addAttachments: (([ComposerAttachment]) -> Void)?
@@ -16,7 +16,7 @@ import UIKit
             placeholderLabel.isUserInteractionEnabled=false;placeholderLabel.isAccessibilityElement=false
             addSubview(placeholderLabel)
         }
-        placeholderLabel.text=value;placeholderLabel.font=font;placeholderLabel.textColor=UIColor(CatpawColors.secondary)
+        placeholderLabel.text=value;placeholderLabel.font=font;placeholderLabel.textColor=UIColor(catColors.secondary)
         refreshPlaceholder();setNeedsLayout()
     }
     func refreshPlaceholder() {placeholderLabel.isHidden = !text.isEmpty;accessibilityValue=text.isEmpty ? placeholderLabel.text:nil}
@@ -69,7 +69,7 @@ import UIKit
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context:Context) -> ConversationTextView {
         let view=ConversationTextView();view.delegate=context.coordinator
-        view.backgroundColor = .clear;view.textColor=UIColor(CatpawColors.ink)
+        view.backgroundColor = .clear;view.textColor=UIColor(catColors.ink)
         view.font=ConversationTypeScale.font(context.environment.dynamicTypeSize);view.adjustsFontForContentSizeCategory=false
         view.textContainerInset=UIEdgeInsets(top:7,left:6,bottom:7,right:6)
         view.textContainer.lineFragmentPadding=0;view.returnKeyType = .default
@@ -121,7 +121,7 @@ import UIKit
             context.coordinator.measured=(width,uiView.font?.pointSize ?? 0,uiView.text,desired)
         }
         let available=[maximumVisibleHeight,proposal.height].compactMap{$0}.filter{$0.isFinite}.map{max(0,$0)}.min()
-        return CGSize(width:width,height:CatpawTextViewport.composerHeight(desired:desired.height,lineHeight:line,textInsets:16,maximumLines:5,availableHeight:available))
+        return CGSize(width:width,height:catTextViewport.composerHeight(desired:desired.height,lineHeight:line,textInsets:16,maximumLines:5,availableHeight:available))
     }
     @MainActor final class Coordinator:NSObject,UITextViewDelegate {
         var parent:NativeConversationComposer
@@ -137,18 +137,18 @@ import UIKit
             guard !replacing else { return }
             parent.model.updateInputComposition(textView.markedTextRange != nil)
             parent.model.editDraft(textView.text);textView.invalidateIntrinsicContentSize();(textView as? ConversationTextView)?.refreshPlaceholder();(textView as? ConversationTextView)?.reportLineCount()
-            (textView as? CatpawEditingTextView)?.noteTextChanged()
+            (textView as? catEditingTextView)?.noteTextChanged()
         }
         func textViewDidChangeSelection(_ textView:UITextView) {
             parent.model.updateInputComposition(textView.markedTextRange != nil)
-            (textView as? CatpawEditingTextView)?.keepSelectionVisible()
+            (textView as? catEditingTextView)?.keepSelectionVisible()
         }
     }
 }
 
 @MainActor enum ConversationTypeScale {
     static func font(_ size:DynamicTypeSize) -> UIFont {
-        CatpawTypography.font(size:size)
+        catTypography.font(size:size)
     }
 }
 

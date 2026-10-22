@@ -1,7 +1,7 @@
 import Foundation
 #if !MEMORY_PORTABLE
 import XCTest
-@testable import CatpawM
+@testable import cat
 #endif
 
 private enum MemoryTestFailure:Error {case expected(String)}

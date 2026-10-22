@@ -19,7 +19,7 @@ public struct VoiceGuard: Sendable {
     public mutating func finish() { capturing = false }
     public mutating func abort() { captureEpoch += 1; capturing = false; text = ""; submitted = false }
     public mutating func freeze() throws -> FrozenTranscriptSubmission {
-        guard !capturing, !submitted, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw CatpawError.invalid("请结束本句，检查转写后再放入输入。") }
+        guard !capturing, !submitted, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw catError.invalid("请结束本句，检查转写后再放入输入。") }
         submitted = true
         return FrozenTranscriptSubmission(sessionID: sessionID, utteranceID: UUID(), clientMessageID: UUID(), captureEpoch: captureEpoch, transcriptRevision: transcriptRevision, editRevision: editRevision, submittedText: text, submittedTextHash: textHash(text))
     }

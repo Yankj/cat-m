@@ -1,7 +1,7 @@
 import Foundation
 #if !MEMORY_TRANSPORT_PORTABLE
 import XCTest
-@testable import CatpawM
+@testable import cat
 #endif
 
 private enum MemoryTransportFailure:Error {case assertion(String)}

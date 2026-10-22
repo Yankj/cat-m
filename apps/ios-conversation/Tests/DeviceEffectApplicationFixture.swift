@@ -1,6 +1,6 @@
 import Foundation
-#if canImport(CatpawM)
-@testable import CatpawM
+#if canImport(cat)
+@testable import cat
 #endif
 
 struct DeviceEffectApplicationFixture {

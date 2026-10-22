@@ -9,10 +9,10 @@ import SwiftUI
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var focusedField:String?
     @State private var confirmDiscard=false
-    @State private var visibleViewport:CatpawVisibleViewport?
+    @State private var visibleViewport:catVisibleViewport?
     @State private var measuredFieldHeights:[String:CGFloat]=[:]
     @State private var measuredLabelHeights:[String:CGFloat]=[:]
-    @StateObject private var editorInteraction=CatpawEditorInteraction()
+    @StateObject private var editorInteraction=catEditorInteraction()
     private func ui(_ key:String)->String {AppLanguage(locale:locale).ui(key)}
     init(service:ConversationArtifactEditService,reference:ConversationArtifactEditReference,admissionAllowed:@escaping()->Bool={false},onApplied:(@MainActor (ConversationArtifactEditEnvelope) async throws -> Void)?=nil) {
         _model=StateObject(wrappedValue:ConversationArtifactEditModel(service:service,reference:reference,onApplied:onApplied));self.admissionAllowed=admissionAllowed
@@ -23,29 +23,29 @@ import SwiftUI
                     GeometryReader { viewport in
             ScrollView {
                 VStack(alignment:.leading,spacing:24) {
-                    Text(ui("这是你的人工修改，不会重新调用模型或读取来源。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                    Text(ui("这是你的人工修改，不会重新调用模型或读取来源。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     if let base=model.base {
-                        Text(ui("修改基于版本")+" · v\(base.version)").font(CatpawTypography.Role.secondary.font).accessibilityIdentifier("chat.artifact.edit.baseVersion")
-                        if let current=model.state.currentReference {Text(ui("当前成果版本")+" · v\(current.version)").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.artifact.edit.currentVersion")}
-                        Text(base.sourceEvidenceBoundary == .suppliedContextOnly ? ui("沿用给定材料，改后正文未经重新核对。") : ui("来源沿用原版本快照，不为改后正文重新担保。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        Text(ui("修改基于版本")+" · v\(base.version)").font(catTypography.Role.secondary.font).accessibilityIdentifier("chat.artifact.edit.baseVersion")
+                        if let current=model.state.currentReference {Text(ui("当前成果版本")+" · v\(current.version)").font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).accessibilityIdentifier("chat.artifact.edit.currentVersion")}
+                        Text(base.sourceEvidenceBoundary == .suppliedContextOnly ? ui("沿用给定材料，改后正文未经重新核对。") : ui("来源沿用原版本快照，不为改后正文重新担保。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     } else if model.loading {ProgressView(ui("正在读取成果"))}
                     status
                     editor(ui("标题"),binding:Binding(get:{model.title},set:{guard model.canEditLocal else {return};model.title=$0;model.stageDraft()}),id:"title",preferredLines:3,viewportHeight:usableViewportHeight(viewport))
                     editor(ui("摘要"),binding:Binding(get:{model.summary},set:{guard model.canEditLocal else {return};model.summary=$0;model.stageDraft()}),id:"summary",preferredLines:3,viewportHeight:usableViewportHeight(viewport))
                     editor(ui("正文"),binding:Binding(get:{model.content},set:{guard model.canEditLocal else {return};model.content=$0;model.stageDraft()}),id:"content",preferredLines:6,viewportHeight:usableViewportHeight(viewport))
-                    if let message=model.wireValidationMessage {Text(ui(message)).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.artifact.edit.validation")}
-                    if let issue=model.draftSaveIssue {Text(ui(issue)).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.artifact.edit.unsaved")}
+                    if let message=model.wireValidationMessage {Text(ui(message)).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.artifact.edit.validation")}
+                    if let issue=model.draftSaveIssue {Text(ui(issue)).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.artifact.edit.unsaved")}
                     if model.hasConflict {
-                        Text(ui("成果已有新版，原稿和输入仍保留。核对后才能换用新版继续。")).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.artifact.edit.conflict")
+                        Text(ui("成果已有新版，原稿和输入仍保留。核对后才能换用新版继续。")).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.artifact.edit.conflict")
                         Button(ui("保留输入并明确换用新版")){Task{await model.rebase()}}.touchTarget().disabled(!model.freshlyRead || model.state.hasUnresolvedSubmission || model.loading || model.submitting).accessibilityIdentifier("chat.artifact.edit.rebase")
                     }
                     Button(model.state.hasUnresolvedSubmission ? ui("核对原修改") : ui("读取当前成果")){Task{await model.load(admissionAllowed:admissionAllowed())}}.touchTarget().disabled(model.loading || model.submitting || !admissionAllowed()).accessibilityIdentifier("chat.artifact.edit.refresh")
                     Button(ui("放弃草稿"),role:.destructive){confirmDiscard=true}.touchTarget().accessibilityIdentifier("chat.artifact.edit.discard")
-                    DisclosureGroup(ui("版本与核对信息")){VStack(alignment:.leading,spacing:8){if let base=model.base {Text("SHA-256 "+base.contentHash).textSelection(.enabled)};if let receipt=model.state.submission?.receipt?.amendment {Text("Receipt SHA-256 "+receipt.receiptHash).textSelection(.enabled)}}.font(CatpawTypography.Role.caption.font)}
+                    DisclosureGroup(ui("版本与核对信息")){VStack(alignment:.leading,spacing:8){if let base=model.base {Text("SHA-256 "+base.contentHash).textSelection(.enabled)};if let receipt=model.state.submission?.receipt?.amendment {Text("Receipt SHA-256 "+receipt.receiptHash).textSelection(.enabled)}}.font(catTypography.Role.caption.font)}
                 }.padding(20).frame(maxWidth:.infinity,alignment:.leading)
-                    .background(CatpawEditorScrollObserver(interaction:editorInteraction).frame(width:0,height:0).accessibilityHidden(true))
-            }.scrollDismissesKeyboard(.interactively).background(CatpawColors.background).accessibilityIdentifier("chat.artifact.edit.viewport")
-                .background(CatpawViewportObserver{value in visibleViewport=value;editorInteraction.viewportChanged(value)}.accessibilityHidden(true))
+                    .background(catEditorScrollObserver(interaction:editorInteraction).frame(width:0,height:0).accessibilityHidden(true))
+            }.scrollDismissesKeyboard(.interactively).background(catColors.background).accessibilityIdentifier("chat.artifact.edit.viewport")
+                .background(catViewportObserver{value in visibleViewport=value;editorInteraction.viewportChanged(value)}.accessibilityHidden(true))
                     }
                     footer
                 }
@@ -64,11 +64,11 @@ import SwiftUI
             .confirmationDialog(ui("放弃这份修改草稿？"),isPresented:$confirmDiscard,titleVisibility:.visible){Button(ui("放弃草稿"),role:.destructive){Task{if await model.discard(){dismiss()}}};Button(ui("取消"),role:.cancel){}}
     }
     private var footer:some View {
-        CatpawBottomActionArea {
-                    Button {Task{await model.submit(admissionAllowed:admissionAllowed())}} label:{HStack{if model.submitting {ProgressView().tint(CatpawColors.onInk)};CatpawAdaptiveActionTitle(fullTitle:model.submitting ? ui("正在提交") : ui("保存为成果新版本"),compactTitle:model.submitting ? ui("正在提交") : ui("保存新版本")).fontWeight(.semibold)}.frame(maxWidth:.infinity,minHeight:44)}.buttonStyle(CatpawPrimaryButtonStyle()).disabled(!model.canSubmit || !admissionAllowed()).accessibilityLabel(model.submitting ? ui("正在提交原修改，请勿重复发送。") : ui("保存为成果新版本")).accessibilityIdentifier("chat.artifact.edit.save")
+        catBottomActionArea {
+                    Button {Task{await model.submit(admissionAllowed:admissionAllowed())}} label:{HStack{if model.submitting {ProgressView().tint(catColors.onInk)};catAdaptiveActionTitle(fullTitle:model.submitting ? ui("正在提交") : ui("保存为成果新版本"),compactTitle:model.submitting ? ui("正在提交") : ui("保存新版本")).fontWeight(.semibold)}.frame(maxWidth:.infinity,minHeight:44)}.buttonStyle(catPrimaryButtonStyle()).disabled(!model.canSubmit || !admissionAllowed()).accessibilityLabel(model.submitting ? ui("正在提交原修改，请勿重复发送。") : ui("保存为成果新版本")).accessibilityIdentifier("chat.artifact.edit.save")
                     if model.hasLocalIntentForDisplay || model.submitting || model.state.hasUnresolvedSubmission {
                         let state=draftStatus
-                        Text(dynamicTypeSize.isAccessibilitySize ? state.compact : state.full).font(CatpawTypography.Role.caption.font).foregroundStyle(state.attention ? CatpawColors.attention : CatpawColors.secondary).accessibilityLabel(state.full).accessibilityIdentifier("chat.artifact.edit.draftStatus")
+                        Text(dynamicTypeSize.isAccessibilitySize ? state.compact : state.full).font(catTypography.Role.caption.font).foregroundStyle(state.attention ? catColors.attention : catColors.secondary).accessibilityLabel(state.full).accessibilityIdentifier("chat.artifact.edit.draftStatus")
                     }
         }
     }
@@ -101,29 +101,29 @@ import SwiftUI
         return (ui("已保稿"),ui("修改草稿已保存在本机，尚未提交。"),false)
     }
     private func editor(_ title:String,binding:Binding<String>,id:String,preferredLines:Int,viewportHeight:CGFloat)->some View {
-        let font=CatpawTypography.font(size:dynamicTypeSize)
-        let labelHeight=measuredLabelHeights[id] ?? CatpawTypography.font(.heading,size:dynamicTypeSize).lineHeight
-        let height=CatpawTextViewport.editorHeight(preferred:font.lineHeight*CGFloat(preferredLines)+16,viewport:max(0,viewportHeight-CatpawLayout.pageInset*2),labelHeight:labelHeight,spacing:8,lineHeight:font.lineHeight,textInsets:16)
+        let font=catTypography.font(size:dynamicTypeSize)
+        let labelHeight=measuredLabelHeights[id] ?? catTypography.font(.heading,size:dynamicTypeSize).lineHeight
+        let height=catTextViewport.editorHeight(preferred:font.lineHeight*CGFloat(preferredLines)+16,viewport:max(0,viewportHeight-catLayout.pageInset*2),labelHeight:labelHeight,spacing:8,lineHeight:font.lineHeight,textInsets:16)
         return VStack(alignment:.leading,spacing:8){
-            Text(title).font(CatpawTypography.Role.heading.font).fixedSize(horizontal:false,vertical:true)
+            Text(title).font(catTypography.Role.heading.font).fixedSize(horizontal:false,vertical:true)
                 .background{GeometryReader{geometry in Color.clear.preference(key:ArtifactEditLabelHeightKey.self,value:[id:geometry.size.height])}}
-            CatpawTextEditor(text:binding,focused:Binding(get:{focusedField==id},set:{focused in if focused {focusedField=id} else if focusedField==id {focusedField=nil}}),accessibilityLabel:title,accessibilityIdentifier:"chat.artifact.edit."+id+"Field",enabled:model.base != nil && model.canEditLocal,interaction:editorInteraction)
-                .frame(height:height).background(CatpawColors.input,in:RoundedRectangle(cornerRadius:12))
+            catTextEditor(text:binding,focused:Binding(get:{focusedField==id},set:{focused in if focused {focusedField=id} else if focusedField==id {focusedField=nil}}),accessibilityLabel:title,accessibilityIdentifier:"chat.artifact.edit."+id+"Field",enabled:model.base != nil && model.canEditLocal,interaction:editorInteraction)
+                .frame(height:height).background(catColors.input,in:RoundedRectangle(cornerRadius:12))
         }.id("artifact-edit-field-"+id)
             .background{GeometryReader{geometry in Color.clear.preference(key:ArtifactEditFieldHeightKey.self,value:[id:geometry.size.height])}}
     }
     @ViewBuilder private var status:some View {
         if let submission=model.state.submission {
             switch submission.state {
-            case .unknown:Text(ui("保存结果尚未确认。只核对原修改，不重复提交。")).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.artifact.edit.unknown")
-            case .applied:if let version=submission.receipt?.artifact.version {Text(ui("人工修改已保存")+" · v\(version)").foregroundStyle(CatpawColors.success).accessibilityIdentifier("chat.artifact.edit.applied")}
-            case .rejected,.notSent:Text(ui("此次修改尚未保存，原输入仍保留。请先读取当前成果。")).foregroundStyle(CatpawColors.attention)
+            case .unknown:Text(ui("保存结果尚未确认。只核对原修改，不重复提交。")).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.artifact.edit.unknown")
+            case .applied:if let version=submission.receipt?.artifact.version {Text(ui("人工修改已保存")+" · v\(version)").foregroundStyle(catColors.success).accessibilityIdentifier("chat.artifact.edit.applied")}
+            case .rejected,.notSent:Text(ui("此次修改尚未保存，原输入仍保留。请先读取当前成果。")).foregroundStyle(catColors.attention)
             }
         }
-        if !model.freshlyRead {Text(ui("显示本机保存的成果信息，尚未完成当前读取。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)}
-        if model.state.latest?.editable==false {Text(ui("这份成果当前不能修改，草稿会保留。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)}
-        if let issue=model.deliveryIssue {Text(ui(issue)).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.artifact.edit.deliveryIssue")}
-        if let error=model.error {Text(ui(error)).foregroundStyle(CatpawColors.attention).textSelection(.enabled).accessibilityIdentifier("chat.artifact.edit.error")}
+        if !model.freshlyRead {Text(ui("显示本机保存的成果信息，尚未完成当前读取。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)}
+        if model.state.latest?.editable==false {Text(ui("这份成果当前不能修改，草稿会保留。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention)}
+        if let issue=model.deliveryIssue {Text(ui(issue)).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.artifact.edit.deliveryIssue")}
+        if let error=model.error {Text(ui(error)).foregroundStyle(catColors.attention).textSelection(.enabled).accessibilityIdentifier("chat.artifact.edit.error")}
     }
 }
 

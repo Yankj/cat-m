@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 private actor ControlDeliveryGate {
     private var continuation:CheckedContinuation<Void,Never>?
@@ -70,7 +70,7 @@ private actor ControlDeliveryConversationBackend:ConversationBackend {
         _=try await step("seed independent B completed turn through actual session send"){try await session.send(scope:Profiles.user,conversationID:b,text:"Named unrelated completed chat",operationID:UUID())}
         for (id,title,draft) in [(a,"Named A","A draft"),(b,"Named B","B draft")] {
             try await step("restore named draft on the created conversation") {
-                let record=try await repository.record(id,scope:Profiles.user);guard var value=record.conversation else {throw CatpawError.missing};value.title=title;value.draftText=draft
+                let record=try await repository.record(id,scope:Profiles.user);guard var value=record.conversation else {throw catError.missing};value.title=title;value.draftText=draft
                 try await repository.commit(scope:Profiles.user,mutations:[.update(record.id,record.header.revision,.core(.conversation(value)))])
             }
         }
