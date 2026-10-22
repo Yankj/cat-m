@@ -16,7 +16,9 @@ Supabase只读管理核验API56/tick16/proactive10及21条迁移历史；tick源
 
 [初始化恢复首片方案](../design/family-companion/bootstrap-recovery-plan.md)已形成，固定同实例恢复、并发共享、池归属、配置绑定与不重放写请求的边界，仍为待实施提案。先等待用户明确恢复，再收齐M0未决条件；不自动进入实现。产品保存/保留策略、云端实施入口、模型分工和部署对账未齐；每日一条等新策略仍为提案。真实Auth/模型/产品SQL验证/通知/设备安装/部署、新凭据与新增计算均0；本轮新增产品测试0、产品修复0。停工核对另做2次只读cron元数据查询，不是PG产品验收。不得以本轮准备替代真实家庭闭环或同版真机验收。
 
-停工现场：集成分支收口前`bae90a0d`已推送，云规划`2419db9b`和QA`a54d7f2b`重新fetch/远端读回一致，已交付文件全部接收。3个准备lane及独立复跑没有遗留产品进程；本Goal无匹配本机定时任务。独立官网任务仍在Desktop主目录的`feat/family-website`工作，WIP与4178预览原地保留，不纳入本Goal或擅自停止。既有Supabase API56/tick16/proactive10仍ACTIVE，两个生产cron仍每分钟启用；开发暂停未授权停生产服务。最终交接以专用分支保存同步，随后等待恢复。
+停工现场及同日 GitHub 同步：原总交接已保存为 `b2f438c6a9ee460917fa601474439ca146c371ca` 并核对远端相同；云规划 `2419db9b` 和 QA `a54d7f2b` 也读回一致，已交付文件全部接收。3个准备lane及独立复跑没有遗留产品进程；本Goal无匹配本机定时任务。用户随后明确要求同步最新项目信息：独立官网任务已完成，4178端口无监听，其18个文件已保存并推送到 `feat/family-website@7ca0c4535dbfb6419a5000eab8275d08be051ceb`，远端精确SHA一致，Desktop工作树干净。[官网固定入口](https://github.com/Yankj/cat-m/tree/7ca0c4535dbfb6419a5000eab8275d08be051ceb/apps/website/family)及[验证记录](https://github.com/Yankj/cat-m/blob/7ca0c4535dbfb6419a5000eab8275d08be051ceb/docs/acceptance/family-website-2026-10-23.md)与集成资料互相链接，未合入本分支或main、未公开部署。保存前14个源码hash/7张截图hash与原证据一致；静态verify、布局/冻结源/部署快照/敏感检查通过，不重复计作新的浏览器或产品验收。
+
+当前仍为 **PAUSED**。既有Supabase API56/tick16/proactive10及两个每分钟生产cron沿用停工只读快照，本次GitHub同步没有重新调用、修改或停止生产服务。两个记忆语料和39份QA执行副本留在原lane，字节已有集成分支版本；ignored原始证据继续仅留本机。原停工库存保留其采集时刻，不改写历史18项官网WIP。GitHub同步补记见[总交接](../acceptance/family-companion/handoff-2026-10-23.md)；此行政收口不恢复产品实现，不启动下一轮。
 
 以下为此前日期记录，保留当时原文；其中“当前”“ACTIVE/PAUSED”和版本号不外推为本次家庭 Goal 或今天部署状态。
 
