@@ -21,7 +21,8 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     const task = { ...v, status: 'open', fire_count: 0, created_by: createdBy };
     task.next_fire_at = computeNextFire(task, now());
     const { row, created } = await store.createTask(uid, task);
-    if (created) await store.insertEvent({ user_id: uid, task_id: row.id, conversation_id: row.conversation_id, kind: 'task_created', title: row.title, body: row.due_at ? `已设置提醒：${row.title}` : `已记下：${row.title}`, payload: { task: row, created_by: createdBy }, dedupe_key: 'created:' + row.id, push_state: 'skipped' });
+    // M1 REM-09: always (re)write the creation event; dedupe_key makes a retry with the same operation_id reconcile.
+    await store.insertEvent({ user_id: uid, task_id: row.id, conversation_id: row.conversation_id, kind: 'task_created', title: row.title, body: row.due_at ? `已设置提醒：${row.title}` : `已记下：${row.title}`, payload: { task: row, created_by: createdBy }, dedupe_key: 'created:' + row.id, push_state: 'skipped' });
     return { task: row, created };
   }
   async function patchTask(uid, id, input) {
@@ -59,7 +60,7 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     const at = now(), claimed = await store.claimDue(new Date(at).toISOString(), 50), results = [];
     for (const c of claimed) {
       try { results.push(await fire(c, at)); }
-      catch (e) { log('fire_failed', c.task_id, e.stack ?? e.message); await store.finishOccurrence(c, { next_fire_at: null, fire_count: c.fire_count + 1, status: 'open' }).catch(() => {}); results.push({ task_id: c.task_id, error: 'fire_failed' }); }
+      catch (e) { log('fire_failed', c.task_id, e.name ?? 'Error'); if (store.releaseOccurrence) await store.releaseOccurrence(c).catch(() => {}); results.push({ task_id: c.task_id, error: 'fire_failed' }); }
     }
     const resurfaced = store.resurfaceSnoozed ? await store.resurfaceSnoozed(new Date(at).toISOString()) : [];
     const push = await flushPush();
