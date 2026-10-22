@@ -18,11 +18,11 @@ export function createFamilyService({ store, verifyUser, allow = () => true, log
     if (!allow(u.sub)) throw new FamilyError(404, 'not_found');
     return u.sub;
   }
-  async function body(req) {
+  async function body(req, max = MAX_BODY) {
     const len = Number(req.headers.get('content-length') ?? 0);
-    if (len > MAX_BODY) throw new FamilyError(413, 'request_too_large');
+    if (len > max) throw new FamilyError(413, 'request_too_large');
     const buf = new Uint8Array(await req.arrayBuffer());
-    if (buf.length > MAX_BODY) throw new FamilyError(413, 'request_too_large');
+    if (buf.length > max) throw new FamilyError(413, 'request_too_large');
     if (!/^application\/json\b/i.test(req.headers.get('content-type') ?? '')) throw new FamilyError(422, 'json_invalid');
     let text; try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { throw new FamilyError(422, 'json_invalid'); }
     return parseStrict(text);
@@ -65,6 +65,11 @@ export function createFamilyService({ store, verifyUser, allow = () => true, log
         const events = await store.changes(actor, hh, after === null ? 0 : Number(after), 200);
         if (!events) throw new FamilyError(404, 'not_found');
         return json(200, { protocol: PROTOCOL, schema_version: 1, household_id: hh, events, next_cursor: events.length ? events[events.length - 1].cursor : (after === null ? 0 : Number(after)) });
+      }
+      if (sub === '/home' && req.method === 'GET') {
+        const p = await store.projection(actor, hh, todayIn('Asia/Shanghai', now()));
+        if (!p) throw new FamilyError(404, 'not_found');
+        return json(200, { protocol: PROTOCOL, schema_version: 1, household_id: hh, projection_revision: p.projection_revision, home: p.home });
       }
       for (const r of extraRoutes) { const out = await r({ req, url, actor, hh, sub, ctx }); if (out) return out; }
     }
