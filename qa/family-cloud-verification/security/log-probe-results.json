@@ -1,0 +1,46 @@
+{
+  "id": "LP-01",
+  "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "audit_head": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "source_files": [
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/vendor/openmuse/runtime/log.mjs",
+      "sha256": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/chat-metrics.mjs",
+      "sha256": "f4c2c94bded2042dda8cc44466f1f41129910d2df766af27746b73e48adcb711"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/contract.mjs",
+      "sha256": "b07d53a97c7826480524687921edc30bd10152f801206b3cf6ce6915229b857c"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/recurrence.mjs",
+      "sha256": "4b05c6bfd2a6e61e0885581d0af4375c49489cd6103b68f627158343fb5ee804"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/service.mjs",
+      "sha256": "860332dce13220fa07395ca99a2d456a4e7a20bf3d9bb47e9b6ab2eeed27bb90"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/throttle.mjs",
+      "sha256": "c626275757bce47b9cdf1b6a41409643d36f591803c46c7a4e737b9effbb590c"
+    }
+  ],
+  "source_pin": "MATCH",
+  "layer": "offline-injected-error-only",
+  "classification": "GAP_REPRODUCED",
+  "acceptance_status": "FAIL",
+  "scope": "Captured logger arguments contain a synthetic marker; no real logs, OS logs, database, Auth, model or APNs verified.",
+  "network_attempts": 0,
+  "actual": {
+    "status": 500,
+    "response_body": {
+      "error": "internal_error"
+    },
+    "proactive_logger_contains_canary": true,
+    "sanitized_vendor_logger_contains_canary": false,
+    "chat_metrics_contains_canary": false
+  }
+}

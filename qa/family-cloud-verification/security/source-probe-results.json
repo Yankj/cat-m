@@ -1,0 +1,148 @@
+{
+  "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "audit_head": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "source_files": [
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/contract.mjs",
+      "sha256": "7c272f5e4bc75f997497fd7be0ad203332c1d033fe38563e1ca181dc38330c6b"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/explicit-intent.mjs",
+      "sha256": "d6cf5b54b6dc64716c6a0724fb813eed7b3b2ebb9e713275c9f379a6c2cec517"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/memory-store.mjs",
+      "sha256": "5c80d0cfb8aa22442306b29605acb7a1a60d9db195cfd5233bd77080712e6452"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/service.mjs",
+      "sha256": "b5e383bc9c7e6696f2978f8daba2433dadc928665dce2c058786ccb36b1a015a"
+    }
+  ],
+  "source_pin": "MATCH",
+  "contract_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+  "node": "v24.19.0",
+  "synthetic": true,
+  "real_auth": false,
+  "postgres_rls": false,
+  "production_requests": false,
+  "network_attempts": 0,
+  "meaning": "Assertions reproduce current offline behavior, including gaps. No household acceptance criterion is closed.",
+  "total": 9,
+  "results": [
+    {
+      "id": "SP-01",
+      "name": "内存store按用户隔离读取修改删除",
+      "layer": "offline-service-with-memory-store",
+      "classification": "SUPPORTED_OFFLINE",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "foreign_get": null,
+        "foreign_update": null,
+        "foreign_deleted": 0
+      }
+    },
+    {
+      "id": "SP-02",
+      "name": "迟到正文PATCH覆盖较新纠正",
+      "layer": "offline-service-with-memory-store",
+      "classification": "GAP_REPRODUCED",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "corrected_status": 200,
+        "delayed_status": 200,
+        "stale_content_won": true,
+        "expected_revision_supported": false
+      }
+    },
+    {
+      "id": "SP-03",
+      "name": "相同operation重放返回原memory",
+      "layer": "offline-service-with-memory-store",
+      "classification": "SUPPORTED_OFFLINE",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "same_id": true,
+        "rows": 1,
+        "replay_events": 0
+      }
+    },
+    {
+      "id": "SP-04",
+      "name": "相同operation异payload未返回冲突",
+      "layer": "offline-service-with-memory-store",
+      "classification": "GAP_REPRODUCED",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "returned_original_id": true,
+        "status": "saved",
+        "http_409_observed": false
+      }
+    },
+    {
+      "id": "SP-05",
+      "name": "删除后迟到同operation重放重建新memory",
+      "layer": "offline-service-with-memory-store",
+      "classification": "GAP_REPRODUCED",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "new_id": true,
+        "rows_after_replay": 1,
+        "original_operation_same": true
+      }
+    },
+    {
+      "id": "SP-06",
+      "name": "HTTP手工创建重复请求无command回执幂等",
+      "layer": "offline-service-with-memory-store",
+      "classification": "GAP_REPRODUCED",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "statuses": [
+          201,
+          201
+        ],
+        "different_ids": true,
+        "rows": 2,
+        "request_has_command_id": false
+      }
+    },
+    {
+      "id": "SP-07",
+      "name": "agent-memory纠正未更新来源链",
+      "layer": "offline-service-with-memory-store",
+      "classification": "GAP_REPRODUCED",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "content_corrected": true,
+        "source_turn_still_original": true,
+        "operation_still_original": true,
+        "has_previous_source_ref": false,
+        "has_revision_version": false
+      }
+    },
+    {
+      "id": "SP-08",
+      "name": "journal写入失败后唯一fragment已被删除",
+      "layer": "offline-service-with-memory-store",
+      "classification": "GAP_REPRODUCED",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "fragments_after_failure": 0,
+        "journals_after_failure": 0
+      }
+    },
+    {
+      "id": "SP-09",
+      "name": "memory路由把身份服务不可用转成401",
+      "layer": "offline-service-with-memory-store",
+      "classification": "GAP_REPRODUCED",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "injected_auth_status": 503,
+        "response_status": 401,
+        "error": "unauthorized"
+      }
+    }
+  ]
+}
