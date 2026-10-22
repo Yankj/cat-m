@@ -35,3 +35,7 @@
 新增明确决定：GitHub / 项目名称改为 cat-m，App 品牌仍 cat。GitHub 新旧名 repository ID 相同，已改 origin；目标机目录迁移是独立阻塞，不影响文档分支同步。温馨 UI 细节沿用现有 token、SF Symbols 和真实回执边界。
 
 仓库改名接线：本地 pre-push 的精确目标名单从旧名改为 Yankj/cat-m 三种既有 URL 格式；禁止 main、错误目标、legacy remote、非快进与无关历史的规则保留。已验证新目标通过，旧/错误目标、main、legacy 被拒绝，没有绕过 hook。
+
+## 2026-10-23 用户已确认：定位 v1
+
+用户批准 [positioning-v1.md](positioning-v1.md)：首轮收窄为「替妈妈记住孩子所有事、到点不漏」的家庭事务大脑，成长陪伴为第二层；首轮功能、砍掉项与验证指标以该文档为准。M2/M3 范围按 positioning-v1 收敛。
