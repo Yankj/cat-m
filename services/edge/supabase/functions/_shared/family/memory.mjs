@@ -28,15 +28,21 @@ export function rank(query, candidates, k = 6) {
 }
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-// A conditional memory is only recalled when its condition is verifiably met at query time. The server can verify a
-// weekday (household timezone); any other condition must be asserted by the caller in `context` (key=value), else excluded.
-export function conditionMet(cond, atIso, tz = 'Asia/Shanghai', context = {}) {
+// zh cues for stored condition codes (lexical, no model): a condition other than the weekday counts as met only when the
+// caller states it in `context` (key=value) or the query itself carries one of its cues.
+export const CONDITION_CUES = {
+  'weather=rain': ['下雨', '雨天', '雨时'], 'context=after_outdoor_sport': ['户外运动后', '运动后'], 'context=home_reading': ['阅读', '看书'],
+  'school_stage=kindergarten': ['幼儿园'], 'school_stage=primary': ['小学'], 'before_participation=visit_venue': ['参加', '去不去', '愿意'],
+};
+export function conditionMet(cond, atIso, tz = 'Asia/Shanghai', context = {}, queryText = '') {
   if (!cond || !Object.keys(cond).length) return true;
   return Object.entries(cond).every(([k, v]) => {
     if (k === 'weekday') return new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(new Date(atIso)) === v;
-    return context[k] === v;
+    if (context[k] !== undefined) return context[k] === v;
+    return (CONDITION_CUES[`${k}=${v}`] ?? []).some(cue => queryText.includes(cue));
   });
 }
+void WEEKDAYS;
 // Deterministic answer plan (no model): which recalled memories may be asserted and the disposition. Field-level
 // clarification wording needs a model route and is NOT produced here (clarification_fields stays []).
 export const ASSERT_MIN = 0.25;
@@ -84,7 +90,7 @@ export function createMemoryRoute() {
       if (url.searchParams.get('use_memory') === 'false' || url.searchParams.get('ephemeral') === 'true') return J(200, empty);
       const cands = await ctx.store.recallCandidates(actor, hh, at, member, 'household');
       if (cands === null) throw new FamilyError(404, 'not_found');
-      const usable = cands.filter(m => conditionMet(m.conditions, at, 'Asia/Shanghai', context));
+      const usable = cands.filter(m => conditionMet(m.conditions, at, 'Asia/Shanghai', context, q));
       const top = rank(q, usable, 6);
       // relevant but not answerable (unconfirmed / outside validity) -> ask instead of guessing
       let pending = false;
