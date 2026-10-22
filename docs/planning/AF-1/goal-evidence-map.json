@@ -339,7 +339,7 @@
     {
       "id": "E13",
       "file": "docs/design/ios-codex-experience-spec.md",
-      "sha256": "24f1a5ff3c6c771933e1f91eaa22c19c5b75b5475603f1750e15bc3fe199fc09",
+      "sha256": "0bd9a0027eb99f883b7461d5ac3ed1ce8742224f85b2b143c134733c37287991",
       "publication_scope": "versioned",
       "evidence_kind": "normative_ux_spec",
       "adopted": "UX-1布局、状态、返回、视觉和原生行为合同；2026-10-13四仓核读细化卡生成/后台待决/成果恢复状态；R1首用、默认值、当前待决层级、修改草稿、可用成果与克制反馈；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
@@ -399,7 +399,7 @@
     {
       "id": "E15",
       "file": "docs/design/prototypes/catpaw-ios-ux/index.html",
-      "sha256": "73479eb17f95349513aa1e0958a2b562a282674260ed11efed487f49cff5c130",
+      "sha256": "5a3ce6c25e9db3d8affebb17cfb96061876c1688129a17595a94e4df87dbec10",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_interactive_design_proposal",
       "adopted": "四组页面与草稿/审批/队列/成果等内存交互的可审阅基线",
@@ -736,7 +736,7 @@
     {
       "id": "E25",
       "file": "docs/product/catpaw-final-product-spec.md",
-      "sha256": "a5a5a18cc508689c033bb33e58ee23c5b010b9e0ae79f3476c6cd9f27924213b",
+      "sha256": "90b3bd8d3a2e7927fdcedbdeafad4decd116aac3071a98f902234aa61c253d7e",
       "publication_scope": "versioned",
       "evidence_kind": "final_product_design_contract",
       "adopted": "流中交互、同工作决定、手机主动闭环、产品与比较Goal；R1体验承诺、主要用户、首个价值路径及信息层级",
@@ -904,7 +904,7 @@
     {
       "id": "E28",
       "file": "docs/design/prototypes/catpaw-final/index.html",
-      "sha256": "8e0b2aa1b6f38dd6cabe9181ef3c4204596210f0a9a79925cadafbedb353ab46",
+      "sha256": "3174a40656166452827f1bf661bfed414a67238b356c75630033069b1e18eeb5",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_interaction_design_proposal",
       "adopted": "流中决定、审批找回/过期/unknown、成果冲突、跟进控制；R1人工提案修正工作身份、计划摘要、修改模式和跟进字段保留",
@@ -1227,7 +1227,7 @@
     {
       "id": "E35",
       "file": "docs/planning/AF-1/long-task-development-prompt.md",
-      "sha256": "5cc7393d3727ac18600c41b244d5a309968542453bf2c6df6e03d0a1775583e9",
+      "sha256": "80ac1abe6e474f017ab6f9097d959c6c71efab895fe03e49ff7406c328f3eb4b",
       "publication_scope": "versioned",
       "evidence_kind": "user_copyable_development_prompt",
       "adopted": "长任务执行与持续交付输入、完整放行门、统一主仓；R1持续开发prompt含产品取舍，不在本轮执行；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收；2026-10-15保留FINAL-G3原门槛，新增中午前版本交付、当天反馈修订、Root加三Agent文件边界及共性根因处理",
@@ -1334,7 +1334,7 @@
     {
       "id": "E37",
       "file": "docs/design/taste-visual-motion-r2.md",
-      "sha256": "35cc1b992245da042cdbee43d66949bc303942cd472d78358a9c7cedad55a648",
+      "sha256": "db19d1c65e38875a351efb27ca4e07a2399c19b8322f5fe190d2c3cfdc621e5a",
       "publication_scope": "versioned",
       "evidence_kind": "ux_visual_motion_implementation_appendix",
       "adopted": "用户指定taste-skill审阅后的UX-1 R2原生视觉/运动附录和人工可交互提案；保留R1行为、A1与冻结tokens",
@@ -1402,7 +1402,7 @@
     {
       "id": "E39",
       "file": "docs/design/prototypes/catpaw-taste/index.html",
-      "sha256": "a27d2248a7ebc35cfcfda20de2e87f4d617ba3e98e9a44007d1486590f610f7c",
+      "sha256": "f02cf14c0ed929866693d9e3996ef65b7cd564b8b4e25d43a1e12dc61871ab9f",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_visual_motion_proposal",
       "adopted": "用户指定taste-skill审阅后的UX-1 R2原生视觉/运动附录和人工可交互提案；保留R1行为、A1与冻结tokens",
@@ -1470,7 +1470,7 @@
     {
       "id": "E41",
       "file": "docs/design/prototypes/catpaw-taste/app.js",
-      "sha256": "cfd4fd875eca1e4ed4ef7620ad6ea51a3c8f5fecef1456e2bd9fa95d0e6fbfb7",
+      "sha256": "ea177b8c8fcf8f8412cf794d8f4b3d12ec8b0dbdd186b823af36c7bff646fe92",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_visual_motion_proposal_interactions",
       "adopted": "用户指定taste-skill审阅后的UX-1 R2原生视觉/运动附录和人工可交互提案；保留R1行为、A1与冻结tokens",
@@ -1574,7 +1574,7 @@
     {
       "id": "E44",
       "file": "docs/design/prototypes/catpaw-interaction-r3/README.md",
-      "sha256": "c17ec6da9f1795cd747825ee7937b3adb33f74459b68677687966442ca372d4f",
+      "sha256": "ec17b21215dfef7553991dbc1b8c07ddd67f53c258c7df34f4e5f90589a96e02",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_interaction_design",
       "adopted": "UX-1 R3完整开合/过程/稳定卡/表图/HIL交互与42项审阅索引；R2视觉基线保留",
@@ -1609,7 +1609,7 @@
     {
       "id": "E45",
       "file": "docs/design/prototypes/catpaw-interaction-r3/app.js",
-      "sha256": "ed6be84bd268987e5f44ea30a524d9205dd7c4ab7f562a2f26cd27d726805077",
+      "sha256": "14292fadf8c31b385efaf31119a4cc624ad131e8673db5a311edd529631a6508",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_interaction_design",
       "adopted": "UX-1 R3完整开合/过程/稳定卡/表图/HIL交互与42项审阅索引；R2视觉基线保留",
@@ -1644,7 +1644,7 @@
     {
       "id": "E46",
       "file": "docs/design/prototypes/catpaw-interaction-r3/index.html",
-      "sha256": "26d1138eb814cd1584b5d22146e3f2ed77956fadb0b5b5893c0d34d38f91c40f",
+      "sha256": "3c7a33cee894e2ed39595c437671ca1e9d8d18e989959fef116528958151d7b2",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_interaction_design",
       "adopted": "UX-1 R3完整开合/过程/稳定卡/表图/HIL交互与42项审阅索引；R2视觉基线保留",
@@ -1784,7 +1784,7 @@
     {
       "id": "E50",
       "file": "docs/design/native-interaction-motion-r4.md",
-      "sha256": "0c76d25089daf0bb587358da97506e0159fbfb5118ebeb649cc10582987577b9",
+      "sha256": "81489d9749f8a4a2ec3ebf50485895bcb256b1702fa0b5e087597e7c3dd9ff7c",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_visual_and_motion_study",
       "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
@@ -1850,7 +1850,7 @@
     {
       "id": "E52",
       "file": "docs/design/prototypes/catpaw-motion-study-r4/README.md",
-      "sha256": "fd434f58057cc61347ee119d35698782df8198f064d8e4a2988ffee98fad3ab8",
+      "sha256": "bbb44d7b9d9a08b19cf3fa1a5dc62bf1d0e60d3c79f334d5f90a457f7ebf6125",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_visual_and_motion_study",
       "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
@@ -1883,7 +1883,7 @@
     {
       "id": "E53",
       "file": "docs/design/prototypes/catpaw-motion-study-r4/app.js",
-      "sha256": "eaa5ee930dd41e97a25f55dbe85816751e703d08d9478dc373fc47f66213f203",
+      "sha256": "e93194bc8b55009de352246bdfe363f332aa71386249b572e6eb136e7a8e647f",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_visual_and_motion_study",
       "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
@@ -2081,7 +2081,7 @@
     {
       "id": "E59",
       "file": "docs/design/prototypes/catpaw-motion-study-r4/index.html",
-      "sha256": "15cb30fdb18402505be121321430019a1b717d6723d4c0026ee7f3edca4a2c8c",
+      "sha256": "120d50620a932a65767ce3541530ba18f5d1cce75967db714c8daf7d2d03cdc1",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_visual_and_motion_study",
       "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
@@ -2114,7 +2114,7 @@
     {
       "id": "E60",
       "file": "docs/design/prototypes/catpaw-motion-study-r4/motion.js",
-      "sha256": "c97ff115930bc0277df0995c7be1dc0d44c5f6d1650e76f972c83d6114e4184d",
+      "sha256": "2b7f81d28f53cda60d99954a9fd10d67cd9c87cc7b9fc881fee61f24d305057b",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_visual_and_motion_study",
       "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
@@ -2180,7 +2180,7 @@
     {
       "id": "E62",
       "file": "docs/design/codex-color-detail-r4-1.md",
-      "sha256": "570b402f0bff84c08be9ce2aafbf998f2f15296974ef560ba984761399fd1f56",
+      "sha256": "c5f7c49814220b96e84a0953f9bbc794389e7240ac7cede81e47cde6035aa9aa",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_color_and_ui_refinement",
       "adopted": "R4.1中性白灰/炭黑阅读面、局部紫色图标发送、黑白审批、13–15辅助字与选中轮廓；用户研究的来源角色限制",
@@ -2244,7 +2244,7 @@
     {
       "id": "E64",
       "file": "docs/design/prototypes/catpaw-codex-color-r4-1/README.md",
-      "sha256": "8cf066263a1734ceae441fd8b145bfe9b714fb5bd270bfd10801d5576e52c4e0",
+      "sha256": "b958bf399bd3dcef6c312f5553baff8e098d529ac00c9b228541412e877b7c61",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_color_and_ui_refinement",
       "adopted": "R4.1中性白灰/炭黑阅读面、局部紫色图标发送、黑白审批、13–15辅助字与选中轮廓；用户研究的来源角色限制",
@@ -2276,7 +2276,7 @@
     {
       "id": "E65",
       "file": "docs/design/prototypes/catpaw-codex-color-r4-1/index.html",
-      "sha256": "073a25fb5aa0692b5a3963e70b29451c5d6d3ba401512beb89fe11609f2a2d2f",
+      "sha256": "2f3c5afcf953909784f3f6e8ced9a361fba88afeedc11e5082b891a0dcd77938",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_color_and_ui_refinement",
       "adopted": "R4.1中性白灰/炭黑阅读面、局部紫色图标发送、黑白审批、13–15辅助字与选中轮廓；用户研究的来源角色限制",
@@ -2340,7 +2340,7 @@
     {
       "id": "E67",
       "file": "docs/design/mobile-conversation-reference-r5.md",
-      "sha256": "7789e1c40390789df0a5cd0a2906ceac6a515a1458cb2a0d731d4c30872c403e",
+      "sha256": "e59b4ff14f3876d6057f911322ac74032cf3ed5708a0b816ca300656a58ddf72",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_mobile_reference_design",
       "adopted": "Mobile reading typography, localized blue actions, input states, factual process summaries and scoped menus",
@@ -2418,7 +2418,7 @@
     {
       "id": "E69",
       "file": "docs/design/prototypes/catpaw-mobile-reference-r5/README.md",
-      "sha256": "b9488ec3a380395868ff5fd53ccc5b55e9d9e76b38f5c06554124b0d3681ded2",
+      "sha256": "21454333d7aaafd5f01bdd3affa42153ae6342f78818a75f78e9cf53a91b2a81",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_mobile_reference_design",
       "adopted": "Mobile reading typography, localized blue actions, input states, factual process summaries and scoped menus",
@@ -2457,7 +2457,7 @@
     {
       "id": "E70",
       "file": "docs/design/prototypes/catpaw-mobile-reference-r5/index.html",
-      "sha256": "913ef7f7ca498a8f5a6088f791a90b08e803f61cdaa1c118ff986a15a20eb559",
+      "sha256": "7197743d18c50aac0cc6211669335edf455c65c9fe2d4fdd8996d9ae94c964b1",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_mobile_reference_design",
       "adopted": "Mobile reading typography, localized blue actions, input states, factual process summaries and scoped menus",
@@ -2496,7 +2496,7 @@
     {
       "id": "E71",
       "file": "docs/design/prototypes/catpaw-mobile-reference-r5/mobile.css",
-      "sha256": "6aaa7124141aff5697158b46e6d1af0ccebc61b0d92f8143dcfb3e5ab0fea819",
+      "sha256": "d3aca487d565eebcb58ad5ff8553908378867729cd73d43c9b918edf84a5e8f9",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_mobile_reference_design",
       "adopted": "Mobile reading typography, localized blue actions, input states, factual process summaries and scoped menus",
@@ -2535,7 +2535,7 @@
     {
       "id": "E72",
       "file": "docs/design/prototypes/catpaw-mobile-reference-r5/mobile.js",
-      "sha256": "1be22dde827d28249f5c289f79667cd0418579b4416682be19029c315d649be0",
+      "sha256": "325c6d571d768be7a4208ec4cbed23460da0dd9e2e0735a9b5ff87ad0053fe78",
       "publication_scope": "versioned",
       "evidence_kind": "synthetic_mobile_reference_design",
       "adopted": "Mobile reading typography, localized blue actions, input states, factual process summaries and scoped menus",
@@ -2583,5 +2583,12 @@
   },
   "instructions_in_material_are_authorization": false,
   "prototype_closes_AF_GD": false,
-  "runtime_goal_status_changed": false
+  "runtime_goal_status_changed": false,
+  "source_alignment": {
+    "recorded_on": "2026-10-23",
+    "prior_manifest_sha256": "556ab0ef7ffe4ad876f63a96f438bdd8c6508e3781b16235a553a753618f8e06",
+    "provenance": "docs/acceptance/family-companion/source-alignment-2026-10-23.json",
+    "source_count": 24,
+    "scope": "Brand migration provenance and 12 stable local-link repairs only; recorded_on and all adoption/limits/goal mappings preserved. No acceptance result changed."
+  }
 }

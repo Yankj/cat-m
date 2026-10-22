@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "candidate_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "meaning": "M1 targets prepared during M0 audit; no implementation milestone signed off",
+  "criteria": [
+    {
+      "id": "M1-INIT-RECOVER",
+      "source": "_shared/bootstrap.ts:22-30",
+      "target": "Fail first initialization, restore dependency, same handler becomes available; retain bounded single-flight and release failed resources",
+      "actual": "503 then 503; verifier called once; fresh handler 200",
+      "status": "FAIL",
+      "layer": "offline/dependency-isolated production bootstrap"
+    },
+    {
+      "id": "M1-INIT-100",
+      "source": "_shared/bootstrap.ts:23-27",
+      "target": "100 concurrent successful requests initialize once",
+      "actual": "100 x 200; one verification, one connection factory, one runtime build",
+      "status": "PASS",
+      "layer": "offline/dependency-isolated production bootstrap; not PG load"
+    },
+    {
+      "id": "M1-REM-CANCEL-100",
+      "source": "_shared/proactive/service.mjs:59-77",
+      "target": "100 cancellation interleavings: cancellation commits before event/dispatch => 0 new events and 0 simulated dispatches; do not resurrect task",
+      "actual": "100 tasks remained cancelled; 100 new reminder_due events and 100 fake dispatches after cancellation",
+      "status": "FAIL",
+      "layer": "offline/production service + memory store + fake model/APNs"
+    },
+    {
+      "id": "M1-REM-CLAIM-2",
+      "source": "proactive/memory-store.mjs:17-25; migrations/20261015120000_proactive_tasks.sql:112-130",
+      "target": "Interrupt after claim; recover within two declared scheduler cycles; one durable result per occurrence; stale owner cannot finalize",
+      "actual": "Initial claim=1; reconstructed service with same synthetic store: subsequent two ticks claim=0; due retained but unprocessable, 0 events",
+      "status": "FAIL",
+      "layer": "offline service reconstruction, SQL static corroboration; real process/PG NOT_RUN"
+    },
+    {
+      "id": "M1-REM-WRITE-FAIL",
+      "source": "_shared/proactive/service.mjs:62,75-77; proactive/pg-store.mjs:26-32",
+      "target": "Inject failure at claim/event/cursor/receipt/outbox writes: no lost due, no duplicate fact; reconcile committed-before-ack states",
+      "actual": "One insertEvent error => next_fire_at null, fire_count 1, 0 reminder events, retry claimed 0",
+      "status": "FAIL",
+      "layer": "offline/production service + memory store"
+    },
+    {
+      "id": "M1-LOG-PRIVATE",
+      "source": "proactive/service.mjs:62,72,201; ConversationSessionService.swift:351,684,695",
+      "target": "Synthetic private markers absent from logs at all error/payload paths; closed fields and semantic error codes",
+      "actual": "Model message and insert stack sentinels present in log callback; Swift payload prefixes/errors are .public in unguarded source. Closed chat metrics control excludes marker",
+      "status": "FAIL",
+      "layer": "backend offline, native static only"
+    },
+    {
+      "id": "M1-TRACE-30",
+      "target": "30 synthetic traces join request to outcome with safe correlation and no private markers; timestamps, failures and cancellation preserved",
+      "actual": "Not executed; one closed metrics privacy control only",
+      "status": "NOT_RUN",
+      "layer": "requires agreed trace schema"
+    },
+    {
+      "id": "M1-PG-CONCURRENCY",
+      "target": "Isolated real PG occurrence lease, multi-instance claim/cancel/failure/recovery and RLS",
+      "actual": "18 selected real-PG tests skipped, no DB URL or DB request",
+      "status": "NOT_RUN",
+      "layer": "real PG not authorized/provided"
+    },
+    {
+      "id": "M1-NATIVE-BASELINE",
+      "target": "Attribute every required native failure on pinned candidate; no targeted pass closes full-suite failures",
+      "actual": "No native execution/recount in this lane; historical 528/27/4 remains its original evidence",
+      "status": "NOT_RUN",
+      "layer": "native evidence pending"
+    }
+  ],
+  "recorded_on": "2026-10-23",
+  "result_authority": "docs/status/master-plan.md",
+  "immutable_baseline_snapshot": true,
+  "root_independent_replay": {
+    "bootstrap_result_sha256": "fe3c98609995888b045a8a4397886be6e6288a0b20b2c0d23cd236c5f1606430",
+    "reminder_result_sha256": "549d3682e0a4a1798ced106ceac55923400cc4485f4278cc2d0f5a50b1fc3d5e",
+    "matches_qa_result_bytes": true,
+    "no_product_source_changes": true
+  }
+}
