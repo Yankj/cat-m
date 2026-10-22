@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "status": "NO_REMAINING_FREEZE_BLOCKER_IN_REVIEWED_DATASET_CONTRACT",
+  "scope": "Independent read-only review of synthetic dataset and scoring contract only; not M0 signoff or product/model execution.",
+  "reviewed_inputs": {
+    "memory-cases-v1.json": "23f0ffc74c71ab7947440e41da08ae405b3b0d52f3375f2ce0611a7dbfb21c74",
+    "memory-evaluation-v1.md": "7e8047215c6fc8c6da242fc45c4090bbd1e3ed5ab56e11efab75aba694fe2259"
+  },
+  "previous_versions": {
+    "initial_read_only_observed_sha256": "48c6ee77bdc63c08032cb2e2d59f8d9f83acdee57e192f8d81f70fa5584e0a92",
+    "exact_preserved_snapshot_sha256": "47c1661c73eae55b83169afbfcdd5605697d5f7d6f6e3e69ba8377ce0c451634"
+  },
+  "counts": {
+    "cases": 100,
+    "unique_case_ids": 100,
+    "unique_titles": 100,
+    "unique_semantic_query_memory_operation_signatures": 100,
+    "eligible_query_denominator": 50,
+    "gold_reference_denominator": 52,
+    "negative_query_count": 50,
+    "safety_denominator": 100
+  },
+  "independent_structural_errors": [],
+  "independent_sequence_errors": [],
+  "actions_with_pre_post_receipt_requirement": 68,
+  "query_blind_negative_control": {
+    "before": {
+      "macro": 1.0,
+      "micro": 1.0,
+      "hits": 52,
+      "queries": 50,
+      "gold_refs": 52
+    },
+    "final": {
+      "macro": 0.72,
+      "micro": 0.7307692307692307,
+      "hits": 38,
+      "queries": 50,
+      "gold_refs": 52
+    },
+    "raw_array_final": {
+      "macro": 0.64,
+      "micro": 0.6538461538461539,
+      "hits": 34,
+      "queries": 50,
+      "gold_refs": 52
+    },
+    "boundary": "No query text, fixture_key, expected gold/allowed/forbidden labels used to select results. Assumes declared post-operation state to isolate ordering; no product or model execution. Scores are corpus-design controls, not product recall quality."
+  },
+  "remaining_product_execution": "NOT_RUN",
+  "safety_pass": null,
+  "model_quality": null,
+  "recorded_at": "2026-10-22T16:35:09.031053+00:00",
+  "raw_independent_review_sha256": "147ce6dfd5b4cd447019dad75c8727717acc758c4496535e0b37e892ae9177c2",
+  "raw_independent_report_sha256": "6fdac5269368b3af09292ee4f9e9ba5af9b1d9b3ee0e4d147274f4574353c748",
+  "recorded_on": "2026-10-23"
+}

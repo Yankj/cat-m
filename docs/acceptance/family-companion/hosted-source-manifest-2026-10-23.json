@@ -1,0 +1,537 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-10-23",
+  "product_source_base": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "scope": "Read-only downloaded hosted source and local byte comparison; no invocation/SQL/config read/write. Existing deployed snapshots unchanged.",
+  "groups": [
+    {
+      "slug": "catpaw-api",
+      "version": 56,
+      "ezbr_sha256": "c3f704df78f7a449b8b7dbec7ad6e306ac7e6f8205f39ab359120c30ed9c7801",
+      "format": "bundled_entrypoint",
+      "source_equivalence": "UNPROVEN_BUNDLED_NOT_BYTE_COMPARABLE",
+      "counts": {
+        "files": 2,
+        "same": 1,
+        "different": 1,
+        "missing": 0
+      },
+      "files": [
+        {
+          "path": "catpaw-api/index.ts",
+          "bytes": 1177264,
+          "sha256": "2a44777fd0776c806721f8ab8ea240290e5a049a08454e824ce1fb0678e30f91",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "d2138d5833a07ecbd022508c5ff8ee4061c538e1fe8ef7bc4109ce82078af32b",
+          "byte_match": false
+        },
+        {
+          "path": "deno.json",
+          "bytes": 96,
+          "sha256": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe",
+          "byte_match": true
+        }
+      ]
+    },
+    {
+      "slug": "catpaw-tick",
+      "version": 16,
+      "ezbr_sha256": "8f767ae860bbb1dd09c2caf51aeb3837ef97a8c8a287290c266f2769b4c594aa",
+      "format": "multifile_source",
+      "source_equivalence": "DRIFT_PRESENT",
+      "counts": {
+        "files": 43,
+        "same": 14,
+        "different": 28,
+        "missing": 1
+      },
+      "files": [
+        {
+          "path": "catpaw-tick/index.ts",
+          "bytes": 118,
+          "sha256": "24113809e62b374193cfd43ae4acd03edc4bff06798016cf7106c9fc96fd9ac4",
+          "maintenance_path_exists": false,
+          "maintenance_sha256": null,
+          "byte_match": false
+        },
+        {
+          "path": "_shared/bootstrap.ts",
+          "bytes": 1836,
+          "sha256": "da0c920f3face5196a2a4440b7bb5f2dd0b326aa3bc6a704f7f1b7cb4766893b",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "f4f3a080cdc59aaa6fa8a01671867a066c3e44c64fc55effaf5832a79f88346d",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/config.mjs",
+          "bytes": 1600,
+          "sha256": "ea27f7573cda09ae7a8502d9448f74be2ad876c2843365ae27ca76dff070e0d1",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "dd1a033fa7eeed08fa32a8a616580778928a2650ae25aba923b068f16bc17b48",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/facade-r2/src/common.mjs",
+          "bytes": 1992,
+          "sha256": "57482b53644a3e4c0e2e274b49e28b1c57d7570001896b6db756a9958665e9ab",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "bb37f319f567604ad49ff5739e77be0d0346efe4cdc2ef1ddecd00e46f8976cd",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/postgres-pool.mjs",
+          "bytes": 1442,
+          "sha256": "846dfe0d5417af35c2501e83e728f74c95788c82ae870ff0f0be02c882df614b",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "5151efd5cb92adb146f0a6092aa2ef4881c94dbe6745d8721506dc4a65d2cf29",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/postgres-repository.mjs",
+          "bytes": 7446,
+          "sha256": "0aca3522143efedb0f05d460ef1fc2af811373696cb9a1f90723dae2a4abc651",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "91a5df7539d931b9a6023387cc5bd12e3a59c60f534185269b8e6056fd252ddb",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/common.mjs",
+          "bytes": 3283,
+          "sha256": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4",
+          "byte_match": true
+        },
+        {
+          "path": "_shared/core/src/supabase-auth.mjs",
+          "bytes": 3593,
+          "sha256": "db93a1125276798823e9899e60d4350b2c83aea296cb107aea765ff332f826eb",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "fbc6025bb785ee0ea16b40c43e214fd491ed0aeec3666e4e834d5866f3a5ae36",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/authority.mjs",
+          "bytes": 7095,
+          "sha256": "4a4eb40bd0598eb8633c9190e1e37d55fff56ddd94ce937b10986bc96985dcdb",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "07472e4fcf95725cdc249f9bdd9046b56dbe97089e5c2882e14bdd4474a6be76",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/src/local-output-facade.mjs",
+          "bytes": 13787,
+          "sha256": "388c00a3355d6d5299b116c6e691371c3a25c6ba7f2241d356f6413f429161d3",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "ab59f1106fcee8c8dc7de9369ece0168b98e75e00678d6280a81f2ab363fda8a",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/src/report-completion.mjs",
+          "bytes": 3993,
+          "sha256": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6",
+          "byte_match": true
+        },
+        {
+          "path": "_shared/core/facade-r2/src/facade.mjs",
+          "bytes": 18505,
+          "sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919",
+          "byte_match": true
+        },
+        {
+          "path": "_shared/core/facade-r2/patched-openmuse/apps/server/src/errors.ts",
+          "bytes": 233,
+          "sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+          "byte_match": true
+        },
+        {
+          "path": "_shared/api.mjs",
+          "bytes": 9226,
+          "sha256": "140698a737433be29a50fd33aa6f22d052d942f9a15a5763ea06cbc38a3676f8",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "2be4b65aeb1f67330e8bf1886912c3e9ad602a2bd52a0721c31baa9fabf221b3",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/sensitivity.mjs",
+          "bytes": 624,
+          "sha256": "4002ea6e28a38b24f9482266d22bc5b275710f2d5cbe35280efe65ef4dc95376",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "4002ea6e28a38b24f9482266d22bc5b275710f2d5cbe35280efe65ef4dc95376",
+          "byte_match": true
+        },
+        {
+          "path": "_shared/core/src/foundation-runtime.mjs",
+          "bytes": 6772,
+          "sha256": "bc996acc6a97ccc185abffcd1de4ee58658ebe4c5df5fbf7b41356ccbb524368",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "fa544052ce38317d3481b95ba6559412d731697cff373bdf2012d2942538a0c8",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/foundation.mjs",
+          "bytes": 35760,
+          "sha256": "165afb9dea4cf7e046aba9c30dc4bdea527501d1e8b45ec62b7179ec5d74cda9",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "1852241fd725164c4ea816e31bcf013adaefd2b7ef0a1a0cebe112fcbd825e63",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/chat-recovery.mjs",
+          "bytes": 4673,
+          "sha256": "5e02edeeb821703401da7aff329ee2305556a9a09a113453eda8fea08ce00f6c",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "c110414e42649890e064164df5186421137fd4619f4c6498cab72ddec67f3831",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/provider-policy.mjs",
+          "bytes": 1787,
+          "sha256": "8a7ab3f6f0d0054f951905b3b08ec511df4feaa994b52e9ce6fa653263d0506f",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "8a7ab3f6f0d0054f951905b3b08ec511df4feaa994b52e9ce6fa653263d0506f",
+          "byte_match": true
+        },
+        {
+          "path": "_shared/core/src/runtime.mjs",
+          "bytes": 1614,
+          "sha256": "5cbb6396cc47ef3735ecacc3ced7b493077ca561909e2bb0d41f08eb9ea52391",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "d46cfbc97e2c55974d1ff72eca7d1d63c90b1e60c13c4fb2abc8d661ae3b1f94",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/vendor/openmuse/runtime/engine/worker.mjs",
+          "bytes": 8320,
+          "sha256": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef",
+          "byte_match": true
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/vendor/openmuse/runtime/log.mjs",
+          "bytes": 1056,
+          "sha256": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc",
+          "byte_match": true
+        },
+        {
+          "path": "_shared/core/facade-r2/src/fenced-worker-store.mjs",
+          "bytes": 2963,
+          "sha256": "4a4161baf12e7afd89c72111ecb831e26e560b727067d0ab719db3e09a7d837c",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "4a4161baf12e7afd89c72111ecb831e26e560b727067d0ab719db3e09a7d837c",
+          "byte_match": true
+        },
+        {
+          "path": "_shared/core/src/chat-service.mjs",
+          "bytes": 17953,
+          "sha256": "a48b0b2ff0e6ac9669517d2380260a5afc263e97a1b8b71315cf2af09093d498",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "f6fce823e985ec37f7f3c2def5086a825b81749c375b227d7aee447fcbce0bbc",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/src/tools.mjs",
+          "bytes": 4265,
+          "sha256": "76429c815100d61601538e5a7656ca7fca059ee8be5e81764553ee1b6ec934f9",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "b33e6de914aa29de43173e708edabea8704279e354feff112634211429b73084",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/src/openrouter-provider.mjs",
+          "bytes": 11517,
+          "sha256": "48d9660a4170cb9391f7b7744b33e9dea0d178aa62e27809da9f86dfcfb07653",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "ad57e8387d33c86b902df3274461e13eef4dbb965a99eed5083874a9eb4f3e30",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/src/provider-errors.mjs",
+          "bytes": 3159,
+          "sha256": "4e7ece3c47e031104a05a3134695a9f0fb0d777017c8e535cfe54b2973a87e14",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "7cbbae3ab2018c7e5103c3d23deb2f29c9d4af584fe1ba18261c63ea91d31e35",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/src/model-handler.mjs",
+          "bytes": 5537,
+          "sha256": "dca097d26929bac8c84d5d67e3e4b3cdccfe8ba2d5d854be114cde0b62c0f19a",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "a5be29c29945d8ea010044079880508d68397b5c7c45afdd23869386ea2524c5",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/src/worker-output-contract.mjs",
+          "bytes": 3202,
+          "sha256": "9ae4d267e309f222fa750de4efc18738cde03e6af78cf2af37922366e4f48996",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "f26a9d8fc097288df0983b26e47dbb3ca72190c4c34021d41bf00d4260505d88",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/src/source-erasure.mjs",
+          "bytes": 3075,
+          "sha256": "2ca91f89400b5a6c889d0422352600978838fd0e6af5cc01fb10ae309a7cd872",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "1b485511d6d7302a575baec5acfb3feb87cd25a42c995f09504d1b35fc094270",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/src/purge-plan.mjs",
+          "bytes": 4753,
+          "sha256": "2874e3c60ddf6c53f496a722399acccd5f23df2c0699753954a684631f86a8b6",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "f77586e0edd2bb8ba51c740d8b5d820501000454c7556e35697bbd1674ab81ea",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/src/projection-adapter.mjs",
+          "bytes": 3232,
+          "sha256": "16a6bd6b1b31fcc6c3b40e721db67c1ed61db74972b976828cd2ecd7474f3656",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "86b1006b7fb39d5678e404bbf1c53c24d58e0b602b4ee21c0b847d6de8992eb8",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/src/foundation-http.mjs",
+          "bytes": 1806,
+          "sha256": "37c4f4c82eb60f91bee3d4d7973f0931ae50e3cb70a4d204de401f36d87d1923",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "96f3f97ffa6d420b5694f9ef55e235a06637f69478f30e8a7485b1a714b86d23",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/src/http.mjs",
+          "bytes": 3409,
+          "sha256": "e231b89904c5996a3349899b8811b906beac85b72f7ace70e7632f5dd45fa64a",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "3f819c1ed910fc8eb087d0045d17bb6ad4b590b2b3d9f29d788d23a58cd131e2",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/facade-r2/src/http.mjs",
+          "bytes": 2878,
+          "sha256": "b00cfc48b829de79ca09c06d063c8c17592e9d46893306283079b01a4bf7d528",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "b00cfc48b829de79ca09c06d063c8c17592e9d46893306283079b01a4bf7d528",
+          "byte_match": true
+        },
+        {
+          "path": "_shared/core/src/supabase-scope-authority.mjs",
+          "bytes": 99,
+          "sha256": "2993c68e34e0f58e6f4b42295a72b94b965f31216c04500f6b133800c13a9340",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "2993c68e34e0f58e6f4b42295a72b94b965f31216c04500f6b133800c13a9340",
+          "byte_match": true
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/src/bounded-tick.mjs",
+          "bytes": 8717,
+          "sha256": "999aca145346926c21e5b2403fb20254637744d388a65df27e2b4c4dd7bb0be8",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "669f5114c1d6204d1a7f94d633ead95ec16e188e7484b029918afdc7e80ce22c",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/src/bounded-store.mjs",
+          "bytes": 14415,
+          "sha256": "6184cde0200095509d0614176006901a846bc67824c08e960bc9e77b1ebdcd8f",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "2b6a1647545755f62b60e9970736ed67777b296a3c715c5dcf9fb056ca524d77",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/src/common.mjs",
+          "bytes": 1093,
+          "sha256": "6033928ef8e2166494d84df32893d2e5eaf2acbef609c69104ffc366fcd8ed49",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "6033928ef8e2166494d84df32893d2e5eaf2acbef609c69104ffc366fcd8ed49",
+          "byte_match": true
+        },
+        {
+          "path": "_shared/core/src/single-step-handler.mjs",
+          "bytes": 5296,
+          "sha256": "89b9fdb2ffd73fc0ab4ce5255039b569d607cdb2ca0e2c5e0e830f70805b3b81",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "0115a3fd4e48c9f8729cebb24770faef135c12b97c2f627d040716d7948d8aaf",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/consent.mjs",
+          "bytes": 3597,
+          "sha256": "af0210248796da63c810a50a9bc4336b4ddf0497624f00f8e85fd07489f5aaab",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "27359ca4b024d8ddb46efb6acf54bc55552c835ccc52c06ea1c713476e773e6f",
+          "byte_match": false
+        },
+        {
+          "path": "_shared/tick-auth.mjs",
+          "bytes": 1608,
+          "sha256": "541e9d88070d68510a617810b749591629cbaf5c1fe82438bc0caf5b7f268999",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "541e9d88070d68510a617810b749591629cbaf5c1fe82438bc0caf5b7f268999",
+          "byte_match": true
+        },
+        {
+          "path": "deno.json",
+          "bytes": 96,
+          "sha256": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe",
+          "byte_match": true
+        }
+      ]
+    },
+    {
+      "slug": "catpaw-proactive",
+      "version": 10,
+      "ezbr_sha256": "2eb0abd2438fcdb6e881f6e4c6cdf7b0e2019ebc0438e766c9fdcbe86636de48",
+      "format": "bundled_entrypoint",
+      "source_equivalence": "UNPROVEN_BUNDLED_NOT_BYTE_COMPARABLE",
+      "counts": {
+        "files": 2,
+        "same": 1,
+        "different": 1,
+        "missing": 0
+      },
+      "files": [
+        {
+          "path": "catpaw-proactive/index.ts",
+          "bytes": 163348,
+          "sha256": "3b46914011952bd7c3c46803a6f447c8abf5be3563a074877d47fb2b163425dc",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "7f39216190e6b1fa7456b1dd9434e2da8219ca800365b7f5afb797dcc1cb0b30",
+          "byte_match": false
+        },
+        {
+          "path": "deno.json",
+          "bytes": 96,
+          "sha256": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe",
+          "maintenance_path_exists": true,
+          "maintenance_sha256": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe",
+          "byte_match": true
+        }
+      ]
+    }
+  ],
+  "local_migration_files": [
+    {
+      "path": "services/edge/supabase/migrations/20261015120000_proactive_tasks.sql",
+      "sha256": "59d212e000b8d50f4d46c1d4ea5dbc203faefc34c9546ab60eb37bae9efcb4ce",
+      "version": "20261015120000",
+      "name": "proactive_tasks"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261015120100_proactive_cron.sql",
+      "sha256": "4300d67552e49bde9f1671f63a2d96637850d53317561ba7bb8e65830ccac13e",
+      "version": "20261015120100",
+      "name": "proactive_cron"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261015140000_chat_attachments_bucket.sql",
+      "sha256": "f88afc9e3d536f42e8f4a67278f0be3a4dc69f5647d9bd823dd05bc2586d6de9",
+      "version": "20261015140000",
+      "name": "chat_attachments_bucket"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261015150000_proactive_task_tools_runtime.sql",
+      "sha256": "8874734856545ffca69671f963d7ab63e13e9c1b2229080d40d9446b367373ea",
+      "version": "20261015150000",
+      "name": "proactive_task_tools_runtime"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261016013000_proactive_push_throttle.sql",
+      "sha256": "efa40d3c9d27f1aa71043fdf7b310607c3e53b8ed5b8d542d32fd2bd110e2964",
+      "version": "20261016013000",
+      "name": "proactive_push_throttle"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261016020000_proactive_push_actions.sql",
+      "sha256": "33ef04de096018b5ea064cceee774820fb073b6327c3c7ee3de710c5fe6a2af3",
+      "version": "20261016020000",
+      "name": "proactive_push_actions"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261016030000_proactive_decisions.sql",
+      "sha256": "edbf20e1aae7233124a652d29a036c20171396a3607663ca80f24f182548a297",
+      "version": "20261016030000",
+      "name": "proactive_decisions"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261016040000_proactive_suggestions_runtime.sql",
+      "sha256": "7e4721a45a522a5c224629d84fa900464571c37e610ebd6d1715be3c5ef30fd6",
+      "version": "20261016040000",
+      "name": "proactive_suggestions_runtime"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261016090000_agent_memory.sql",
+      "sha256": "cb734a0f0b2a21d89b4adc49edbcd793d6d0d93b4cf0b5195a4f6ae0c173eea3",
+      "version": "20261016090000",
+      "name": "agent_memory"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261016100000_agent_memory_tombstones.sql",
+      "sha256": "67ab676391c73fb89d3e826cf38959b484a610390e80521bf326e60b7fd95e7b",
+      "version": "20261016100000",
+      "name": "agent_memory_tombstones"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261016110000_feature_enrollment.sql",
+      "sha256": "8ae9d40fd177ea66021a8e68d24cd52e1fb9f9b206ae66b8308e33d3bf5ab8eb",
+      "version": "20261016110000",
+      "name": "feature_enrollment"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261017010000_proactive_delivery_owner.sql",
+      "sha256": "3fe8c3454dd5f2bdbc3b51228cf81dffa4f5edef9ed8c8b965d8abdc59cbdbfa",
+      "version": "20261017010000",
+      "name": "proactive_delivery_owner"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261017020000_proactive_push_sending.sql",
+      "sha256": "d9b302c71c0bc00ca7611117ae76c0755915777f84a7fd4237e75eb94ed18b2e",
+      "version": "20261017020000",
+      "name": "proactive_push_sending"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261017030000_proactive_push_generation.sql",
+      "sha256": "fe05fa9cd0300ad2145fd62ee4707627bbdad8df300f159af4e2b6edb6ec06f5",
+      "version": "20261017030000",
+      "name": "proactive_push_generation"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261017040000_agent_memory_choice_seq.sql",
+      "sha256": "be2fa9876a4257dc370a9478cca6c269a10384c3742b585a43b4c55072ad35b2",
+      "version": "20261017040000",
+      "name": "agent_memory_choice_seq"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261017050000_proactive_feedback_kind_intrusive.sql",
+      "sha256": "30e431dc40947ba556ccd5ceba7fc53f07367041b2602890c19b6476466a1666",
+      "version": "20261017050000",
+      "name": "proactive_feedback_kind_intrusive"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261017060000_agent_memory_extensions_usage.sql",
+      "sha256": "174d5d832d7b8bd13c65a12e700d0d09772a7d9b091e7a542196f203a8e83c7f",
+      "version": "20261017060000",
+      "name": "agent_memory_extensions_usage"
+    }
+  ],
+  "migration_history_count": 21,
+  "migration_sql_equivalence": "NOT_PROVEN_history_names_and_versions_only",
+  "runtime_config_equivalence": "NOT_READ",
+  "ready_to_deploy": false
+}

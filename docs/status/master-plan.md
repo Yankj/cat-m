@@ -1,5 +1,21 @@
 # cat 重启 Goal 与交付计划
 
+## 2026-10-23 家庭成长助理 Goal：M0 准备
+
+本线程的家庭成长 Goal 已由控制器读回 **ACTIVE**；本轮只进行执行契约准备与离线缺陷复现，**M0 未签收、产品代码改造未启动**。原 FINAL-G3 暂停记录属于此前线程/日期，不由本轮创建替代或签收。家庭三旅程与 AF-A01–18 / AF-U01–12 / CP-01–03 同版门保留，其余既有合同亦未删减。
+
+已核对远端 main `789ad4fe` 与规划 `2419db9b`；Root、QA、记忆用例、来源审计分别使用 `docs/family-m0`、`test/family-m0`、`test/family-memory-cases`、`docs/family-source-audit` 独立工作树，主目录与旧工作树保留。[M0契约](../design/family-companion/m0-contract.md)、[97项初始矩阵](../acceptance/family-companion/acceptance-matrix-v1.json)、[当日证据](../acceptance/family-companion/preparation-2026-10-23.md)已落盘。三名本地准备代理的平台 run 为 `gpt-6.1-sol + ultra`；Root 为 `gpt-6-astra + ultra`，模型分工已询问用户、尚待决定。云端实施的模型/Goal未核验，不计正式实施启动。
+
+独立 QA 与 Root 禁网重放一致：初始化失败后同实例持续503；100次取消先提交后仍有100个提醒事件/假sender调用；claim后合成service重建两周期无法重领；事件写失败丢due；合成敏感标记进入后端错误日志，原生public payload前缀为静态缺口。既有定向22PASS/18PG-SKIP不关闭上述FAIL。100条虚构跨会话记忆集及评分合同已独立审阅、固定hash并整合；补足干扰项、打散候选顺序、明确动作前态，排除已发现的假通过。语料负控macro0.72不是产品质量分数；真实模型未运行。
+
+Supabase只读管理核验API56/tick16/proactive10及21条迁移历史；tick源43项为14同/28异/1缺，另两函数为bundle，完整源码/SQL/运行配置仍未对齐。AF Goal的24项旧hash已逐项溯源，修复两个历史原型共12处既有链接后更新当前map；旧日期字节、初次FAIL与审阅均保留。严格AF Goal检查复跑通过；最终布局、冻结源、相关合同和敏感检查结果见当日证据。
+
+用户已转交dot云端独立验证分支 `test/family-cloud-verification@b5d365f8`；HANDOFF已优先读取。旧基线789ad4fe的18项新断言（12FAIL）、既有222PASS/1SKIP、权限32项NOT_RUN分别保留，正在固定本机候选SHA后复跑，不照搬旧结论。云端交接已收到，effective model/Goal仍未验证；后端与记忆实施lane未建立。家庭场景与交互合同待用户提供统一入口。
+
+下一步完成候选复跑并收齐M0未决条件，再按已确认范围进入初始化恢复片。产品保存/保留策略、云端实施入口、模型分工和部署对账未齐；真实Auth/模型/SQL/通知/设备安装/部署、新凭据与新增计算均0。不得以本轮准备替代真实家庭闭环或同版真机验收。
+
+以下为此前日期记录，保留当时原文；其中“当前”“ACTIVE/PAUSED”和版本号不外推为本次家庭 Goal 或今天部署状态。
+
 ## 2026-10-22 cat 品牌本地迁移
 
 独立分支 `chore/cat-brand` 基于 `cb3bc90` 完成当前显示文案、工程/模块/文件、后端助理身份和两张品牌位图迁移。构建、472项兼容、双语、组件包、SwiftData跨模块合成数据往返及后端874PASS/2SKIP通过。首轮26失败全部基线复现；最终全量528PASS/27FAIL/4SKIP，已确认品牌新增失败0、仍有1项全套上下文失败未归因，独立等待用例两边5/5通过但全套等待边界保留。原设计规则8项基线失败，不签收完整产品。用户2026-10-22明确批准分支推送/draft PR与三张Library预览保存。品牌提交`4dafaeac`已推送，已创建[draft PR #110](https://github.com/Yankj/catpaw-m/pull/110)，未合并。该提交CI [39733200994](https://github.com/Yankj/catpaw-m/actions/runs/39733200994)和基线main CI均在job启动前受账户计费/支出限额限制，steps为空，下游构建/测试跳过，非代码测试通过。未更改付费、权限或凭据设置。Library对应原上传在新增授权后重试一次，官方helper返回`Library prepare_uploads is not available`，未创建附件、无附件ID，已停止且不换路径；无部署或手机安装。详见[最终本地记录](../acceptance/cat-brand-2026-10-22.md)、[逐项归因](../acceptance/cat-brand-attribution-2026-10-22.json)和[兼容说明](../development/cat-brand-migration.md)。
