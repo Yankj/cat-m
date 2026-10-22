@@ -10,6 +10,7 @@
 4. [温馨 UI 局部细节](assets/warm-ui-details-v1-review.png)：圆润图标、猫状态、确认卡、记忆更正和空态，当前待评审。
 5. [技术架构图](assets/technical-architecture.png)：现有原生宿主 + 模块化 Edge 后端 + 一个 Postgres；未新建云服务。
 6. [决策记录](decisions.md)：已确认方向、工程建议和待确认项分开。
+7. [家庭 API v1](api-v1.md)：冻结协议 `catpaw.family.v1`。iOS 与后端按该文件对齐；文件本身不是部署或验收。
 
 ## 延后执行计划
 
