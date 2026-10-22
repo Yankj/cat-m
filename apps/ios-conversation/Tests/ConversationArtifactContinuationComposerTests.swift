@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
 import UIKit
-@testable import CatpawM
+@testable import cat
 
 final class ConversationArtifactContinuationComposerTests:XCTestCase {
     private struct Fixture {

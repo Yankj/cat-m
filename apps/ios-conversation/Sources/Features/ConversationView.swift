@@ -29,9 +29,9 @@ import UniformTypeIdentifiers
                                 .padding(.top, 4)
                             if messages.isEmpty {
                                 VStack(alignment: .leading, spacing: 20) {
-                                    Text(ui("想一起完成什么？")).font(.title2.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+                                    Text(ui("想一起完成什么？")).font(.title2.weight(.semibold)).foregroundStyle(catColors.ink)
                                     Text(ui("从一个问题、一份资料，或一个想法开始。"))
-                                        .font(.body).foregroundStyle(CatpawColors.secondary)
+                                        .font(.body).foregroundStyle(catColors.secondary)
                                     VStack(spacing: 0) {
                                         ForEach(suggestions, id: \.title) { suggestion in
                                             Button { model.editDraft(id, text: suggestion.title + "："); composerFocused = true } label: {
@@ -76,13 +76,13 @@ import UniformTypeIdentifiers
                                 }.buttonStyle(.plain).accessibilityIdentifier("conversation.document")
                             }
                             Color.clear.frame(height: 1).id("end")
-                        }.padding(.horizontal, CatpawLayout.pageInset).padding(.vertical, 16)
-                            .frame(maxWidth: CatpawLayout.readableWidth).frame(maxWidth: .infinity)
+                        }.padding(.horizontal, catLayout.pageInset).padding(.vertical, 16)
+                            .frame(maxWidth: catLayout.readableWidth).frame(maxWidth: .infinity)
                     }.scrollDismissesKeyboard(.interactively)
                         .onChange(of: messages.last?.header.revision) { _, _ in proxy.scrollTo("end", anchor: .bottom) }
                         .onChange(of: messages.count) { _, _ in proxy.scrollTo("end", anchor: .bottom) }
                         .safeAreaInset(edge: .bottom, spacing: 0) { composer(c) }
-                }.background(CatpawColors.background)
+                }.background(catColors.background)
                 .navigationTitle(r.title)
                 .compactNavigationTitle()
                 .toolbar { ToolbarItem {
@@ -93,10 +93,10 @@ import UniformTypeIdentifiers
                         Button(model.preference("pin:\(id)", fallback: "false") == "true" ? ui("取消置顶") : ui("置顶")) { model.setPreference("pin:\(id)", model.preference("pin:\(id)", fallback: "false") == "true" ? "false" : "true") }
                         Button(ui("重命名")) { name = r.title; rename = true }
                         if let project = c.projectID { Button(ui("项目文件")) { model.path.append(.project(project)) } }
-                        ShareLink(item: ui("Catpaw-m 本地会话 {0}\n", arguments: [String(describing: (id))]) + messages.compactMap { $0.message?.blocks.textValue }.joined(separator: "\n\n")) { Text(ui("分享本地文本")) }
+                        ShareLink(item: ui("cat 本地会话 {0}\n", arguments: [String(describing: (id))]) + messages.compactMap { $0.message?.blocks.textValue }.joined(separator: "\n\n")) { Text(ui("分享本地文本")) }
                         Button(ui("复制会话 ID")) { copyText(id.uuidString) }
                         Button(ui("删除"), role: .destructive) { deleteConfirm = true }
-                    } label: { CatpawSymbol(name: "ellipsis").foregroundStyle(CatpawColors.ink).touchTarget() }.accessibilityLabel(ui("更多操作")).accessibilityIdentifier("conversation.more")
+                    } label: { catSymbol(name: "ellipsis").foregroundStyle(catColors.ink).touchTarget() }.accessibilityLabel(ui("更多操作")).accessibilityIdentifier("conversation.more")
                 } }
                 .alert(ui("重命名"), isPresented: $rename) { TextField(ui("名称"), text: $name); Button(ui("保存")) { model.perform { try await model.service.rename(scope: model.scope, id: id, name: name, expectedRevision: r.header.revision) } }; Button(ui("取消"), role: .cancel) { } }
                 .confirmationDialog(ui("移到本地回收站？消息和 ID 可恢复。"), isPresented: $deleteConfirm) { Button(ui("删除会话"), role: .destructive) { model.delete(r); _ = model.path.popLast() } }
@@ -104,7 +104,7 @@ import UniformTypeIdentifiers
                     model.perform {
                         guard let url = try result.get().first else { return }; let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }
                         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                        guard size <= ConversationAttachmentLimits.maxBytesPerFile else { throw CatpawError.invalid(ui("文件超过本地导入上限 20 MB。")) }
+                        guard size <= ConversationAttachmentLimits.maxBytesPerFile else { throw catError.invalid(ui("文件超过本地导入上限 20 MB。")) }
                         let mime = mimeForExtension(url.pathExtension)
                         let reference = try await model.service.createDocument(scope: model.scope, title: url.lastPathComponent, mime: mime, data: Data(contentsOf: url), owners: [id] + [c.projectID].compactMap { $0 }, source: "user_import")
                         model.path.append(.document(reference.documentID, reference.version))
@@ -142,8 +142,8 @@ import UniformTypeIdentifiers
     private func composer(_ conversation: Conversation) -> some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
-                TextField(ui("想问什么？"), text: Binding(get: { model.drafts[id] ?? conversation.draftText }, set: { model.editDraft(id, text: $0) }), prompt: Text(ui("想问什么？")).foregroundColor(CatpawColors.secondary), axis: .vertical)
-                    .font(.body).foregroundStyle(CatpawColors.ink).lineLimit(1...6)
+                TextField(ui("想问什么？"), text: Binding(get: { model.drafts[id] ?? conversation.draftText }, set: { model.editDraft(id, text: $0) }), prompt: Text(ui("想问什么？")).foregroundColor(catColors.secondary), axis: .vertical)
+                    .font(.body).foregroundStyle(catColors.ink).lineLimit(1...6)
                     .focused($composerFocused).padding(.horizontal, 8).padding(.top, 6)
                     .accessibilityIdentifier("conversation.input")
                 HStack(spacing: 4) {
@@ -155,26 +155,26 @@ import UniformTypeIdentifiers
                         Button { importer = true } label: { Label(ui("导入文件"), systemImage: "doc") }
                         Button { contextSheet = true } label: { Label(ui("专家、技能与项目"), systemImage: "slider.horizontal.3") }
                         Button { model.path.append(.commands) } label: { Label(ui("自定义命令"), systemImage: "terminal") }
-                    } label: { CatpawSymbol(name: "plus").foregroundStyle(CatpawColors.ink).touchTarget() }
+                    } label: { catSymbol(name: "plus").foregroundStyle(catColors.ink).touchTarget() }
                         .accessibilityLabel(ui("添加内容"))
                     Button(ui("配置")) { contextSheet = true }.font(.caption.weight(.medium)).touchTarget()
                     Spacer(minLength: 4)
-                    Button { voice = true } label: { CatpawSymbol(name: "waveform").foregroundStyle(CatpawColors.ink).touchTarget() }.accessibilityLabel(ui("口述输入"))
+                    Button { voice = true } label: { catSymbol(name: "waveform").foregroundStyle(catColors.ink).touchTarget() }.accessibilityLabel(ui("口述输入"))
                     Button { composerFocused = false; model.send(id, scenario: scenario) } label: {
                         Image(systemName: "arrow.up").font(.body.weight(.semibold))
-                            .foregroundStyle(canSend(conversation) ? CatpawColors.onInk : CatpawColors.secondary)
-                            .frame(minWidth: 36, minHeight: 36).background(canSend(conversation) ? CatpawColors.ink : CatpawColors.input, in: Circle()).touchTarget()
+                            .foregroundStyle(canSend(conversation) ? catColors.onInk : catColors.secondary)
+                            .frame(minWidth: 36, minHeight: 36).background(canSend(conversation) ? catColors.ink : catColors.input, in: Circle()).touchTarget()
                     }.buttonStyle(.plain).disabled(!canSend(conversation))
                         .accessibilityLabel(ui("发送并运行模拟回复")).accessibilityIdentifier("conversation.send")
                 }
             }.padding(10)
-                .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .overlay { RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(CatpawColors.separator, lineWidth: 1) }
+                .background(catColors.panel, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay { RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(catColors.separator, lineWidth: 1) }
             Text(model.usesLocalGateway(id) ? ui("Gateway · 本地合成") : ui("模拟回复 · 本机保存"))
-                .font(.caption2).foregroundStyle(CatpawColors.secondary).padding(.top, 8)
+                .font(.caption2).foregroundStyle(catColors.secondary).padding(.top, 8)
         }.padding(.horizontal, 12).padding(.top, 10).padding(.bottom, 8)
-            .frame(maxWidth: CatpawLayout.readableWidth).frame(maxWidth: .infinity)
-            .background(CatpawColors.background)
+            .frame(maxWidth: catLayout.readableWidth).frame(maxWidth: .infinity)
+            .background(catColors.background)
     }
     private func canSend(_ conversation: Conversation) -> Bool {
         !model.sending.contains(id) && !(model.drafts[id] ?? conversation.draftText).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -185,15 +185,15 @@ import UniformTypeIdentifiers
                 HStack {
                     Spacer(minLength: 36)
                     Text(message.blocks.textValue).font(.body).lineSpacing(4).textSelection(.enabled)
-                        .foregroundStyle(CatpawColors.ink).padding(.horizontal, 16).padding(.vertical, 12)
-                        .background(CatpawColors.input, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .foregroundStyle(catColors.ink).padding(.horizontal, 16).padding(.vertical, 12)
+                        .background(catColors.input, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }.accessibilityElement(children: .combine).accessibilityLabel(ui("你") + ": " + message.blocks.textValue)
             } else {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(model.usesLocalGateway(id) ? ui("Gateway · 本地合成") : ui("助理 · 模拟回复"))
-                        .font(.caption.weight(.medium)).foregroundStyle(CatpawColors.secondary)
+                        .font(.caption.weight(.medium)).foregroundStyle(catColors.secondary)
                     Text(message.blocks.textValue.isEmpty ? ui("正在等待模拟回复…") : message.blocks.textValue)
-                        .textSelection(.enabled).font(.body).lineSpacing(6).foregroundStyle(CatpawColors.ink)
+                        .textSelection(.enabled).font(.body).lineSpacing(6).foregroundStyle(catColors.ink)
                         .fixedSize(horizontal: false, vertical: true)
                     if message.state != .completed {
                         StatusLabel(text: message.state.displayName(language: model.language), symbol: message.state == .failed ? "exclamationmark.circle" : "clock", tone: message.state == .failed ? .failure : .neutral)

@@ -21,7 +21,7 @@ public struct ForegroundVoiceSession: Sendable {
     public mutating func finish() { guardState.finish() }
     public mutating func edit(_ text: String) { guardState.edit(text) }
     public mutating func submit() throws -> FrozenVoiceTurn {
-        guard let scope, let target else { throw CatpawError.invalid("语音话轮尚无目标。") }
+        guard let scope, let target else { throw catError.invalid("语音话轮尚无目标。") }
         let transcript = try guardState.freeze(); submittedTurns.append(transcript.clientMessageID)
         return FrozenVoiceTurn(scope: scope, target: target, transcript: transcript)
     }
@@ -47,7 +47,7 @@ public struct FixtureVoiceRevisionAdapter: VoiceRevisionAdapter {
     public init() {}
     public func draft(turn: FrozenVoiceTurn, original: String) async throws -> VoiceRevisionDraft {
         guard case .document(let reference) = turn.target, textHash(original) == reference.contentHash,
-              textHash(turn.transcript.submittedText) == turn.transcript.submittedTextHash else { throw CatpawError.conflict }
+              textHash(turn.transcript.submittedText) == turn.transcript.submittedTextHash else { throw catError.conflict }
         return VoiceRevisionDraft(turn: turn, text: original + "\n\n【口述改稿模拟 · 请检查并编辑】\n本轮要求：\(turn.transcript.submittedText)\n\n此段只是本地流程样例，未执行真实模型改写。", adapterID: "catpaw.fixture.voice-revision.v1", reality: .simulated)
     }
 }
@@ -71,17 +71,17 @@ public struct ReadoutPlan: Sendable {
 public enum ReadoutRouter {
     public static let rates = [0.75, 1.0, 1.25, 1.5]
     public static func make(reference: DocumentReference, text: String, sourceKind: String, mode: ReadoutMode, selectionIndex: Int = 0, rateMultiplier: Double = 1, startParagraph: Int = 0) throws -> ReadoutPlan {
-        guard textHash(text) == reference.contentHash, rates.contains(rateMultiplier) else { throw CatpawError.conflict }
+        guard textHash(text) == reference.contentHash, rates.contains(rateMultiplier) else { throw catError.conflict }
         let paragraphs = text.components(separatedBy: "\n\n")
         let segments: [String]
         switch mode {
         case .full: segments = paragraphs
         case .summary: segments = [paragraphs.first(where: { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) ?? ""]
         case .selection:
-            guard paragraphs.indices.contains(selectionIndex), !paragraphs[selectionIndex].isEmpty else { throw CatpawError.invalid("请选择可朗读的段落。") }
+            guard paragraphs.indices.contains(selectionIndex), !paragraphs[selectionIndex].isEmpty else { throw catError.invalid("请选择可朗读的段落。") }
             segments = [paragraphs[selectionIndex]]
         }
-        guard segments.indices.contains(startParagraph), !segments.joined().isEmpty else { throw CatpawError.invalid("朗读正文或段落不可用。") }
+        guard segments.indices.contains(startParagraph), !segments.joined().isEmpty else { throw catError.invalid("朗读正文或段落不可用。") }
         return ReadoutPlan(document: reference, sourceKind: sourceKind, sourceText: text, mode: mode, selectionIndex: selectionIndex, segments: segments, rateMultiplier: rateMultiplier, startParagraph: startParagraph)
     }
     public static func retime(_ plan: ReadoutPlan, rateMultiplier: Double, paragraph: Int) throws -> ReadoutPlan {
@@ -93,7 +93,7 @@ public actor RecordingReadoutAdapter: ReadoutAdapter {
     private var plans: [ReadoutPlan] = []
     public init() {}
     public func play(_ plan: ReadoutPlan) async throws {
-        guard plan.allowsPublicTTS else { throw CatpawError.unavailable(PublicReadoutSample.restriction) }
+        guard plan.allowsPublicTTS else { throw catError.unavailable(PublicReadoutSample.restriction) }
         plans.append(plan)
     }
     public func received() -> [ReadoutPlan] { plans }

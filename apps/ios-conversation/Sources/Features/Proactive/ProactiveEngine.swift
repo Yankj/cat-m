@@ -69,12 +69,12 @@ struct ProactiveSignal: Equatable, Sendable {
         registerParkedSource()
         #endif
     }
-    /// p90i v7: EventKit items Catpaw created go through #89's one keep/cancel decision (default keep). Also called from
+    /// p90i v7: EventKit items cat created go through #89's one keep/cancel decision (default keep). Also called from
     /// #89's `registerDeviceParkedSources` so a cold start followed by an immediate sign-out lists them.
     static func registerParkedSource() {
         if !AccountParkedItems.registeredKeys.contains(ProactiveParking.sourceKey) { AccountParkedItems.register(ProactiveParking.sourceKey, ProactiveParkedSource()) }
     }
-    /// Card detail after the user chose to delete the reminder Catpaw created (UIStrings key; zh/en).
+    /// Card detail after the user chose to delete the reminder cat created (UIStrings key; zh/en).
     static let reminderDeletedDetail = "提醒已删除"
     /// p90j: the reminder was already gone when the user chose to delete it.
     static let reminderGoneDetail = "提醒已不存在"
@@ -131,7 +131,7 @@ struct ProactiveSignal: Equatable, Sendable {
         // R2 (NoBug B1): the previous owner's (or unowned) legacy plaintext was parked / quarantined above; it must not
         // outlive the owner change, or the lazy migration would seal it into the new owner's store.
         ProactiveSealedStore.dropPlaintext()
-        for id in Set(ProactiveSuggestionStore.shared.items.keys).union(ProactiveLocalBackend.load().keys) { CatpawLeaveActivity.stop(suggestionID: id) }
+        for id in Set(ProactiveSuggestionStore.shared.items.keys).union(ProactiveLocalBackend.load().keys) { catLeaveActivity.stop(suggestionID: id) }
         quota = ProactiveQuotaLedger()
         syncQueue.purge(account: nil); localOnly = []; localFeedback = .init()
         if force { serverIDs = [:] }   // p90i S5: per-account map — another account's ids are simply not visible
@@ -199,14 +199,14 @@ struct ProactiveSignal: Equatable, Sendable {
                 if let d = try? JSONSerialization.data(withJSONObject: cur) { setBlob(d, k) }   // pre-v1.1 parked blobs land sealed
             }
             localOnly = localOnly.union(r["localOnly"] as? [String] ?? [])
-            let items = (r["queue"] as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) } ?? []
+            let items = (r["queue"] as? Data).flatMap { try? JSONDecoder().decode([catPersistentQueue<SyncOp>.Item].self, from: $0) } ?? []
             syncQueue.reinstate(items, account: account); ops += items.count   // only items stamped with this account (or unstamped)
-            let dead = (r["dead"] as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) } ?? []
+            let dead = (r["dead"] as? Data).flatMap { try? JSONDecoder().decode([catPersistentQueue<SyncOp>.Item].self, from: $0) } ?? []
             syncQueue.reinstateDead(dead, account: account)   // p90i 08:57: stay dead, flagged for the user, never retried
         }
         let all = ProactiveLocalBackend.load()
         for s in all.values { ProactiveSuggestionStore.shared.adopt(s) }
-        CatpawWidgetSnapshotWriter.write(Array(all.values))
+        catWidgetSnapshotWriter.write(Array(all.values))
         note("restored \(recs.count) parked record(s) / \(ops) op(s) of \(account) → syncing under it")
         Task { await drainSync() }
     }
@@ -215,7 +215,7 @@ struct ProactiveSignal: Equatable, Sendable {
         set { defaults.set(try? JSONEncoder().encode(newValue), forKey: ProactiveParking.externalKey) }
     }
     /// p90i: the signed-in account's restored dead letters awaiting the user's retry / discard (no UI yet).
-    func syncNeedingConfirmation() -> [CatpawPersistentQueue<SyncOp>.Item] {
+    func syncNeedingConfirmation() -> [catPersistentQueue<SyncOp>.Item] {
         guard let a = AccountEpoch.shared.currentAccount else { return [] }
         return syncQueue.needingConfirmation(account: a)
     }
@@ -228,7 +228,7 @@ struct ProactiveSignal: Equatable, Sendable {
             for e in ProactiveParking.externalItems(inbox: inbox, reminderOps: pendingReminders.mapValues(\.operationID)) where !out.contains(where: { $0.operationID == e.operationID }) { out.append(e) }
         }
         let reminders = pendingReminders
-        return out.map { e in ProactiveParking.parkedItem(e, title: reminders[e.suggestionID].map { "准备：\($0.title)" } ?? "Catpaw 创建的提醒") }
+        return out.map { e in ProactiveParking.parkedItem(e, title: reminders[e.suggestionID].map { "准备：\($0.title)" } ?? "cat 创建的提醒") }
     }
     /// Test seam for the EventKit delete (nil → the real store).
     var externalReminderRemover: ((String) async -> String)?
@@ -307,7 +307,7 @@ struct ProactiveSignal: Equatable, Sendable {
     /// Read-only views for #89's decision UI and tests.
     func parkedOps(for account: String) -> [SyncOp]? {
         guard let recs = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key)).slots[account.lowercased()] else { return nil }
-        let dec = { (d: Any?) in (d as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) }?.map(\.op) ?? [] }
+        let dec = { (d: Any?) in (d as? Data).flatMap { try? JSONDecoder().decode([catPersistentQueue<SyncOp>.Item].self, from: $0) }?.map(\.op) ?? [] }
         return recs.flatMap { dec($0["queue"]) + dec($0["dead"]) }
     }
     func parkedInbox(for account: String) -> [String: Any] {
@@ -371,11 +371,11 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     /// Moves the released records (and only their own entries) into the active stores; returns the remaining record.
     /// Live and dead queued items of a quarantine record (records written before p90i keep everything under "queue").
-    private static func quarantineQueues(_ record: [String: Any]) -> (live: [CatpawPersistentQueue<SyncOp>.Item], dead: [CatpawPersistentQueue<SyncOp>.Item]) {
-        let dec = { (d: Any?) in (d as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) } ?? [] }
+    private static func quarantineQueues(_ record: [String: Any]) -> (live: [catPersistentQueue<SyncOp>.Item], dead: [catPersistentQueue<SyncOp>.Item]) {
+        let dec = { (d: Any?) in (d as? Data).flatMap { try? JSONDecoder().decode([catPersistentQueue<SyncOp>.Item].self, from: $0) } ?? [] }
         return (dec(record["queue"]), dec(record["dead"]))
     }
-    private func releaseQuarantine(_ record: [String: Any], ids: Set<String>, live: [CatpawPersistentQueue<SyncOp>.Item], dead: [CatpawPersistentQueue<SyncOp>.Item], to account: String) -> [String: Any] {
+    private func releaseQuarantine(_ record: [String: Any], ids: Set<String>, live: [catPersistentQueue<SyncOp>.Item], dead: [catPersistentQueue<SyncOp>.Item], to account: String) -> [String: Any] {
         var record = record, blobs = record["blobs"] as? [String: Data] ?? [:]
         for (k, old) in blobs {
             if k == Self.generationsKey {
@@ -402,7 +402,7 @@ struct ProactiveSignal: Equatable, Sendable {
         defaults.set(record, forKey: ProactiveQuarantine.key)
         let all = ProactiveLocalBackend.load()
         for id in ids { if let s = all[id] { ProactiveSuggestionStore.shared.adopt(s) } }
-        CatpawWidgetSnapshotWriter.write(Array(all.values))
+        catWidgetSnapshotWriter.write(Array(all.values))
         return record
     }
     /// Codex P0-5: evaluated vs delivered (v2). v1 entries migrate as delivered.
@@ -689,7 +689,7 @@ struct ProactiveSignal: Equatable, Sendable {
     /// p90i (三角 trial S3): the token is required; nil is rejected (`ProactivePostGate`), never "no account check".
     static func post(_ path: String, _ body: [String: Any], token: AccountToken?) async -> [String: Any]? {
         guard ProactivePostGate.admit(token, epoch: .shared) else { return nil }
-        guard let base = apiBase(), let bearer = try? await CatpawPushTokenUploader.shared.bearer() else { return nil }
+        guard let base = apiBase(), let bearer = try? await catPushTokenUploader.shared.bearer() else { return nil }
         guard ProactivePostGate.admit(token, epoch: .shared) else { return nil }
         var request = URLRequest(url: base.appendingPathComponent(path), timeoutInterval: 6)
         request.httpMethod = "POST"; request.setValue(bearer, forHTTPHeaderField: "Authorization"); request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -714,7 +714,7 @@ struct ProactiveSignal: Equatable, Sendable {
     /// Codex PR90f #1: read-only `GET` under the same token rules as `post` (quarantine evidence: the cloud owns that id
     /// for this account). Next to 三角's `post`; `post` itself is unchanged.
     static func get(_ path: String, token: AccountToken) async -> [String: Any]? {
-        guard AccountEpoch.shared.isValid(token), let base = apiBase(), let bearer = try? await CatpawPushTokenUploader.shared.bearer() else { return nil }
+        guard AccountEpoch.shared.isValid(token), let base = apiBase(), let bearer = try? await catPushTokenUploader.shared.bearer() else { return nil }
         guard AccountEpoch.shared.isValid(token) else { return nil }
         var request = URLRequest(url: base.appendingPathComponent(path), timeoutInterval: 6)
         request.httpMethod = "GET"; request.setValue(bearer, forHTTPHeaderField: "Authorization")
@@ -760,7 +760,7 @@ struct ProactiveSignal: Equatable, Sendable {
         /// Codex PR90e #5: a snooze's own until (ISO 8601), so the cloud records the device's instant, not its own.
         var until: String? = nil
     }
-    let syncQueue = CatpawPersistentQueue<SyncOp>(name: "proactive.sync")
+    let syncQueue = catPersistentQueue<SyncOp>(name: "proactive.sync")
     /// Codex PR90 #6: undo generations → fresh idempotency identity for actions re-taken after undo.
     fileprivate static let generationsKey = "catpaw.proactive.generations.v1"
     private var generations: ProactiveActionGenerations {
@@ -797,7 +797,7 @@ struct ProactiveSignal: Equatable, Sendable {
         if removed == "snooze" {   // exactly the undone intent's notification (+ the legacy id)
             delivery.remove(bases: [id + "-snooze"] + (ProactiveUndo.snoozeIntent(detail: taken[index].detail).map { [ProactiveDeliveryPipeline.snoozeBase(id, intent: $0)] } ?? []), token: token)
         }
-        CatpawLeaveActivity.stop(suggestionID: id)
+        catLeaveActivity.stop(suggestionID: id)
         var kept = taken; kept.remove(at: index); s.taken = kept
         s.status = ProactiveSuggestion.Status(rawValue: plan.status) ?? .pending
         s.serverActionStates?[removed] = nil   // the cloud's success of the undone action must not beat the undo
@@ -916,7 +916,7 @@ struct ProactiveSignal: Equatable, Sendable {
         note("deliver requested=\(level.name) → in-app=\(plan.inAppCard)")
         guard plan.inAppCard else { return }
         #if os(iOS)
-        CatpawInAppBannerCenter.shared.show(CatpawInAppBanner(title: s.title, body: s.reason, symbol: "calendar.badge.clock", deepLink: URL(string: "catpawm://proactive")))
+        catInAppBannerCenter.shared.show(catInAppBanner(title: s.title, body: s.reason, symbol: "calendar.badge.clock", deepLink: URL(string: "catpawm://proactive")))
         #endif
         let deliveryID = serverIDs[s.id] ?? s.id  // one delivery id shared with APNs (server event_id when known)
         var q = quota; q.alias(deliveryID, to: s.id); quota = q
@@ -927,7 +927,7 @@ struct ProactiveSignal: Equatable, Sendable {
                                                 supersedes: eventID.map { ["pre-" + $0] } ?? [])
             note("intervene \(level.name) id=\(s.id) → \(out)")
             guard case .posted = out, level == .interrupt, let leave else { return }
-            AccountEpoch.shared.commit(token) { CatpawLeaveActivity.start(suggestionID: s.id, meetingTitle: meeting, leaveAt: leave) }
+            AccountEpoch.shared.commit(token) { catLeaveActivity.start(suggestionID: s.id, meetingTitle: meeting, leaveAt: leave) }
         }
     }
 
@@ -988,7 +988,7 @@ struct ProactiveSignal: Equatable, Sendable {
         }
         let r = EKReminder(eventStore: store)
         r.title = "准备：\(p.title)"
-        r.notes = "Catpaw 主动提醒 · operation_id=\(p.operationID)" + (p.place.isEmpty ? "" : "\n地点：\(p.place)")
+        r.notes = "cat 主动提醒 · operation_id=\(p.operationID)" + (p.place.isEmpty ? "" : "\n地点：\(p.place)")
         r.url = marker
         r.calendar = store.defaultCalendarForNewReminders()
         r.dueDateComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: p.due)
@@ -1184,7 +1184,7 @@ struct ProactiveSignal: Equatable, Sendable {
 
         if actionIdentifier == UNNotificationDefaultActionIdentifier {
             _ = resolveNotificationSuggestion(userInfo)
-            CatpawRouteCenter.shared.pending = .proactive
+            catRouteCenter.shared.pending = .proactive
             return true
         }
 
@@ -1261,9 +1261,9 @@ struct ProactiveSignal: Equatable, Sendable {
         }
     }
 
-    private func notificationContext(_ userInfo: [AnyHashable: Any]) -> CatpawScheduledMeetingNotification? {
+    private func notificationContext(_ userInfo: [AnyHashable: Any]) -> catScheduledMeetingNotification? {
         let now = ProactiveClock.now()
-        if let context = CatpawScheduledMeetingNotification(userInfo: userInfo, defaultLeadMinutes: defaultLeadMinutes, now: now) {
+        if let context = catScheduledMeetingNotification(userInfo: userInfo, defaultLeadMinutes: defaultLeadMinutes, now: now) {
             return context
         }
         // Only the legacy event-ID-only format needs an EventKit lookup. Invalid new metadata fails closed.
@@ -1277,7 +1277,7 @@ struct ProactiveSignal: Equatable, Sendable {
             recovered["catpaw_proactive_title"] = event.title ?? "日程"
             recovered["catpaw_proactive_start"] = event.startDate.timeIntervalSince1970
             recovered["catpaw_proactive_place"] = event.location ?? ""
-            return CatpawScheduledMeetingNotification(userInfo: recovered, defaultLeadMinutes: defaultLeadMinutes, now: now)
+            return catScheduledMeetingNotification(userInfo: recovered, defaultLeadMinutes: defaultLeadMinutes, now: now)
         }
         #endif
         return nil
@@ -1323,10 +1323,10 @@ struct ProactiveSignal: Equatable, Sendable {
             ProactiveEngine.shared.claimData(for: token.account)
             var all = load(); all[s.id] = s
             ProactiveSealedStore.set(try? JSONEncoder().encode(all), forKey: key)   // v1.1: sealed in the account's L2
-            CatpawWidgetSnapshotWriter.write(Array(all.values))
+            catWidgetSnapshotWriter.write(Array(all.values))
         }
     }
-    static func wipe() { ProactiveSealedStore.set(nil, forKey: key); CatpawWidgetSnapshotWriter.write([]) }
+    static func wipe() { ProactiveSealedStore.set(nil, forKey: key); catWidgetSnapshotWriter.write([]) }
     static func load() -> [String: ProactiveSuggestion] {
         ProactiveSealedStore.data(forKey: key).flatMap { try? JSONDecoder().decode([String: ProactiveSuggestion].self, from: $0) } ?? [:]
     }
@@ -1384,7 +1384,7 @@ struct ProactiveSignal: Equatable, Sendable {
             ProactiveEngine.shared.delivery.remove(bases: previous.filter { $0 != fresh }, token: token)
             s.status = .snoozed; s.taken = (s.taken ?? []) + [.init(action: action, at: ProactiveClock.now(), detail: ProactiveUndo.snoozeDetail(until: until, intent: intent))]
         case .dismiss:
-            CatpawLeaveActivity.stop(suggestionID: id)
+            catLeaveActivity.stop(suggestionID: id)
             ProactiveEngine.shared.delivery.remove(bases: ProactiveEngine.shared.snoozeBases(s), token: token)  // dismiss cancels every pending snooze
             s.status = .dismissed; s.taken = (s.taken ?? []) + [.init(action: action, at: ProactiveClock.now())]
         case .notify_attendees:
@@ -1443,7 +1443,7 @@ extension ProactiveLocalBackend {
         let title = pending?.title ?? "会议"
         let start = pending.map { $0.start.formatted(f) } ?? ""
         let place = pending?.place ?? ""
-        var lines = ["我可能稍晚到一下（Catpaw 提醒）。", "会议：\(title)" + (start.isEmpty ? "" : " · \(start)")]
+        var lines = ["我可能稍晚到一下（cat 提醒）。", "会议：\(title)" + (start.isEmpty ? "" : " · \(start)")]
         if !place.isEmpty { lines.append("地点：\(place)") }
         if let leaveAt = pending?.leaveAt {
             lines.append("我计划 \(leaveAt.formatted(f)) 出发")
@@ -1482,7 +1482,7 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
 /// #48: App Group snapshot for the Home/Lock widgets. The widget reads the same JSON (`catpaw.widget.snapshot.v1.json`);
 /// without the App Group entitlement (`group.com.yankj.catpawm`, needs portal registration) the container is nil,
 /// nothing is written and the widget shows its truthful empty state.
-@MainActor enum CatpawWidgetSnapshotWriter {
+@MainActor enum catWidgetSnapshotWriter {
     static let group = "group.com.yankj.catpawm"
     static let file = "catpaw.widget.snapshot.v1.json"
     static func write(_ suggestions: [ProactiveSuggestion]) {
@@ -1595,12 +1595,12 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
 import ActivityKit
 
 
-@MainActor enum CatpawLeaveActivity {
+@MainActor enum catLeaveActivity {
     static func start(suggestionID: String, meetingTitle: String, leaveAt: Date) {
-        CatpawLiveActivityCoordinator.shared.startLeaveCountdown(suggestionID: suggestionID, meetingTitle: meetingTitle, leaveAt: leaveAt)
+        catLiveActivityCoordinator.shared.startLeaveCountdown(suggestionID: suggestionID, meetingTitle: meetingTitle, leaveAt: leaveAt)
     }
     static func stop(suggestionID: String) {
-        CatpawLiveActivityCoordinator.shared.stopLeaveCountdown(suggestionID: suggestionID)
+        catLiveActivityCoordinator.shared.stopLeaveCountdown(suggestionID: suggestionID)
     }
     /// Sign-out: end every Live Activity of every type — departure countdowns (also from before a relaunch) and the
     /// work activity, whose pending start timer is cancelled (Codex PR91 p91b-3).
@@ -1610,11 +1610,11 @@ import ActivityKit
         stopAllObserver?()
         let ids = Set(Activity<CatpawLeaveAttributes>.activities.map { $0.attributes.suggestionID })
         for id in ids { stop(suggestionID: id) }
-        CatpawLiveActivityCoordinator.shared.resetForSignOut()
+        catLiveActivityCoordinator.shared.resetForSignOut()
     }
 }
 #else
-@MainActor enum CatpawLeaveActivity {
+@MainActor enum catLeaveActivity {
     static func start(suggestionID: String, meetingTitle: String, leaveAt: Date) {}
     static func stop(suggestionID: String) {}
     nonisolated(unsafe) static var stopAllObserver: (() -> Void)?
@@ -1627,7 +1627,7 @@ import ActivityKit
 /// UNUserNotificationCenter behind `ProactiveNotificationPoster` (Codex PR90c). The add is enqueued, never awaited
 /// inside the account barrier; its completion feeds the pipeline's late-completion cleanup.
 @MainActor final class ProactiveSystemPoster: ProactiveNotificationPoster {
-    /// Keys CatpawScheduledMeetingNotification reads as TimeInterval.
+    /// Keys catScheduledMeetingNotification reads as TimeInterval.
     static let numericKeys: Set<String> = ["catpaw_proactive_start", "catpaw_proactive_due"]
     func requestAuthorization() async -> Bool {
         #if os(iOS)

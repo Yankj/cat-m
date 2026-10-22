@@ -1,7 +1,7 @@
 #if canImport(XCTest)
 import Foundation
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 private final class ArtifactEditWireProtocol:URLProtocol,@unchecked Sendable {
     static var handler:((URLRequest) throws -> (Int,Data,String?))?
@@ -36,7 +36,7 @@ final class NativeArtifactEditTransportTests:XCTestCase {
         while stream.hasBytesAvailable {let count=stream.read(&chunk,maxLength:chunk.count);if count<=0 {break};data.append(contentsOf:chunk.prefix(count))};return data
     }
     private func rejectUnknown(_ work:() async throws -> Void,file:StaticString=#filePath,line:UInt=#line) async {
-        do {try await work();XCTFail("Wire failure accepted",file:file,line:line)} catch {XCTAssertFalse(error is ConversationDispatchFailure,"Dispatched POST became notSent",file:file,line:line);if case .conflict?=error as? CatpawError {XCTFail("Ambiguous response became definitive conflict",file:file,line:line)}}
+        do {try await work();XCTFail("Wire failure accepted",file:file,line:line)} catch {XCTAssertFalse(error is ConversationDispatchFailure,"Dispatched POST became notSent",file:file,line:line);if case .conflict?=error as? catError {XCTFail("Ambiguous response became definitive conflict",file:file,line:line)}}
     }
     @MainActor func testExactServerScopeVersionOperationAndRequestBytesUseActualAdapter() async throws {
         let c=try await ArtifactEditTestSupport.fixture();defer{c.remove();ArtifactEditWireProtocol.handler=nil}
@@ -82,7 +82,7 @@ final class NativeArtifactEditTransportTests:XCTestCase {
         let base=try await c.backend.readArtifact(c.reference,version:nil),request=try ArtifactEditTestSupport.request(base.artifact),credentials=ArtifactEditWireCredentials(),http=try backend(c.reference,credentials:credentials)
         let explicit=Data(#"{"schema_version":1,"error":{"code":"artifact_version_conflict","retryable":false,"reconciliation_required":false}}"#.utf8)
         ArtifactEditWireProtocol.handler={_ in (409,explicit,"application/json")}
-        do {_=try await http.amendArtifact(c.reference,request:request);XCTFail("Known conflict accepted")}catch {if case .conflict?=error as? CatpawError {}else {XCTFail("Known conflict was not classified")}}
+        do {_=try await http.amendArtifact(c.reference,request:request);XCTFail("Known conflict accepted")}catch {if case .conflict?=error as? catError {}else {XCTFail("Known conflict was not classified")}}
         let ambiguous=[#"{"schema_version":1,"error":{"code":"fixture_unknown","reconciliation_required":false}}"#,#"{"schema_version":1,"error":{"code":"fixture_unknown","retryable":false,"reconciliation_required":true}}"#,#"{"schema_version":1,"error":{"code":"fixture_unknown","retryable":true,"reconciliation_required":false}}"#,#"{"schema_version":1,"error":{"code":"fixture_unknown","retryable":false,"reconciliation_required":false,"reconciliation_required":false}}"#]
         for body in ambiguous {ArtifactEditWireProtocol.handler={_ in (409,Data(body.utf8),"application/json")};await rejectUnknown{_=try await http.amendArtifact(c.reference,request:request)}}
         for status in [401,403,429,500,302] {ArtifactEditWireProtocol.handler={_ in (status,explicit,"application/json")};await rejectUnknown{_=try await http.amendArtifact(c.reference,request:request)}}

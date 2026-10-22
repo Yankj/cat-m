@@ -33,13 +33,13 @@ public actor ConversationAcceptedWorkDraftService {
         await lock();defer{unlock()}
         guard !draft.raw.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,draft.raw.utf16.count<=8000 else {throw ConversationSessionError.invalidEvent}
         var loaded=try await load(draft.conversationID)
-        if let prior=loaded.state.draft,!replaceUnconfirmed {guard prior.id==draft.id,prior.raw.utf8.elementsEqual(draft.raw.utf8),prior.revisionTarget==draft.revisionTarget else {throw CatpawError.conflict}}
+        if let prior=loaded.state.draft,!replaceUnconfirmed {guard prior.id==draft.id,prior.raw.utf8.elementsEqual(draft.raw.utf8),prior.revisionTarget==draft.revisionTarget else {throw catError.conflict}}
         loaded.state.draft=draft
         try Task.checkCancellation()
         try await repository.commit(scope:scope,mutations:[.requireRevision(loaded.conversation.id,loaded.conversation.header.revision),try mutation(loaded)])
     }
     func revisionQueueMutation(draft:ConversationAcceptedWorkDraft,selection:ConversationRevisionWorkSelection) async throws -> Mutation {
-        guard draft.revisionTarget==selection.target,draft.raw.utf8.elementsEqual(selection.originalText.utf8) else {throw CatpawError.conflict}
+        guard draft.revisionTarget==selection.target,draft.raw.utf8.elementsEqual(selection.originalText.utf8) else {throw catError.conflict}
         return try await queueMutation(draft:draft,selection:selection.authorization)
     }
     /// Clearing the review commits only with the queue's exact confirmed selection and original text.
@@ -47,7 +47,7 @@ public actor ConversationAcceptedWorkDraftService {
         await lock();defer{unlock()}
         var loaded=try await load(draft.conversationID)
         guard loaded.state.draft==draft,draft.id==selection.decisionID,draft.options==selection.options,
-              subjectID==selection.subjectID else {throw CatpawError.conflict}
+              subjectID==selection.subjectID else {throw catError.conflict}
         loaded.state.draft=nil
         try Task.checkCancellation();return try mutation(loaded)
     }
@@ -55,9 +55,9 @@ public actor ConversationAcceptedWorkDraftService {
     private func load(_ id:UUID) async throws -> Loaded {
         guard !closed else {throw CancellationError()}
         let conversation=try await repository.record(id,scope:scope)
-        guard conversation.conversation != nil else {throw CatpawError.missing}
+        guard conversation.conversation != nil else {throw catError.missing}
         let record:StoredRecord
-        do {record=try await repository.record(Self.recordID(id),scope:scope)}catch CatpawError.missing{return .init(state:.init(schemaVersion:1,subjectID:subjectID,draft:nil),record:nil,conversation:conversation)}
+        do {record=try await repository.record(Self.recordID(id),scope:scope)}catch catError.missing{return .init(state:.init(schemaVersion:1,subjectID:subjectID,draft:nil),record:nil,conversation:conversation)}
         guard case .preference(let value)=record.payload,value.key==Self.key(id),value.value.utf8.count<=100000 else {throw ConversationSessionError.invalidEvent}
         let state=try JSONDecoder().decode(State.self,from:Data(value.value.utf8))
         guard state.schemaVersion==1,state.subjectID==subjectID,state.draft==nil || (state.draft?.conversationID==id && (state.draft?.raw.utf16.count ?? 0)<=8000) else {throw ConversationSessionError.invalidEvent}

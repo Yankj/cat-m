@@ -19,7 +19,7 @@ struct CreateTaskCardModel: Equatable {
         let task = raw["task"] as? [String: Any]
         let fields = task ?? raw
         title = (fields["title"] as? String) ?? ""
-        dueAt = (fields["due_at"] as? String).flatMap(CatpawProactiveClient.date)
+        dueAt = (fields["due_at"] as? String).flatMap(catProactiveClient.date)
         status = fields["status"] as? String
         recurrence = ((fields["recurrence"] as? [String: Any])?["freq"] as? String)
         taskID = task?["id"] as? String
@@ -44,21 +44,21 @@ struct CreateTaskCardModel: Equatable {
     private func content(_ card: CreateTaskCardModel) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Image(systemName: card.dueAt == nil ? "checklist" : "bell.fill").foregroundStyle(CatpawBrand.paw).accessibilityHidden(true)
-                Text(card.dueAt == nil ? ui("任务") : ui("提醒")).font(CatpawTypography.Role.caption.font.weight(.semibold)).foregroundStyle(CatpawColors.secondary)
+                Image(systemName: card.dueAt == nil ? "checklist" : "bell.fill").foregroundStyle(catBrand.paw).accessibilityHidden(true)
+                Text(card.dueAt == nil ? ui("任务") : ui("提醒")).font(catTypography.Role.caption.font.weight(.semibold)).foregroundStyle(catColors.secondary)
                 Spacer()
-                Text(stateText(card)).font(CatpawTypography.Role.caption.font).foregroundStyle(stateIsProblem(card) ? CatpawColors.attention : CatpawColors.secondary)
+                Text(stateText(card)).font(catTypography.Role.caption.font).foregroundStyle(stateIsProblem(card) ? catColors.attention : catColors.secondary)
                     .accessibilityIdentifier("chat.taskCard.state")
             }
             if !card.title.isEmpty {
-                Text(card.title).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
+                Text(card.title).font(catTypography.Role.body.font.weight(.semibold)).foregroundStyle(catColors.ink).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("chat.taskCard.title")
             }
             if let due = card.dueAt {
-                Label(due.formatted(date: .abbreviated, time: .shortened), systemImage: "clock").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                Label(due.formatted(date: .abbreviated, time: .shortened), systemImage: "clock").font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                     .accessibilityIdentifier("chat.taskCard.due")
             }
-            if let freq = card.recurrence { Label(recurrenceText(freq), systemImage: "repeat").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
+            if let freq = card.recurrence { Label(recurrenceText(freq), systemImage: "repeat").font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary) }
             if let id = card.taskID, case .created = card.state {
                 Button { detail = true } label: { Text(card.dueAt == nil ? ui("查看任务") : ui("查看提醒")).frame(maxWidth: .infinity) }
                     .primaryAction().accessibilityIdentifier("chat.taskCard.open")
@@ -66,7 +66,7 @@ struct CreateTaskCardModel: Equatable {
             }
         }
         .padding(14)
-        .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(catColors.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.taskCard." + (message.toolCallID ?? message.id.uuidString))
     }
@@ -89,7 +89,7 @@ struct CreateTaskCardModel: Equatable {
 @MainActor struct CreateTaskDetailSheet: View {
     let taskID: String
     let fallback: CreateTaskCardModel
-    @State private var task: CatpawProactiveTask?
+    @State private var task: catProactiveTask?
     @State private var loading = false
     @State private var error: String?
     @Environment(\.dismiss) private var dismiss
@@ -103,13 +103,13 @@ struct CreateTaskCardModel: Equatable {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 14) {
-                Text(task?.title ?? fallback.title).font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink)
-                if let due = task?.due_at.flatMap(CatpawProactiveClient.date) ?? fallback.dueAt {
-                    Label(due.formatted(date: .complete, time: .shortened), systemImage: "clock").foregroundStyle(CatpawColors.ink)
+                Text(task?.title ?? fallback.title).font(catTypography.Role.heading.font).foregroundStyle(catColors.ink)
+                if let due = task?.due_at.flatMap(catProactiveClient.date) ?? fallback.dueAt {
+                    Label(due.formatted(date: .complete, time: .shortened), systemImage: "clock").foregroundStyle(catColors.ink)
                 }
-                Label(Self.statusText(task?.status ?? fallback.status, ui), systemImage: "circle.dashed").foregroundStyle(CatpawColors.secondary)
+                Label(Self.statusText(task?.status ?? fallback.status, ui), systemImage: "circle.dashed").foregroundStyle(catColors.secondary)
                     .accessibilityIdentifier("chat.taskCard.detail.status")
-                if let error { Text(error).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.taskCard.detail.error") }
+                if let error { Text(error).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.taskCard.detail.error") }
                 Spacer()
                 if (task?.status ?? fallback.status) == "open" || (task?.status ?? fallback.status) == "snoozed" {
                     Button { complete() } label: { Text(ui("完成")).frame(maxWidth: .infinity) }
@@ -125,13 +125,13 @@ struct CreateTaskCardModel: Equatable {
 
     private func load() async {
         loading = true; defer { loading = false }
-        do { task = try await CatpawProactiveClient.shared.task(taskID); error = nil }
+        do { task = try await catProactiveClient.shared.task(taskID); error = nil }
         catch { self.error = ui("暂时无法读取最新状态") }
     }
     private func complete() {
         Task {
             loading = true; defer { loading = false }
-            do { task = try await CatpawProactiveClient.shared.update(taskID: taskID, fields: ["status": "done"]); error = nil; CatpawProactiveFeed.shared.refreshSoon() }
+            do { task = try await catProactiveClient.shared.update(taskID: taskID, fields: ["status": "done"]); error = nil; catProactiveFeed.shared.refreshSoon() }
             catch { self.error = ui("操作未完成，请稍后重试") }
         }
     }

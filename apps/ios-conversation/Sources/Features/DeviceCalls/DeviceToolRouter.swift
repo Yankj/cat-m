@@ -169,7 +169,7 @@ import UserNotifications
                 r.dueDateComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: due); r.addAlarm(EKAlarm(absoluteDate: due))
             }
             r.calendar = store.calendars(for: .reminder).first { $0.title == s("list") } ?? store.defaultCalendarForNewReminders()
-            r.notes = "Catpaw · " + DeviceToolContract.callMarker(call.call_id)
+            r.notes = "cat · " + DeviceToolContract.callMarker(call.call_id)
             guard EKEventStore.authorizationStatus(for: .reminder) == .fullAccess else { return done(.denied, ["reason": .string("permission_revoked")]) }   // p89i
             let receipts = self.receipts
             if let refused = save({

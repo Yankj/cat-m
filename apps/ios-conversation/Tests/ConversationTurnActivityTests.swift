@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
 import UIKit
-@testable import CatpawM
+@testable import cat
 
 final class ConversationTurnActivityTests:XCTestCase {
     private func session(state:ConversationTurnRecord.State = .running)->ConversationSession {
@@ -80,43 +80,43 @@ final class ConversationTurnActivityTests:XCTestCase {
 }
 
 /// chat-ux-1505 #4a: every stage transition maps to a Live Activity phase (no stage is dropped → no stuck 「正在思考…」).
-final class CatpawWorkPhaseMappingTests: XCTestCase {
+final class catWorkPhaseMappingTests: XCTestCase {
     private func device(_ tool: String, confirm: String) -> ConversationTurnEvent.Payload {
         .deviceCall(ConversationDeviceCall(interruptID: UUID().uuidString.lowercased(), callID: "c-\(tool)", tool: tool, args: Data("{}".utf8), confirm: confirm, ttlSec: 600, argsHash: String(repeating: "a", count: 64), expiresAt: "2099-01-01T00:00:00Z"))
     }
     func testStagesMap() {
-        XCTAssertEqual(CatpawWorkPhase.from(.started(requestHash: "h", conversationRevision: 1, grantEpoch: 1)), .thinking)
-        XCTAssertEqual(CatpawWorkPhase.from(.reasoningSummary(messageID: UUID(), text: "x", thinkingMs: nil)), .thinking)
-        XCTAssertEqual(CatpawWorkPhase.from(.toolStarted(callID: "1", name: "calendar_list", arguments: "{}")), .tool("calendar_list"))
-        XCTAssertNil(CatpawWorkPhase.from(.suspended(interruptIDs: ["i"], expiresAt: "2099-01-01T00:00:00Z")))   // B1
-        XCTAssertEqual(CatpawWorkPhase.from(.approvalResolved(interruptID: "i", callID: "1", decision: "allow", remember: false)), .thinking)
-        XCTAssertEqual(CatpawWorkPhase.from(.textDelta(messageID: UUID(), text: "a")), .writing)
-        XCTAssertEqual(CatpawWorkPhase.from(.completed(messageID: UUID(), finalTextHash: "h")), .done)
-        XCTAssertEqual(CatpawWorkPhase.from(.failed(message: "x", reconciliationRequired: false)), .failed)
-        XCTAssertNil(CatpawWorkPhase.from(.thread("t")))
+        XCTAssertEqual(catWorkPhase.from(.started(requestHash: "h", conversationRevision: 1, grantEpoch: 1)), .thinking)
+        XCTAssertEqual(catWorkPhase.from(.reasoningSummary(messageID: UUID(), text: "x", thinkingMs: nil)), .thinking)
+        XCTAssertEqual(catWorkPhase.from(.toolStarted(callID: "1", name: "calendar_list", arguments: "{}")), .tool("calendar_list"))
+        XCTAssertNil(catWorkPhase.from(.suspended(interruptIDs: ["i"], expiresAt: "2099-01-01T00:00:00Z")))   // B1
+        XCTAssertEqual(catWorkPhase.from(.approvalResolved(interruptID: "i", callID: "1", decision: "allow", remember: false)), .thinking)
+        XCTAssertEqual(catWorkPhase.from(.textDelta(messageID: UUID(), text: "a")), .writing)
+        XCTAssertEqual(catWorkPhase.from(.completed(messageID: UUID(), finalTextHash: "h")), .done)
+        XCTAssertEqual(catWorkPhase.from(.failed(message: "x", reconciliationRequired: false)), .failed)
+        XCTAssertNil(catWorkPhase.from(.thread("t")))
     }
     func testDeviceCallsNeedingACardAwaitUser_readOnlyAutoRunStayTool() {
-        XCTAssertEqual(CatpawWorkPhase.from(device("calendar_create", confirm: "card")), .awaitingUser)
-        XCTAssertEqual(CatpawWorkPhase.from(device("places_search", confirm: "card")), .tool("places_search"))
-        XCTAssertEqual(CatpawWorkPhase.from(device("calendar_list", confirm: "none")), .tool("calendar_list"))
+        XCTAssertEqual(catWorkPhase.from(device("calendar_create", confirm: "card")), .awaitingUser)
+        XCTAssertEqual(catWorkPhase.from(device("places_search", confirm: "card")), .tool("places_search"))
+        XCTAssertEqual(catWorkPhase.from(device("calendar_list", confirm: "none")), .tool("calendar_list"))
     }
     func testKindsMatchSharedAttributesAndTerminals() {
         typealias K = CatpawWorkAttributes.ContentState.Kind
-        XCTAssertEqual(CatpawWorkPhase.thinking.kind, K.thinking)
-        XCTAssertEqual(CatpawWorkPhase.tool("x").kind, K.tool)
-        XCTAssertEqual(CatpawWorkPhase.writing.kind, K.writing)
-        XCTAssertEqual(CatpawWorkPhase.awaitingUser.kind, K.needsUser)
-        XCTAssertEqual(CatpawWorkPhase.done.kind, K.done)
-        XCTAssertEqual(CatpawWorkPhase.failed.kind, K.failed)
-        XCTAssertTrue(CatpawWorkPhase.done.isTerminal && CatpawWorkPhase.failed.isTerminal && !CatpawWorkPhase.awaitingUser.isTerminal)
-        XCTAssertEqual(CatpawWorkPhase.tool("calendar_list").bodyKey.key, "查看日历")
-        XCTAssertEqual(CatpawWorkPhase.tool("some_unknown_tool").bodyKey.key, "正在处理")
-        XCTAssertEqual(CatpawWorkPhase.tool("calendar_list").body(.english), "Checking calendar")
+        XCTAssertEqual(catWorkPhase.thinking.kind, K.thinking)
+        XCTAssertEqual(catWorkPhase.tool("x").kind, K.tool)
+        XCTAssertEqual(catWorkPhase.writing.kind, K.writing)
+        XCTAssertEqual(catWorkPhase.awaitingUser.kind, K.needsUser)
+        XCTAssertEqual(catWorkPhase.done.kind, K.done)
+        XCTAssertEqual(catWorkPhase.failed.kind, K.failed)
+        XCTAssertTrue(catWorkPhase.done.isTerminal && catWorkPhase.failed.isTerminal && !catWorkPhase.awaitingUser.isTerminal)
+        XCTAssertEqual(catWorkPhase.tool("calendar_list").bodyKey.key, "查看日历")
+        XCTAssertEqual(catWorkPhase.tool("some_unknown_tool").bodyKey.key, "正在处理")
+        XCTAssertEqual(catWorkPhase.tool("calendar_list").body(.english), "Checking calendar")
     }
 }
 
 /// ux-round-1505: ContentState gained optional fields; payloads from older builds and the proactive server must still decode.
-final class CatpawWorkContentStateCompatibilityTests: XCTestCase {
+final class catWorkContentStateCompatibilityTests: XCTestCase {
     func testOldPayloadDecodesWithNilNewFields() throws {
         let old = #"{"title":"提醒","body":"10 点给客户回电话","kind":"reminder_due","taskID":"t-1"}"#
         let s = try JSONDecoder().decode(CatpawWorkAttributes.ContentState.self, from: Data(old.utf8))
@@ -124,7 +124,7 @@ final class CatpawWorkContentStateCompatibilityTests: XCTestCase {
         XCTAssertNil(s.startedAt); XCTAssertNil(s.endedAt); XCTAssertNil(s.step); XCTAssertNil(s.tool); XCTAssertNil(s.summary)
     }
     func testNewPayloadRoundTripsAndStaysSmall() throws {
-        let s = CatpawWorkAttributes.ContentState(title: "Catpaw 正在工作", body: "正在查日历", kind: "tool", taskID: UUID().uuidString,
+        let s = CatpawWorkAttributes.ContentState(title: "cat 正在工作", body: "正在查日历", kind: "tool", taskID: UUID().uuidString,
                                                   startedAt: Date(timeIntervalSince1970: 1_800_000_000), endedAt: nil, step: 2, tool: "calendar_list", summary: "评审会加进日历")
         let data = try JSONEncoder().encode(s)
         XCTAssertLessThan(data.count, 4096)
@@ -132,17 +132,17 @@ final class CatpawWorkContentStateCompatibilityTests: XCTestCase {
     }
 }
 
-/// chat-ux-1505 follow-up: the Live Activity title is the user's task text, not always 「Catpaw 正在处理」.
-final class CatpawLiveActivityTaskTitleTests: XCTestCase {
+/// chat-ux-1505 follow-up: the Live Activity title is the user's task text, not always 「cat 正在处理」.
+final class catLiveActivityTaskTitleTests: XCTestCase {
     func testTaskTitleIsFirstLineCollapsedAndTruncated() {
-        XCTAssertEqual(CatpawLiveActivityCoordinator.taskTitle("附近有哪些适合办公的咖啡馆？"), "附近有哪些适合办公的咖啡馆？")
-        XCTAssertEqual(CatpawLiveActivityCoordinator.taskTitle("\n  帮我  起草周报 \n第二行细节"), "帮我 起草周报")
+        XCTAssertEqual(catLiveActivityCoordinator.taskTitle("附近有哪些适合办公的咖啡馆？"), "附近有哪些适合办公的咖啡馆？")
+        XCTAssertEqual(catLiveActivityCoordinator.taskTitle("\n  帮我  起草周报 \n第二行细节"), "帮我 起草周报")
         let long = String(repeating: "很", count: 40)
-        let t = CatpawLiveActivityCoordinator.taskTitle(long)
-        XCTAssertEqual(t?.count, CatpawLiveActivityCoordinator.taskTitleLimit)
+        let t = catLiveActivityCoordinator.taskTitle(long)
+        XCTAssertEqual(t?.count, catLiveActivityCoordinator.taskTitleLimit)
         XCTAssertEqual(t?.hasSuffix("…"), true)
-        XCTAssertNil(CatpawLiveActivityCoordinator.taskTitle("  \n \n"))
-        XCTAssertNil(CatpawLiveActivityCoordinator.taskTitle(nil))
+        XCTAssertNil(catLiveActivityCoordinator.taskTitle("  \n \n"))
+        XCTAssertNil(catLiveActivityCoordinator.taskTitle(nil))
     }
 }
 
@@ -270,7 +270,7 @@ final class StatusLinePrereviewTests: XCTestCase {
         var card = StatusLineReducer()
         card.apply(device("calendar_create", confirm: "card")); card.apply(suspended)
         XCTAssertEqual(card.target, .awaitingUser(tool: "calendar_create"))
-        XCTAssertNil(CatpawWorkPhase.from(suspended))
+        XCTAssertNil(catWorkPhase.from(suspended))
     }
     /// P1-1: a rebuilt projection restores waiting.
     func testRestoreAwaiting() {
@@ -322,49 +322,49 @@ final class StatusLinePrereviewTests: XCTestCase {
 }
 
 /// v1.1 item 3: Live Activity title = the user's own task text.
-@MainActor final class CatpawTaskTitleTests: XCTestCase {
+@MainActor final class catTaskTitleTests: XCTestCase {
     func testFirstLineTrimmedCollapsedAndCapped() {
-        XCTAssertEqual(CatpawTaskTitle.make("  把评审会   加进日历 \n明天下午三点，提醒我"), "把评审会 加进日历")
-        XCTAssertEqual(CatpawTaskTitle.make("\n\n  hello\nworld"), "hello")
-        let long = CatpawTaskTitle.make("请帮我整理一下这周所有会议的纪要并发给团队每个人")!
-        XCTAssertEqual(long.count, CatpawTaskTitle.limit); XCTAssertTrue(long.hasSuffix("…"))
-        XCTAssertEqual(CatpawTaskTitle.make("abcdefghijabcdefghij"), "abcdefghijabcdefghij")
-        XCTAssertNil(CatpawTaskTitle.make(" \n\t "))
+        XCTAssertEqual(catTaskTitle.make("  把评审会   加进日历 \n明天下午三点，提醒我"), "把评审会 加进日历")
+        XCTAssertEqual(catTaskTitle.make("\n\n  hello\nworld"), "hello")
+        let long = catTaskTitle.make("请帮我整理一下这周所有会议的纪要并发给团队每个人")!
+        XCTAssertEqual(long.count, catTaskTitle.limit); XCTAssertTrue(long.hasSuffix("…"))
+        XCTAssertEqual(catTaskTitle.make("abcdefghijabcdefghij"), "abcdefghijabcdefghij")
+        XCTAssertNil(catTaskTitle.make(" \n\t "))
     }
     /// R2 (NoBug P1-2): contacts are masked before the 20-character cut; ordinary short numbers stay.
     func testR2PhonesEmailsAndURLsAreMaskedBeforeTruncation() {
-        XCTAssertEqual(CatpawTaskTitle.make("给张三打 13812345678"), "给张三打 •••")
-        XCTAssertEqual(CatpawTaskTitle.make("给张三打13812345678"), "给张三打•••")
-        XCTAssertEqual(CatpawTaskTitle.make("拨 +86 138-1234-5678 再说"), "拨 ••• 再说")
-        XCTAssertEqual(CatpawTaskTitle.make("发邮件给 alice.w@example.com 说一声"), "发邮件给 ••• 说一声")
-        XCTAssertEqual(CatpawTaskTitle.make("看看https://example.com/a?b=1"), "看看•••")
-        XCTAssertEqual(CatpawTaskTitle.make("明天3点开会 房间 12345"), "明天3点开会 房间 12345")
+        XCTAssertEqual(catTaskTitle.make("给张三打 13812345678"), "给张三打 •••")
+        XCTAssertEqual(catTaskTitle.make("给张三打13812345678"), "给张三打•••")
+        XCTAssertEqual(catTaskTitle.make("拨 +86 138-1234-5678 再说"), "拨 ••• 再说")
+        XCTAssertEqual(catTaskTitle.make("发邮件给 alice.w@example.com 说一声"), "发邮件给 ••• 说一声")
+        XCTAssertEqual(catTaskTitle.make("看看https://example.com/a?b=1"), "看看•••")
+        XCTAssertEqual(catTaskTitle.make("明天3点开会 房间 12345"), "明天3点开会 房间 12345")
         // a long number that would straddle the cut is masked first, so no digits of it survive truncation
-        let t = CatpawTaskTitle.make("请帮我把这段话发给同事并打电话 13812345678 确认")!
-        XCTAssertFalse(t.contains("138")); XCTAssertLessThanOrEqual(t.count, CatpawTaskTitle.limit)
-        XCTAssertFalse(CatpawTaskTitle.make("联系 bob@example.com 或 021-6543 2100")!.contains("@"))
+        let t = catTaskTitle.make("请帮我把这段话发给同事并打电话 13812345678 确认")!
+        XCTAssertFalse(t.contains("138")); XCTAssertLessThanOrEqual(t.count, catTaskTitle.limit)
+        XCTAssertFalse(catTaskTitle.make("联系 bob@example.com 或 021-6543 2100")!.contains("@"))
     }
     /// R3 (NoBug P2-R2-1): NFKC first (full-width ＠ / － / digits), dash and dot separators; only masked spans change.
     func testR3FullWidthDashDotAndIDNumbersAreMasked() {
-        XCTAssertEqual(CatpawTaskTitle.make("打138－1234－5678，谢谢"), "打•••，谢谢")   // full-width hyphen; full-width comma kept
-        XCTAssertEqual(CatpawTaskTitle.make("打138—1234—5678"), "打•••")             // em dash
-        XCTAssertEqual(CatpawTaskTitle.make("打138–1234–5678"), "打•••")             // en dash
-        XCTAssertEqual(CatpawTaskTitle.make("打138.1234.5678"), "打•••")
-        XCTAssertEqual(CatpawTaskTitle.make("打138·1234·5678"), "打•••")
-        XCTAssertEqual(CatpawTaskTitle.make("打１３８１２３４５６７８"), "打•••")       // full-width digits
-        XCTAssertEqual(CatpawTaskTitle.make("发给 a＠b.com 吧"), "发给 ••• 吧")       // full-width @
-        XCTAssertEqual(CatpawTaskTitle.make("ｂｏｂ＠ｅｘａｍｐｌｅ．ｃｏｍ"), "•••")
-        XCTAssertEqual(CatpawTaskTitle.make("身份证 11010119900307123X"), "身份证 •••")  // no trailing X
-        XCTAssertEqual(CatpawTaskTitle.make("明天下午三点，提醒我"), "明天下午三点，提醒我")   // unmasked text untouched by NFKC
-        XCTAssertEqual(CatpawTaskTitle.make("房号 3.5 楼"), "房号 3.5 楼")
+        XCTAssertEqual(catTaskTitle.make("打138－1234－5678，谢谢"), "打•••，谢谢")   // full-width hyphen; full-width comma kept
+        XCTAssertEqual(catTaskTitle.make("打138—1234—5678"), "打•••")             // em dash
+        XCTAssertEqual(catTaskTitle.make("打138–1234–5678"), "打•••")             // en dash
+        XCTAssertEqual(catTaskTitle.make("打138.1234.5678"), "打•••")
+        XCTAssertEqual(catTaskTitle.make("打138·1234·5678"), "打•••")
+        XCTAssertEqual(catTaskTitle.make("打１３８１２３４５６７８"), "打•••")       // full-width digits
+        XCTAssertEqual(catTaskTitle.make("发给 a＠b.com 吧"), "发给 ••• 吧")       // full-width @
+        XCTAssertEqual(catTaskTitle.make("ｂｏｂ＠ｅｘａｍｐｌｅ．ｃｏｍ"), "•••")
+        XCTAssertEqual(catTaskTitle.make("身份证 11010119900307123X"), "身份证 •••")  // no trailing X
+        XCTAssertEqual(catTaskTitle.make("明天下午三点，提醒我"), "明天下午三点，提醒我")   // unmasked text untouched by NFKC
+        XCTAssertEqual(catTaskTitle.make("房号 3.5 楼"), "房号 3.5 楼")
     }
     func testHandOffIsPerOperationAndConsumedOnce() {
         let a = UUID(), b = UUID()
-        CatpawTaskTitles.note("订明早的车", operationID: a)
-        XCTAssertNil(CatpawTaskTitles.take(b))
-        XCTAssertEqual(CatpawTaskTitles.take(a), "订明早的车")
-        XCTAssertNil(CatpawTaskTitles.take(a))
-        CatpawTaskTitles.note("x", operationID: b); CatpawTaskTitles.reset(); XCTAssertNil(CatpawTaskTitles.take(b))
+        catTaskTitles.note("订明早的车", operationID: a)
+        XCTAssertNil(catTaskTitles.take(b))
+        XCTAssertEqual(catTaskTitles.take(a), "订明早的车")
+        XCTAssertNil(catTaskTitles.take(a))
+        catTaskTitles.note("x", operationID: b); catTaskTitles.reset(); XCTAssertNil(catTaskTitles.take(b))
     }
 }
 
@@ -389,10 +389,10 @@ final class AccountConversationLocalTests: XCTestCase {
 
 #if canImport(ActivityKit) && os(iOS)
 /// R2 (NoBug P1-2): an ended turn's task title leaves the lock screen after ~2 min, whatever the outcome.
-@MainActor final class CatpawLiveActivityLingerTests: XCTestCase {
+@MainActor final class catLiveActivityLingerTests: XCTestCase {
     func testR2EndedTurnsLingerAtMostTwoMinutes() {
         for kind in [CatpawWorkAttributes.ContentState.Kind.done, CatpawWorkAttributes.ContentState.Kind.failed, "stopped"] {
-            XCTAssertLessThanOrEqual(CatpawLiveActivityCoordinator.dismissAfter(kind: kind), 2 * 60, kind)
+            XCTAssertLessThanOrEqual(catLiveActivityCoordinator.dismissAfter(kind: kind), 2 * 60, kind)
         }
     }
 }
@@ -901,7 +901,7 @@ final class ComposerDictationEntryStructureTests: XCTestCase {
     }
 }
 
-// MARK: - fix/context-window-v11x live text (`text_preview`, opt-in X-Catpaw-Live-Text: 1)
+// MARK: - fix/context-window-v11x live text (`text_preview`, opt-in X-cat-Live-Text: 1)
 
 final class LiveTextPreviewMergeTests: XCTestCase {
     private func preview(_ offset: Int, _ text: String, id: UUID = UUID(), base: Int = 1) -> ConversationTextPreview {
@@ -1172,7 +1172,7 @@ private actor LiveTextTestBackend: ConversationBackend {
             c.finish()
         }
     }
-    func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { throw CatpawError.unavailable("Unused live text test observation") }
+    func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { throw catError.unavailable("Unused live text test observation") }
 }
 
 // MARK: rev 3 (NoBug P1-1 / P2-3 / P2-4 / P2-5 / P2-6 / P2-8)
@@ -1226,8 +1226,8 @@ final class LiveTextRetractionTests: XCTestCase {
 final class LiveTextPhaseTests: XCTestCase {
     func testTextPreviewIsWriting() {
         let preview = ConversationTextPreview(messageID: UUID(), offset: 0, text: "a", baseSequence: 1)!
-        XCTAssertEqual(CatpawWorkPhase.from(.textPreview(preview)), .writing)
-        XCTAssertEqual(CatpawWorkPhase.from(.textDelta(messageID: UUID(), text: "a")), .writing)
+        XCTAssertEqual(catWorkPhase.from(.textPreview(preview)), .writing)
+        XCTAssertEqual(catWorkPhase.from(.textDelta(messageID: UUID(), text: "a")), .writing)
     }
 }
 
@@ -1400,9 +1400,9 @@ final class LiveTextWireTests: XCTestCase {
         XCTAssertNil(ConversationFirstView.principalTitleMaxWidth(barWidth: 0))
         XCTAssertEqual(ConversationFirstView.principalTitleMaxWidth(barWidth: 393), 393 - 136)
         XCTAssertEqual(ConversationFirstView.principalTitleMaxWidth(barWidth: 200), 120)
-        let f = CatpawTypography.font(.body, size: .large)
+        let f = catTypography.font(.body, size: .large)
         XCTAssertEqual(ConversationFirstView.titleTextWidth("明天上午 10 点提醒我给客户回电话", barWidth: 393, font: f), 393 - 136 - 120, "long title is capped")
-        XCTAssertLessThan(ConversationFirstView.titleTextWidth("Catpaw", barWidth: 393, font: f)!, 80, "short title keeps its natural width")
+        XCTAssertLessThan(ConversationFirstView.titleTextWidth("cat", barWidth: 393, font: f)!, 80, "short title keeps its natural width")
     }
 }
 

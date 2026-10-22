@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Brand renderer for launch static frame.
 
-Generates `CatpawBrand/LaunchFirstFrame` = soft orange orb + white cat-head
+Generates `catBrand/LaunchFirstFrame` = soft orange orb + white cat-head
 (from `BrandMarkOnOrange`), matching LaunchMarkView's final keyframe.
 
 Does NOT regenerate AppIcon or BrandMark* — those come from docs/refs/brand
@@ -57,7 +57,7 @@ def write_imageset(root: Path, name: str, files: list[tuple[int, Image.Image]]) 
 
 
 def main(assets: Path) -> None:
-    brand = assets / "CatpawBrand"
+    brand = assets / "catBrand"
     mark2 = Image.open(brand / "BrandMarkOnOrange.imageset" / "BrandMarkOnOrange@2x.png").convert("RGBA")
     mark3 = Image.open(brand / "BrandMarkOnOrange.imageset" / "BrandMarkOnOrange@3x.png").convert("RGBA")
     write_imageset(brand, "LaunchFirstFrame", [(2, make_orb(210, mark2)), (3, make_orb(315, mark3))])

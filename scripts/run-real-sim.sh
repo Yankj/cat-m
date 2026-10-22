@@ -19,8 +19,8 @@ fi
 
 device="9A4BC49A-CCE4-45D6-A1DC-6F072236DAB6"
 derived_data="/tmp/catpaw-dd-merge"
-app="$derived_data/Build/Products/Debug-iphonesimulator/CatpawM.app"
-bundle_id="com.example.CatpawM.ConversationFirst.Auth"
+app="$derived_data/Build/Products/Debug-iphonesimulator/cat.app"
+bundle_id="com.example.cat.ConversationFirst.Auth"
 
 device_state="$(/usr/bin/xcrun simctl list devices available -j | /usr/bin/python3 -c 'import json,sys; data=json.load(sys.stdin); matches=[item for devices in data["devices"].values() for item in devices if item["udid"]==sys.argv[1]]; assert len(matches)==1,"Requested simulator is unavailable"; print(matches[0]["state"])' "$device")"
 if [[ "$device_state" != Booted ]]; then
@@ -29,8 +29,8 @@ fi
 /usr/bin/xcrun simctl bootstatus "$device" -b
 
 /usr/bin/xcodebuild \
-  -project apps/ios-conversation/CatpawM.xcodeproj \
-  -scheme CatpawM \
+  -project apps/ios-conversation/cat.xcodeproj \
+  -scheme cat \
   -destination "platform=iOS Simulator,id=$device" \
   -derivedDataPath "$derived_data" \
   build

@@ -34,19 +34,19 @@ import UniformTypeIdentifiers
             if !selected.isEmpty {
                 Button { Task { await addSelected() } } label: {
                     Text(adding ? ui("正在添加…") : ui("已选择 {0} · 添加", [String(selected.count)]))
-                        .font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.onInk)
+                        .font(catTypography.Role.body.font.weight(.semibold)).foregroundStyle(catColors.onInk)
                         .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(CatpawColors.ink, in: Capsule())
+                        .background(catColors.ink, in: Capsule())
                 }
-                .buttonStyle(CatpawPressButtonStyle()).disabled(adding)
+                .buttonStyle(catPressButtonStyle()).disabled(adding)
                 .accessibilityIdentifier("chat.attach.add")
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .padding(14)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(CatpawColors.separator.opacity(0.6), lineWidth: 0.5))
-        .shadow(color: CatpawColors.ink.opacity(0.18), radius: 24, y: 8)
+        .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(catColors.separator.opacity(0.6), lineWidth: 0.5))
+        .shadow(color: catColors.ink.opacity(0.18), radius: 24, y: 8)
         .animation(.snappy(duration: 0.25), value: selected.isEmpty)
         .task { await library.load() }
         .accessibilityElement(children: .contain)
@@ -70,13 +70,13 @@ import UniformTypeIdentifiers
     private func tile(_ title: String, _ symbol: String, id: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 6) {
-                Image(systemName: symbol).font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink)
-                Text(title).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.ink)
+                Image(systemName: symbol).font(catTypography.Role.heading.font).foregroundStyle(catColors.ink)
+                Text(title).font(catTypography.Role.secondary.font).foregroundStyle(catColors.ink)
             }
             .frame(maxWidth: .infinity, minHeight: 64)
-            .background(CatpawColors.panel.opacity(0.7), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(catColors.panel.opacity(0.7), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
-        .buttonStyle(CatpawPressButtonStyle())
+        .buttonStyle(catPressButtonStyle())
         .accessibilityIdentifier("chat.attach." + id)
     }
 
@@ -86,10 +86,10 @@ import UniformTypeIdentifiers
             ProgressView().frame(maxWidth: .infinity, minHeight: cell)
         case .denied:
             HStack(spacing: 8) {
-                Text(ui("允许访问照片后，这里会显示最近的照片。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                Text(ui("允许访问照片后，这里会显示最近的照片。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                 Spacer(minLength: 0)
                 Button(ui("去设置")) { if let u = URL(string: UIApplication.openSettingsURLString) { openURL(u) } }
-                    .font(CatpawTypography.Role.secondary.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+                    .font(catTypography.Role.secondary.font.weight(.semibold)).foregroundStyle(catColors.ink)
             }.frame(minHeight: 44)
         case .ready:
             ScrollView(.horizontal, showsIndicators: false) {
@@ -108,15 +108,15 @@ import UniformTypeIdentifiers
             PhotoThumb(asset: asset, side: cell)
                 .overlay(alignment: .topTrailing) {
                     ZStack {
-                        Circle().fill(order == nil ? CatpawColors.ink.opacity(0.25) : CatpawBrand.paw)
-                        Circle().stroke(CatpawColors.onInk, lineWidth: 1.5)
-                        if let order { Text(verbatim: "\(order + 1)").font(CatpawTypography.Role.caption.font.weight(.bold)).foregroundStyle(CatpawColors.ink) }
+                        Circle().fill(order == nil ? catColors.ink.opacity(0.25) : catBrand.paw)
+                        Circle().stroke(catColors.onInk, lineWidth: 1.5)
+                        if let order { Text(verbatim: "\(order + 1)").font(catTypography.Role.caption.font.weight(.bold)).foregroundStyle(catColors.ink) }
                     }
                     .frame(width: 24, height: 24).padding(5)
                 }
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(order == nil ? Color.clear : CatpawBrand.paw, lineWidth: 2))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(order == nil ? Color.clear : catBrand.paw, lineWidth: 2))
         }
-        .buttonStyle(CatpawPressButtonStyle())
+        .buttonStyle(catPressButtonStyle())
         .sensoryFeedback(.selection, trigger: order != nil)
         .accessibilityLabel(ui("照片"))
         .accessibilityValue(order == nil ? "" : ui("已选择"))
@@ -194,7 +194,7 @@ private struct PhotoThumb: View {
     @Environment(\.displayScale) private var scale
     var body: some View {
         ZStack {
-            CatpawColors.panel
+            catColors.panel
             if let image { Image(uiImage: image).resizable().scaledToFill() }
         }
         .frame(width: side, height: side)
@@ -238,7 +238,7 @@ extension View {
         overlay(alignment: .bottom) {
             if isPresented.wrappedValue {
                 ZStack(alignment: .bottom) {
-                    CatpawColors.ink.opacity(0.12).ignoresSafeArea().onTapGesture { isPresented.wrappedValue = false }
+                    catColors.ink.opacity(0.12).ignoresSafeArea().onTapGesture { isPresented.wrappedValue = false }
                         .accessibilityHidden(true)
                     ComposerAttachPopoverView(remaining: remaining, onAdd: onAdd, onDismiss: { isPresented.wrappedValue = false })
                         .padding(.horizontal, 12).padding(.bottom, 8)

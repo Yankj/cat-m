@@ -8,12 +8,12 @@ import SwiftUI
         TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { context in
             let t = reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate
             ZStack {
-                CatpawColors.background
+                catColors.background
                 if #available(iOS 18.0, *) {
                     MeshGradient(width: 3, height: 3, points: Self.points(t), colors: Self.colors)
                         .opacity(0.55)
                 } else {
-                    LinearGradient(colors: [CatpawBrand.paw.opacity(0.35), CatpawColors.background, CatpawBrand.paw.opacity(0.18)],
+                    LinearGradient(colors: [catBrand.paw.opacity(0.35), catColors.background, catBrand.paw.opacity(0.18)],
                                    startPoint: UnitPoint(x: 0.5 + 0.4 * cos(t / 6), y: 0), endPoint: UnitPoint(x: 0.5 - 0.4 * cos(t / 6), y: 1))
                 }
             }
@@ -22,9 +22,9 @@ import SwiftUI
         .accessibilityHidden(true)
     }
     private static let colors: [Color] = [
-        CatpawBrand.paw.opacity(0.55), CatpawColors.background, CatpawBrand.paw.opacity(0.25),
-        CatpawColors.background, CatpawBrand.paw.opacity(0.35), CatpawColors.background,
-        CatpawBrand.paw.opacity(0.2), CatpawColors.background, CatpawBrand.paw.opacity(0.5),
+        catBrand.paw.opacity(0.55), catColors.background, catBrand.paw.opacity(0.25),
+        catColors.background, catBrand.paw.opacity(0.35), catColors.background,
+        catBrand.paw.opacity(0.2), catColors.background, catBrand.paw.opacity(0.5),
     ]
     private static func points(_ t: Double) -> [SIMD2<Float>] {
         func w(_ a: Double, _ speed: Double) -> Float { Float(0.5 + 0.18 * sin(t / speed + a)) }

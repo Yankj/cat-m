@@ -6,7 +6,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 
 root = Path(__file__).resolve().parents[1]
-project = root / 'CatpawM.xcodeproj'
+project = root / 'cat.xcodeproj'
 objects = json.loads(subprocess.check_output([
     'plutil', '-convert', 'json', '-o', '-', str(project / 'project.pbxproj')
 ]))['objects']
@@ -21,7 +21,7 @@ for identifier, target in targets.items():
         paths = [objects[objects[build]['fileRef']]['path'] for build in phase['files']]
         assert len(paths) == len(set(paths)), target['name']
         assert all((root / path).is_file() for path in paths), target['name']
-        if target['name'] == 'CatpawM':
+        if target['name'] == 'cat':
             app_sources = paths
 expected = sorted(str(path.relative_to(root)) for path in (root / 'Sources').rglob('*.swift'))
 assert sorted(app_sources) == expected, 'App source membership differs from Sources tree'
@@ -40,10 +40,10 @@ for plist_path in ('Resources/Info.plist', 'Configuration/DeviceTrial.Info.plist
         f'{plist_path}: no UILaunchStoryboardName={launch_name} (or UILaunchScreen dict)'
 storyboard = root / f'Resources/Base.lproj/{launch_name}.storyboard'   # launch-v2: localized (Base + en/zh-Hans .strings)
 assert storyboard.is_file(), f'{storyboard} missing'
-app = next(t for t in targets.values() if t['name'] == 'CatpawM')
+app = next(t for t in targets.values() if t['name'] == 'cat')
 refs = [objects[objects[b]['fileRef']] for ph in app['buildPhases'] if objects[ph].get('isa') == 'PBXResourcesBuildPhase' for b in objects[ph]['files']]
 resources = [r.get('path', '') for r in refs] + [objects[c].get('path', '') for r in refs if r.get('isa') == 'PBXVariantGroup' for c in r['children']]
-assert f'Resources/Base.lproj/{launch_name}.storyboard' in resources, 'LaunchScreen.storyboard is not in the CatpawM Copy Bundle Resources phase'
+assert f'Resources/Base.lproj/{launch_name}.storyboard' in resources, 'LaunchScreen.storyboard is not in the cat Copy Bundle Resources phase'
 doc = ET.parse(storyboard).getroot()
 assert doc.attrib.get('launchScreen') == 'YES' and doc.attrib.get('initialViewController'), 'LaunchScreen.storyboard is not a launch screen with an initial view controller'
 catalog = root / 'Resources/Assets.xcassets'
@@ -83,7 +83,7 @@ for iv in doc.iter('imageView'):
     assert {e.get('scale') for e in entries if e.get('filename', '').endswith('.png')} >= {'2x', '3x'}, 'LaunchScreen logo needs @2x and @3x PNGs'
 pinned = [c for c in doc.iter('constraint') if c.attrib.get('firstAttribute') in ('leading', 'trailing', 'top', 'bottom') and c.attrib.get('firstItem') == 'I01']
 assert not pinned, 'LaunchScreen logo must be centred, never edge-pinned'
-# Optional: the BUILT bundle (python3 validate-project.py --built-app path/CatpawM.app)
+# Optional: the BUILT bundle (python3 validate-project.py --built-app path/cat.app)
 if '--built-app' in sys.argv:
     built = Path(sys.argv[sys.argv.index('--built-app') + 1])
     binfo = plistlib.loads((built / 'Info.plist').read_bytes())

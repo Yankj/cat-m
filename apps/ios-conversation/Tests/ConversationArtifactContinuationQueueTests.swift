@@ -9,7 +9,7 @@ import Darwin
 }
 #else
 import XCTest
-@testable import CatpawM
+@testable import cat
 final class ConversationArtifactContinuationQueueTests:XCTestCase {
     func testLegacyAndTargetedFollowupColdQueuePreserveExactImmutableIntent() async throws {try await ArtifactContinuationQueueCases.roundTrip()}
 }

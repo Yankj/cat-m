@@ -39,24 +39,24 @@ import SwiftUI
                     NavigationLink(value: AppRoute.document(artifact.documentReference.documentID, artifact.documentReference.version)) {
                         Panel {
                             HStack(alignment: .firstTextBaseline) {
-                                Label(ui("成果已准备好"), systemImage: "doc.text").font(.caption.weight(.medium)).foregroundStyle(CatpawColors.secondary)
+                                Label(ui("成果已准备好"), systemImage: "doc.text").font(.caption.weight(.medium)).foregroundStyle(catColors.secondary)
                                 Spacer()
                                 Text(model.snapshot.isViewed(scope: model.scope, reference: artifact.documentReference) ? ui("此版本已读") : ui("此版本未读"))
-                                    .font(.caption.weight(.medium)).foregroundStyle(CatpawColors.ink)
+                                    .font(.caption.weight(.medium)).foregroundStyle(catColors.ink)
                             }
                             Text(artifact.title).font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
                             StatusLabel(text: ui("本地模拟成果 · v{0}", arguments: [String(artifact.documentReference.version)]), symbol: "info.circle")
                             Divider()
-                            HStack { Text(model.isGatewayOwned(latest.id) ? ui("阅读合成成果 v{0}", arguments: [String(artifact.documentReference.version)]) : ui("阅读与修改")).font(.subheadline.weight(.semibold)); Spacer(); Image(systemName: "arrow.right").accessibilityHidden(true) }.foregroundStyle(CatpawColors.ink).frame(minHeight: 32)
+                            HStack { Text(model.isGatewayOwned(latest.id) ? ui("阅读合成成果 v{0}", arguments: [String(artifact.documentReference.version)]) : ui("阅读与修改")).font(.subheadline.weight(.semibold)); Spacer(); Image(systemName: "arrow.right").accessibilityHidden(true) }.foregroundStyle(catColors.ink).frame(minHeight: 32)
                         }
                     }.buttonStyle(.plain)
                 } else {
                     HStack(alignment: .top, spacing: 12) {
-                        CatpawSymbol(name: "doc.text").foregroundStyle(CatpawColors.secondary)
+                        catSymbol(name: "doc.text").foregroundStyle(catColors.secondary)
                         VStack(alignment: .leading, spacing: 6) {
                             Text(ui("还没有准备好的成果")).font(.subheadline.weight(.medium))
                             Text(ui("从一件事开始，准备好的内容会出现在这里。"))
-                                .font(.subheadline).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+                                .font(.subheadline).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true)
                         }
                     }.padding(.vertical, 14)
                 }
@@ -66,7 +66,7 @@ import SwiftUI
                 SectionHeading(title: ui("继续在跟进"), detail: ui("{0} 项", arguments: [String(model.list("delegation").filter { $0.delegation?.state == .active }.count)]))
                 if model.list("delegation").isEmpty {
                     Text(ui("你可以随时调整目标、暂停或结束跟进。"))
-                        .font(.subheadline).foregroundStyle(CatpawColors.secondary).padding(.vertical, 12)
+                        .font(.subheadline).foregroundStyle(catColors.secondary).padding(.vertical, 12)
                 }
                 ForEach(model.list("delegation")) { record in
                     NavigationLink(value: AppRoute.delegation(record.id)) {
@@ -87,11 +87,11 @@ import SwiftUI
     private var introduction: some View {
             VStack(alignment: .leading, spacing: 16) {
                 Text(ui("让重要的事，继续向前。")).font(.title2.weight(.semibold))
-                    .foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(catColors.ink).fixedSize(horizontal: false, vertical: true)
                 Text(ui("聊一件事，或建立持续跟进的工作约定。"))
-                    .font(.subheadline).foregroundStyle(CatpawColors.secondary)
+                    .font(.subheadline).foregroundStyle(catColors.secondary)
                 Button { create = true } label: {
-                    HStack { Text(ui("建立持续委托")); Spacer(); CatpawSymbol(name: "plus") }
+                    HStack { Text(ui("建立持续委托")); Spacer(); catSymbol(name: "plus") }
                 }.primaryAction().accessibilityIdentifier("assistant.createDelegation")
                 Button { model.newConversation() } label: {
                     Label(ui("先聊一件事"), systemImage: "bubble.left").frame(maxWidth: .infinity).touchTarget()
@@ -143,11 +143,11 @@ import SwiftUI
         Page {
             if let record = model.record(id), let delegation = record.delegation {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(delegation.title).font(.title2.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+                    Text(delegation.title).font(.title2.weight(.semibold)).foregroundStyle(catColors.ink)
                         .fixedSize(horizontal: false, vertical: true)
                     StatusLabel(text: delegation.state.displayName(language: model.language), symbol: stateSymbol(delegation.state), tone: stateTone(delegation.state))
                     Text(ui("本地模拟 · 关闭 App 后不会继续运行"))
-                        .font(.caption).foregroundStyle(CatpawColors.secondary)
+                        .font(.caption).foregroundStyle(catColors.secondary)
                     if [.active, .paused].contains(delegation.state) {
                         ViewThatFits(in: .horizontal) {
                             HStack(spacing: 12) { controlButtons(record, delegation) }
@@ -173,7 +173,7 @@ import SwiftUI
                     SectionHeading(title: ui("成果"))
                     if artifacts.isEmpty {
                         Text(ui("准备好后，你可以在这里阅读、修改和确认下一步。"))
-                            .font(.subheadline).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+                            .font(.subheadline).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                     ForEach(artifacts) { record in
                         if case .artifact(let artifact) = record.payload {
@@ -208,7 +208,7 @@ import SwiftUI
                     }
                     if delegation.state == .active {
                         Button { model.perform { _ = try await model.service.runDelegation(scope: model.scope, id: id) } } label: {
-                            HStack { Text(ui("模拟准备一轮")); Spacer(); CatpawSymbol(name: "arrow.right") }
+                            HStack { Text(ui("模拟准备一轮")); Spacer(); catSymbol(name: "arrow.right") }
                         }.primaryAction().accessibilityIdentifier("delegation.runFixture")
                     }
                 }
@@ -229,11 +229,11 @@ import SwiftUI
             Button { change(record, .active) } label: { Label(ui("恢复"), systemImage: "play").touchTarget() }.buttonStyle(.bordered)
         }
         Button { change(record, .completed) } label: { Label(ui("结束委托"), systemImage: "stop").touchTarget() }
-            .buttonStyle(.bordered).tint(CatpawColors.ink)
+            .buttonStyle(.bordered).tint(catColors.ink)
     }
     private func agreementField(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.caption.weight(.medium)).foregroundStyle(CatpawColors.secondary)
+            Text(title).font(.caption.weight(.medium)).foregroundStyle(catColors.secondary)
             Text(value).font(.body).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
         }
     }
@@ -244,7 +244,7 @@ import SwiftUI
                     if case .source(let source) = record.payload {
                         Text(source.url).font(.subheadline).textSelection(.enabled)
                         Toggle(ui("允许用于后续模拟准备"), isOn: Binding(get: { source.allowed }, set: { allowed in model.perform { try await model.service.sourcePermission(scope: model.scope, id: record.id, allowed: allowed) } }))
-                        Text(ui("来源版本 {0} · URL 尚未实际读取", arguments: [String(source.revision)])).font(.caption).foregroundStyle(CatpawColors.secondary)
+                        Text(ui("来源版本 {0} · URL 尚未实际读取", arguments: [String(source.revision)])).font(.caption).foregroundStyle(catColors.secondary)
                         Button(ui("替换来源")) { sourceText = source.url; sourceEdit = IdentifiedID(id: record.id) }.touchTarget()
                         Divider()
                     }
@@ -293,7 +293,7 @@ import SwiftUI
     private func stateSymbol(_ state: DelegationState) -> String {
         switch state { case .active: "clock"; case .paused: "pause.circle"; case .completed: "checkmark.circle"; case .cancelled: "xmark.circle"; case .draft: "pencil.circle"; case .expired: "clock.badge.exclamationmark" }
     }
-    private func stateTone(_ state: DelegationState) -> CatpawTone {
+    private func stateTone(_ state: DelegationState) -> catTone {
         switch state { case .active: .active; case .paused, .expired: .attention; case .completed: .success; case .cancelled, .draft: .neutral }
     }
     private var runs: [StoredRecord] { model.list("run").filter { $0.payload.parentID == id }.sorted { $0.header.updatedAt > $1.header.updatedAt } }
@@ -313,8 +313,8 @@ struct IdentifiedID: Identifiable { let id: UUID }
         NavigationStack {
             Page {
                 if let r = model.record(id), case .action(let a) = r.payload {
-                    Text(ui("确认这一次模拟操作")).font(.title.bold()); Text(ui("目的地：{0}", arguments: [String(describing: (a.destination))])); Text(ui("版本 v{0} · 附件：无 · 仅此一次", arguments: [String(describing: (a.document.version))])).foregroundStyle(CatpawColors.secondary)
-                    Text(ui("不会向外部应用发送内容。")).font(.footnote).foregroundStyle(CatpawColors.secondary)
+                    Text(ui("确认这一次模拟操作")).font(.title.bold()); Text(ui("目的地：{0}", arguments: [String(describing: (a.destination))])); Text(ui("版本 v{0} · 附件：无 · 仅此一次", arguments: [String(describing: (a.document.version))])).foregroundStyle(catColors.secondary)
+                    Text(ui("不会向外部应用发送内容。")).font(.footnote).foregroundStyle(catColors.secondary)
                     Panel { Text(content).textSelection(.enabled) }
                     Text(ui("确认状态：{0}", arguments: [String(describing: (a.status.displayName(language: model.language)))])).font(.footnote)
                     Button(ui("确认模拟受理")) { model.perform { try await model.service.approveAction(scope: model.scope, id: id, expectedRevision: r.header.revision); dismiss() } }.primaryAction().disabled(a.status != .pending)

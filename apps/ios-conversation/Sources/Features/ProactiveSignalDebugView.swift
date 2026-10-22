@@ -62,7 +62,7 @@ import SwiftUI
                 Button(ui("扫描真实日历")) { Task { await ProactiveEngine.shared.scanCalendar(ask: true) } }.accessibilityIdentifier("proactive.engine.scan")
                 Button(ui("清空去重账本")) { ProactiveEngine.shared.resetLedger() }.accessibilityIdentifier("proactive.engine.resetLedger")
                 ForEach(ProactiveEngine.shared.log.prefix(12)) { e in
-                    Text(e.at.formatted(date: .omitted, time: .standard) + "  " + e.text).font(.footnote.monospaced()).foregroundStyle(e.text.contains("SUPPRESSED") ? CatpawColors.attention : CatpawColors.ink)
+                    Text(e.at.formatted(date: .omitted, time: .standard) + "  " + e.text).font(.footnote.monospaced()).foregroundStyle(e.text.contains("SUPPRESSED") ? catColors.attention : catColors.ink)
                 }
             }
             Section(ui("模拟时间")) {
@@ -73,8 +73,8 @@ import SwiftUI
             Section(ui("日历事件")) {
                 ForEach(model.meetings) { m in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(m.title).foregroundStyle(CatpawColors.ink)
-                        Text(m.start.formatted(date: .omitted, time: .shortened) + " · " + m.place).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        Text(m.title).foregroundStyle(catColors.ink)
+                        Text(m.start.formatted(date: .omitted, time: .shortened) + " · " + m.place).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     }
                 }.onDelete { model.meetings.remove(atOffsets: $0) }
                 TextField(ui("会议标题"), text: $meetingTitle)
@@ -83,7 +83,7 @@ import SwiftUI
                 Button(ui("添加模拟会议")) {
                     model.addFakeMeeting(title: meetingTitle.isEmpty ? ui("产品评审会") : meetingTitle, inMinutes: Int(meetingIn), place: meetingPlace.isEmpty ? ui("公司 3 楼会议室") : meetingPlace)
                     meetingTitle = ""; meetingPlace = ""
-                }.foregroundStyle(CatpawColors.ink).accessibilityIdentifier("debug.signal.addMeeting")
+                }.foregroundStyle(catColors.ink).accessibilityIdentifier("debug.signal.addMeeting")
                 Toggle(ui("日历权限已允许"), isOn: $model.calendarAuthorized)
             }
             Section(ui("模拟起点（可选）")) {
@@ -96,29 +96,29 @@ import SwiftUI
                     ForEach(ProactiveSignalDebugModel.presets) { p in Text(ui(p.name)).tag(p.name) }
                 }.accessibilityIdentifier("debug.signal.location")
                 if let l = model.location {
-                    Text(String(format: "%.4f, %.4f", l.latitude, l.longitude)).font(CatpawTypography.Role.caption.font.monospacedDigit()).foregroundStyle(CatpawColors.secondary)
+                    Text(String(format: "%.4f, %.4f", l.latitude, l.longitude)).font(catTypography.Role.caption.font.monospacedDigit()).foregroundStyle(catColors.secondary)
                 }
             }
             Section(ui("决策流水线")) {
                 Button(model.running ? ui("运行中…") : ui("运行流水线")) { model.run() }
-                    .disabled(model.running).foregroundStyle(CatpawColors.ink).accessibilityIdentifier("debug.signal.run")
+                    .disabled(model.running).foregroundStyle(catColors.ink).accessibilityIdentifier("debug.signal.run")
                 ForEach(model.stages) { s in stageRow(s) }
             }
             Section(ui("主动建议")) {
                 if let s = model.suggestion {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(s.title).font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink)
-                        if let leave = s.leaveAt { Text(ui("建议 {0} 出发", [leave.formatted(date: .omitted, time: .shortened)])).foregroundStyle(CatpawColors.ink) }
-                        Text(s.kind + " · " + s.channel.rawValue).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        Text(s.title).font(catTypography.Role.heading.font).foregroundStyle(catColors.ink)
+                        if let leave = s.leaveAt { Text(ui("建议 {0} 出发", [leave.formatted(date: .omitted, time: .shortened)])).foregroundStyle(catColors.ink) }
+                        Text(s.kind + " · " + s.channel.rawValue).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     }
                     Button(emitted ? ui("已发出") : ui("发出主动建议")) { ProactiveSignalHub.emit(s); emitted = true }
-                        .buttonStyle(CatpawPrimaryButtonStyle()).accessibilityIdentifier("debug.signal.emit")
+                        .buttonStyle(catPrimaryButtonStyle()).accessibilityIdentifier("debug.signal.emit")
                 } else {
-                    Text(ui("运行流水线后生成建议")).foregroundStyle(CatpawColors.secondary)
+                    Text(ui("运行流水线后生成建议")).foregroundStyle(catColors.secondary)
                 }
             }
         }
-        .font(CatpawTypography.Role.body.font)
+        .font(catTypography.Role.body.font)
         .navigationTitle(ui("主动信号模拟"))
         .onChange(of: model.suggestion) { _, _ in emitted = false }
     }
@@ -134,14 +134,14 @@ import SwiftUI
     private func stageRow(_ s: ProactiveStageResult) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                Image(systemName: symbol(s.status)).foregroundStyle(s.status == .failed ? CatpawColors.attention : CatpawBrand.paw)
+                Image(systemName: symbol(s.status)).foregroundStyle(s.status == .failed ? catColors.attention : catBrand.paw)
                     .symbolEffect(.pulse, isActive: s.status == .running).accessibilityHidden(true)
-                Text(title(s.stage)).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+                Text(title(s.stage)).font(catTypography.Role.body.font.weight(.semibold)).foregroundStyle(catColors.ink)
                 Spacer()
-                Text(statusText(s.status)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                Text(statusText(s.status)).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
             }
             ForEach(s.details, id: \.self) { d in
-                Text(d).font(CatpawTypography.Role.caption.font.monospaced()).foregroundStyle(CatpawColors.secondary).textSelection(.enabled)
+                Text(d).font(catTypography.Role.caption.font.monospaced()).foregroundStyle(catColors.secondary).textSelection(.enabled)
             }
         }.accessibilityElement(children: .combine).accessibilityIdentifier("debug.signal.stage." + s.stage.rawValue)
     }

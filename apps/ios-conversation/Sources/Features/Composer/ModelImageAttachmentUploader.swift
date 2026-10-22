@@ -1,6 +1,6 @@
 import Combine
 import Foundation
-import CatpawImageComposer
+import catImageComposer
 
 /// Real composer attachment transport (#64 / P0-3). Images are handed to the model's `ImageAttachmentDraft`,
 /// which transcodes to PNG/JPEG ≤2048 px with metadata stripped (`SystemImageAttachmentEncoder`); the send path

@@ -9,7 +9,7 @@ public struct FixtureProvider: AgentProvider {
         ProviderDescriptor(id: "catpaw.fixture.v1", version: "1.0", capabilities: [ProviderCapability(capabilityID: "reply", availability: .fixtureAvailable, requiredAuthorizationKinds: [])])
     }
     public func reply(to request: ChatRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> {
-        let text = "【模拟回复 · Catpaw Fixture v1】\n已将你的输入保存到本机：\n\(request.frozenText)\n\n这条回复用于验证消息流、取消和成果关联。真实模型、研究与远程工具尚未连接。"
+        let text = "【模拟回复 · cat Fixture v1】\n已将你的输入保存到本机：\n\(request.frozenText)\n\n这条回复用于验证消息流、取消和成果关联。真实模型、研究与远程工具尚未连接。"
         return stream(context: request.context, text: text)
     }
     private func stream(context: ProviderContext, text: String) -> AsyncThrowingStream<ProviderEvent, Error> {
@@ -55,8 +55,8 @@ public struct FixtureProvider: AgentProvider {
 public struct UnavailableRemoteProvider: AgentProvider {
     public init() {}
     public func descriptor() async -> ProviderDescriptor { ProviderDescriptor(id: "remote.unconfigured", version: "1", capabilities: [ProviderCapability(capabilityID: "reply", availability: .unavailable, requiredAuthorizationKinds: ["account", "data_scope"])]) }
-    public func reply(to request: ChatRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> { throw CatpawError.unavailable("真实模型未配置：缺少合法接口、账号与数据范围。") }
-    public func start(_ request: TaskRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> { throw CatpawError.unavailable("真实任务服务未配置。") }
-    public func observe(operationID: UUID, context: ProviderContext) async throws -> ProviderEvent { throw CatpawError.unavailable("无真实回执查询接口。") }
-    public func cancel(operationID: UUID, context: ProviderContext) async throws -> ProviderEvent { throw CatpawError.unavailable("无真实取消接口。") }
+    public func reply(to request: ChatRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> { throw catError.unavailable("真实模型未配置：缺少合法接口、账号与数据范围。") }
+    public func start(_ request: TaskRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> { throw catError.unavailable("真实任务服务未配置。") }
+    public func observe(operationID: UUID, context: ProviderContext) async throws -> ProviderEvent { throw catError.unavailable("无真实回执查询接口。") }
+    public func cancel(operationID: UUID, context: ProviderContext) async throws -> ProviderEvent { throw catError.unavailable("无真实取消接口。") }
 }

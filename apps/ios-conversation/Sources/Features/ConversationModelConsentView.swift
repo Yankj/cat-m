@@ -15,35 +15,35 @@ import UIKit
         NavigationStack {
             ScrollView {
                 VStack(alignment:.leading,spacing:16) {
-                    Text(verbatim:consent.title).font(CatpawTypography.Role.heading.font)
+                    Text(verbatim:consent.title).font(catTypography.Role.heading.font)
                         .fixedSize(horizontal:false,vertical:true).accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("chat.modelConsent.title")
-                    Text(verbatim:consent.body).font(CatpawTypography.Role.body.font)
-                        .lineSpacing(CatpawTypography.readingLineSpacing(for:CatpawTypography.font(size:textSize)))
+                    Text(verbatim:consent.body).font(catTypography.Role.body.font)
+                        .lineSpacing(catTypography.readingLineSpacing(for:catTypography.font(size:textSize)))
                         .textSelection(.enabled).fixedSize(horizontal:false,vertical:true)
                         .accessibilityIdentifier("chat.modelConsent.body")
-                }.padding(20).frame(maxWidth:CatpawLayout.readableWidth,alignment:.leading)
+                }.padding(20).frame(maxWidth:catLayout.readableWidth,alignment:.leading)
                     .frame(maxWidth:.infinity,alignment:.center)
             }.accessibilityIdentifier("chat.modelConsent.viewport")
                 .safeAreaInset(edge:.bottom,spacing:0) {
-                    CatpawSheetActions {
+                    catSheetActions {
                         Button(action:allow) {Text(ui("允许此对话"))}
-                            .buttonStyle(CatpawSheetPrimaryButtonStyle()).disabled(!canAllow).accessibilityIdentifier("chat.modelConsent.allow")
+                            .buttonStyle(catSheetPrimaryButtonStyle()).disabled(!canAllow).accessibilityIdentifier("chat.modelConsent.allow")
                     } secondary: {
                         Button(action:deferConsent) {Text(ui("暂不允许"))}
-                            .buttonStyle(CatpawSheetSecondaryButtonStyle()).accessibilityIdentifier("chat.modelConsent.defer")
+                            .buttonStyle(catSheetSecondaryButtonStyle()).accessibilityIdentifier("chat.modelConsent.defer")
                     }
                 }
-                .background(CatpawColors.background)
+                .background(catColors.background)
                 .navigationTitle(ui("确认发送许可")).navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement:.cancellationAction) {
-                        Button(action:deferConsent) {Image(systemName:"xmark").font(CatpawTypography.Role.body.font).touchTarget()}
-                            .buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("关闭"))
+                        Button(action:deferConsent) {Image(systemName:"xmark").font(catTypography.Role.body.font).touchTarget()}
+                            .buttonStyle(catPressButtonStyle()).accessibilityLabel(ui("关闭"))
                             .accessibilityIdentifier("chat.modelConsent.close")
                     }
                 }
-        }.tint(CatpawColors.ink).foregroundStyle(CatpawColors.ink)
+        }.tint(catColors.ink).foregroundStyle(catColors.ink)
             .presentationDetents([.large]).presentationDragIndicator(.visible)
             .onAppear {UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)}
     }

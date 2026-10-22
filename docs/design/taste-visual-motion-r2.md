@@ -1,4 +1,4 @@
-# Catpaw 视觉、交互与动效 R2
+# cat 视觉、交互与动效 R2
 
 2026-10-13；UX-1 的视觉实施附录，设计身份 `UX-1-R2`。产品行为仍由 FINAL-1、UX-1 和 CGUI-1 管理；不建立新 Goal 或第二份状态。当前交付状态只见 [master-plan](../status/master-plan.md)。[可点按提案](prototypes/catpaw-taste/index.html)、[机器参数](taste-visual-motion-r2.json)、[原12项验收](../acceptance/ios-codex-experience-acceptance.md)。此前 R1 提案与日期证据保留。
 
@@ -51,7 +51,7 @@
 | 侧栏 | min(320pt,86%屏宽)；搜索/新对话、条件优先行、最近对话、活动、可展开管理、底部设置；不用全卡片导航 |
 | 跟进/记忆 | 原生行与详情；先约定/原因，再控制；编辑不因静默切换丢值；删除/结束保留适用的历史与来源 |
 
-Spacing使用4/8/12/16/20/24/28；卡20、控件14、composer24，按钮圆形只用于独立图标动作。主阅读背景稳定不透明，玻璃仅系统导航/控件，低版本继续现有材质。Apple 把 Liquid Glass 组织为导航和控件层，强调内容与可读性；具体参数是 Catpaw 决定。[Apple Meet Liquid Glass](https://developer.apple.com/videos/play/wwdc2025/219/)
+Spacing使用4/8/12/16/20/24/28；卡20、控件14、composer24，按钮圆形只用于独立图标动作。主阅读背景稳定不透明，玻璃仅系统导航/控件，低版本继续现有材质。Apple 把 Liquid Glass 组织为导航和控件层，强调内容与可读性；具体参数是 cat 决定。[Apple Meet Liquid Glass](https://developer.apple.com/videos/play/wwdc2025/219/)
 
 ## 动效与触觉合同
 
@@ -59,7 +59,7 @@ Spacing使用4/8/12/16/20/24/28；卡20、控件14、composer24，按钮圆形�
 
 | ID / 触发 | 视觉与节奏 | 原生实施 | 减弱动态 / 触觉 |
 |---|---|---|---|
-| M01 按压 | 120ms opacity至0.78；可选独立按钮scale0.98，正文不缩放 | 复用CatpawPressButtonStyle；不改变触控边界 | 无animated scale/过渡；一般按压无触觉 |
+| M01 按压 | 120ms opacity至0.78；可选独立按钮scale0.98，正文不缩放 | 复用catPressButtonStyle；不改变触控边界 | 无animated scale/过渡；一般按压无触觉 |
 | M02 接受决定 | 180ms淡出当前卡内容，240ms淡入摘要；同cardID保持位置 | 只更新该卡projection；当卡在阅读锚点上方时补偿高度差；不包整ScrollView动画 | 即时替换或≤120ms淡化，无位移；确认持久受理后selection一次，未受理无成功触觉 |
 | M03 新成果 | 240ms opacity＋最多8pt向上进入；不从屏外飞入 | stable artifactID/revision；已见同版本不重复动画；不自动打开 | 无位移，内容即时可读；真实新回执success一次，不给旧成果重播 |
 | M04 开详情/返回 | 以系统NavigationStack的交互转场为准 | 推相同对象引用；原生返回手势跟手；从成果回聊恢复锚点/草稿 | 系统reduce行为；不再叠一层自定义slide |

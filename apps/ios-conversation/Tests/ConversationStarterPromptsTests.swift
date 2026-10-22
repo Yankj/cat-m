@@ -1,7 +1,7 @@
 import XCTest
 import UIKit
 import SwiftUI
-@testable import CatpawM
+@testable import cat
 
 /// feat/chat-starter-prompts: catalog, time-of-day order and bilingual copy of the empty-conversation starters.
 final class ConversationStarterPromptsTests: XCTestCase {
@@ -46,7 +46,7 @@ final class ConversationStarterPromptsTests: XCTestCase {
     }
 }
 
-/// fix/chat-acceptance-3 #3: every device tool the app advertises (X-Catpaw-Device-Tools) must be accepted as a
+/// fix/chat-acceptance-3 #3: every device tool the app advertises (X-cat-Device-Tools) must be accepted as a
 /// `tool_call` name, otherwise ConversationSessionService.apply throws invalidEvent (「服务返回了不匹配的对话或工具结果」).
 /// Prod turn 75aba37d (附近咖啡馆 starter → places_search) stalled at sequence 2 for exactly this reason.
 final class DeviceToolNamesContractTests: XCTestCase {
@@ -106,7 +106,7 @@ final class AccountModelConsentMemoryTests: XCTestCase {
 
 /// v1 letterbox blocker (2026-10-17): the BUILT app must carry a valid launch screen — the Info.plist key, a compiled
 /// storyboardc that instantiates, and every asset it draws — or iOS can run it in compatibility mode / draw a blank
-/// first frame. Hosted test: Bundle.main is the built CatpawM.app.
+/// first frame. Hosted test: Bundle.main is the built cat.app.
 final class LaunchScreenBundleTests: XCTestCase {
     func testBuiltAppDeclaresAndShipsItsLaunchScreen() throws {
         let name = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "UILaunchStoryboardName") as? String, "built Info.plist has no UILaunchStoryboardName")
@@ -124,7 +124,7 @@ final class LaunchScreenBundleTests: XCTestCase {
 /// User report 15:14 ("launch logo STRETCHED"): both launch stages must draw the tile square at 96 pt.
 @MainActor final class LaunchLogoAspectTests: XCTestCase {
     func testSwiftUILaunchMarkTileIsSquare() throws {
-        let renderer = ImageRenderer(content: CatpawLaunchMark(isReady: false).frame(width: 390, height: 844).environment(\.colorScheme, .light))
+        let renderer = ImageRenderer(content: catLaunchMark(isReady: false).frame(width: 390, height: 844).environment(\.colorScheme, .light))
         renderer.scale = 1
         let cg = try XCTUnwrap(renderer.cgImage)
         let w = cg.width, h = cg.height
@@ -137,7 +137,7 @@ final class LaunchScreenBundleTests: XCTestCase {
         XCTAssertGreaterThan(maxX, minX, "no orange tile drawn")
         let tw = maxX - minX + 1, th = maxY - minY + 1
         XCTAssertLessThanOrEqual(abs(tw - th), 2, "launch tile is \(tw)×\(th) pt — stretched")
-        XCTAssertEqual(Double(tw), Double(CatpawLaunchMark.side), accuracy: 2)
+        XCTAssertEqual(Double(tw), Double(catLaunchMark.side), accuracy: 2)
         XCTAssertEqual(Double(minX + tw / 2), 195, accuracy: 1.5, "tile centred horizontally on the full screen")
         XCTAssertEqual(Double(minY + th / 2), 422, accuracy: 1.5, "tile centred vertically on the full screen")
     }

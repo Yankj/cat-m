@@ -55,7 +55,7 @@ public struct DelegationRequirements: Codable, Sendable {
         return result
     }
     public static func replacing(_ data: Data, requirements: String) throws -> Data {
-        guard var value = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw CatpawError.corrupt("委托范围数据不可解析，保留原内容。") }
+        guard var value = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw catError.corrupt("委托范围数据不可解析，保留原内容。") }
         value["requirements"] = requirements
         return try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
     }
@@ -84,7 +84,7 @@ public enum CatalogFilter {
 }
 public enum ScheduleInput {
     public static func intervalCadence(_ input: String) throws -> String {
-        guard let hours = Int(input.trimmingCharacters(in: .whitespacesAndNewlines)), hours > 0, hours <= Int.max / 3600 else { throw CatpawError.invalid("间隔需为可表示的正整数小时。") }
+        guard let hours = Int(input.trimmingCharacters(in: .whitespacesAndNewlines)), hours > 0, hours <= Int.max / 3600 else { throw catError.invalid("间隔需为可表示的正整数小时。") }
         return "interval_\(hours)h"
     }
     public static func isoWeekdays(_ spec: ScheduleSpec) -> [Int] {

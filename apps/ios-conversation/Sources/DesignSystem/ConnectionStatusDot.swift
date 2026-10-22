@@ -6,8 +6,8 @@ extension ConnectionStatusKind {
     var color: Color {
         switch self {
         case .online: return ConnectionStatusKind.liveGreen
-        case .offline: return CatpawColors.tertiary
-        case .error: return CatpawColors.failure
+        case .offline: return catColors.tertiary
+        case .error: return catColors.failure
         }
     }
 }
@@ -60,9 +60,9 @@ struct ConnectionStatusRow: View {
                 ConnectionStatusDot(kind: kind)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(ui(kind.labelKey)).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                Text(ui(kind.labelKey)).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                 if let detail, !detail.isEmpty {
-                    Text(detail).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text(detail).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
             Spacer(minLength: 0)

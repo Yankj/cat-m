@@ -1,7 +1,7 @@
 #if canImport(XCTest)
 import Foundation
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 private final class PlanWireProtocol: URLProtocol, @unchecked Sendable {
     static var handler: ((URLRequest) throws -> (Int, Data))?
@@ -64,7 +64,7 @@ final class NativeTaskPlanTransportTests: XCTestCase {
         for status in [403, 409, 500] {
             PlanWireProtocol.handler = { _ in (status, Data(#"{"schema_version":1,"error":{"code":"fixture_denied","reconciliation_required":false}}"#.utf8)) }
             do { _ = try await backend.amendPlan(reference, request: amendment); XCTFail("Accepted HTTP \(status)") }
-            catch { if status == 403 { XCTAssertTrue(error is ConversationDispatchFailure) }; if status == 409 { if case .conflict? = error as? CatpawError {} else { XCTFail("Expected explicit conflict") } }; if status == 500 { XCTAssertFalse(error is ConversationDispatchFailure); XCTAssertNil(error as? CatpawError) } }
+            catch { if status == 403 { XCTAssertTrue(error is ConversationDispatchFailure) }; if status == 409 { if case .conflict? = error as? catError {} else { XCTFail("Expected explicit conflict") } }; if status == 500 { XCTAssertFalse(error is ConversationDispatchFailure); XCTAssertNil(error as? catError) } }
         }
         PlanWireProtocol.handler = { _ in throw URLError(.networkConnectionLost) }
         do { _ = try await backend.amendPlan(reference, request: amendment); XCTFail("Transport became accepted") } catch { XCTAssertFalse(error is ConversationDispatchFailure) }

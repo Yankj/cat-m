@@ -3,11 +3,11 @@ import SwiftUI
 /// Calm, professional visual language shared by launch → onboarding → voice mode.
 /// Warm off-white page, slow-drifting peach glow (bottom) + faint lavender (top). No emoji / cartoon.
 enum CalmPalette {
-    static let page = CatpawColors.calmPage
-    static let peach = CatpawColors.calmPeach
-    static let lavender = CatpawColors.calmLavender
-    static let orbLight = CatpawColors.orbLight
-    static let orbDeep = CatpawColors.orbDeep
+    static let page = catColors.calmPage
+    static let peach = catColors.calmPeach
+    static let lavender = catColors.calmLavender
+    static let orbLight = catColors.orbLight
+    static let orbDeep = catColors.orbDeep
 }
 
 struct CalmGlowBackground: View {
@@ -51,14 +51,14 @@ struct CalmOrb: View {
                 Circle().fill(CalmPalette.orbLight.opacity(0.28 + 0.14 * b))
                     .frame(width: size * (1.9 + 0.25 * b)).blur(radius: size * 0.32)
                 Circle().fill(RadialGradient(colors: [CalmPalette.orbLight, CalmPalette.orbDeep], center: UnitPoint(x: 0.38, y: 0.32), startRadius: 2, endRadius: size * 0.62))
-                    .overlay(Circle().fill(LinearGradient(colors: [CatpawColors.calmGlyph.opacity(0.35), .clear], startPoint: .top, endPoint: .center)).padding(size * 0.08))
+                    .overlay(Circle().fill(LinearGradient(colors: [catColors.calmGlyph.opacity(0.35), .clear], startPoint: .top, endPoint: .center)).padding(size * 0.08))
                     .frame(width: size, height: size)
                     .shadow(color: CalmPalette.orbDeep.opacity(0.35), radius: 16, y: 8)
                     .scaleEffect(1 + 0.025 * b)
                 if glyph == "pawprint.fill" {
                     BrandMark(size: size * 0.42, style: .onOrange)
                 } else {
-                    Image(systemName: glyph).resizable().scaledToFit().frame(width: size * 0.26, height: size * 0.26).foregroundStyle(CatpawColors.calmGlyph.opacity(0.95))
+                    Image(systemName: glyph).resizable().scaledToFit().frame(width: size * 0.26, height: size * 0.26).foregroundStyle(catColors.calmGlyph.opacity(0.95))
                 }
             }
         }
@@ -79,8 +79,8 @@ struct OrbitText: View {
             let angle = reduceMotion ? 0 : tl.date.timeIntervalSinceReferenceDate * 6 * speed
             ZStack {
                 ForEach(chars.indices, id: \.self) { i in
-                    Text(String(chars[i])).font(CatpawTypography.Role.caption.font)
-                        .foregroundStyle(CatpawColors.actionText.opacity(0.62))
+                    Text(String(chars[i])).font(catTypography.Role.caption.font)
+                        .foregroundStyle(catColors.actionText.opacity(0.62))
                         .offset(y: -radius)
                         .rotationEffect(.degrees(Double(i) / Double(chars.count) * 360))
                 }
@@ -103,15 +103,15 @@ struct SwipeToStart: View {
         GeometryReader { g in
             let knob: CGFloat = 52, maxX = g.size.width - knob - 8
             ZStack(alignment: .leading) {
-                Capsule().fill(CatpawColors.calmSurface).shadow(color: CatpawColors.calmShadow.opacity(0.06), radius: 14, y: 6)
+                Capsule().fill(catColors.calmSurface).shadow(color: catColors.calmShadow.opacity(0.06), radius: 14, y: 6)
                 HStack(spacing: 10) {
-                    Text(title).font(.subheadline.weight(.medium)).foregroundStyle(CatpawColors.ink.opacity(0.78))
+                    Text(title).font(.subheadline.weight(.medium)).foregroundStyle(catColors.ink.opacity(0.78))
                     TimelineView(.animation(minimumInterval: 1 / 20, paused: reduceMotion)) { tl in
                         let t = tl.date.timeIntervalSinceReferenceDate
                         HStack(spacing: 1) {
                             ForEach(0..<3) { i in
                                 Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
-                                    .foregroundStyle(CatpawColors.actionText.opacity(0.25 + 0.6 * max(0, sin(t * 3 - Double(i) * 0.7))))
+                                    .foregroundStyle(catColors.actionText.opacity(0.25 + 0.6 * max(0, sin(t * 3 - Double(i) * 0.7))))
                             }
                         }
                     }
@@ -120,7 +120,7 @@ struct SwipeToStart: View {
                 .opacity(1 - Double(drag / max(maxX, 1)))
                 ZStack {
                     Circle().fill(LinearGradient(colors: [CalmPalette.orbLight, CalmPalette.orbDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    if busy { ProgressView().tint(CatpawColors.calmGlyph) } else { Image(systemName: "pawprint.fill").font(.body).foregroundStyle(CatpawColors.calmGlyph) }
+                    if busy { ProgressView().tint(catColors.calmGlyph) } else { Image(systemName: "pawprint.fill").font(.body).foregroundStyle(catColors.calmGlyph) }
                 }
                 .frame(width: knob, height: knob).padding(.leading, 4).offset(x: drag)
                 .gesture(DragGesture().onChanged { v in drag = min(max(0, v.translation.width), maxX) }
@@ -166,13 +166,13 @@ struct StartUsingCTA: View {
                 let cycle = t.truncatingRemainder(dividingBy: Self.sheenPeriod)
                 let sheen: Double? = animate && FirstRunAppearance.ctaSheenPeak > 0 && cycle < Self.sheenDuration ? cycle / Self.sheenDuration : nil
                 content(sheen: sheen)
-                    .shadow(color: CatpawColors.orbDeep.opacity(0.30 + 0.12 * breath), radius: 16 + 6 * breath, y: 7 + 2 * breath)
+                    .shadow(color: catColors.orbDeep.opacity(0.30 + 0.12 * breath), radius: 16 + 6 * breath, y: 7 + 2 * breath)
                     .scaleEffect(1 + 0.02 * breath)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 56)
         }
-        .buttonStyle(CatpawPressButtonStyle())
+        .buttonStyle(catPressButtonStyle())
         .disabled(busy)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
@@ -184,12 +184,12 @@ struct StartUsingCTA: View {
         let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
         return ZStack {
             // first-run-polish: #C9501A → #B8440A (white label 4.5–5.4:1; the old orbLight→Primary gradient gave 2.76:1).
-            shape.fill(LinearGradient(colors: [CatpawColors.calmCTATop, CatpawColors.calmCTABottom], startPoint: .topLeading, endPoint: .bottomTrailing))
+            shape.fill(LinearGradient(colors: [catColors.calmCTATop, catColors.calmCTABottom], startPoint: .topLeading, endPoint: .bottomTrailing))
             if let sheen {
                 GeometryReader { geo in
                     let w = geo.size.width * 0.32
                     LinearGradient(
-                        colors: [CatpawColors.calmGlyph.opacity(0), CatpawColors.calmGlyph.opacity(FirstRunAppearance.ctaSheenPeak), CatpawColors.calmGlyph.opacity(0)],
+                        colors: [catColors.calmGlyph.opacity(0), catColors.calmGlyph.opacity(FirstRunAppearance.ctaSheenPeak), catColors.calmGlyph.opacity(0)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -202,16 +202,16 @@ struct StartUsingCTA: View {
                 .accessibilityHidden(true)
             }
             if busy {
-                ProgressView().tint(CatpawColors.calmGlyph)
+                ProgressView().tint(catColors.calmGlyph)
             } else {
                 HStack(spacing: 8) {
                     Image(systemName: "hand.tap.fill")
-                        .font(CatpawTypography.Role.body.font.weight(.semibold))
+                        .font(catTypography.Role.body.font.weight(.semibold))
                         .accessibilityHidden(true)
                     Text(title)
-                        .font(CatpawTypography.Role.heading.font.weight(.semibold))
+                        .font(catTypography.Role.heading.font.weight(.semibold))
                 }
-                .foregroundStyle(CatpawColors.calmGlyph)
+                .foregroundStyle(catColors.calmGlyph)
             }
         }
     }
@@ -277,9 +277,9 @@ struct ThinWaveform: View {
             CalmGlowBackground()
             VStack(alignment: .leading, spacing: 0) {
                 Spacer()
-                Text(ui("你")).font(.footnote).foregroundStyle(CatpawColors.secondary).padding(.bottom, 6)
+                Text(ui("你")).font(.footnote).foregroundStyle(catColors.secondary).padding(.bottom, 6)
                 Text(voice.transcript.isEmpty ? (UserDefaults.standard.bool(forKey: "CatpawVoiceModePreview") ? ui("voice.preview.transcript") : ui("正在聆听…")) : voice.transcript)
-                    .font(.title3).foregroundStyle(CatpawColors.ink.opacity(0.55))
+                    .font(.title3).foregroundStyle(catColors.ink.opacity(0.55))
                     .lineSpacing(4).frame(maxWidth: .infinity, alignment: .leading)
                     .animation(.easeOut(duration: 0.2), value: voice.transcript)
                     .accessibilityIdentifier("chat.voice.transcript")
@@ -290,7 +290,7 @@ struct ThinWaveform: View {
                     Button { dictation.stop() } label: {
                         CalmOrb(size: 84, glyph: "mic.fill", level: Double(levels.last ?? 0))
                     }
-                    .buttonStyle(CatpawPressButtonStyle())
+                    .buttonStyle(catPressButtonStyle())
                     .accessibilityLabel(ui("完成听写")).accessibilityIdentifier("chat.composer.dictation.confirm")
                     Spacer()
                     circleButton("camera", label: ui("相机"), id: "chat.voice.camera") { dictation.stop(); ComposerAttachPopoverState.shared.isPresented = true }
@@ -306,11 +306,11 @@ struct ThinWaveform: View {
     }
     private func circleButton(_ icon: String, label: String, id: String, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
-            Image(systemName: icon).font(.body).foregroundStyle(CatpawColors.ink.opacity(0.7))
-                .frame(width: 48, height: 48).background(CatpawColors.calmSurface, in: Circle())
-                .shadow(color: CatpawColors.calmShadow.opacity(0.06), radius: 8, y: 3)
+            Image(systemName: icon).font(.body).foregroundStyle(catColors.ink.opacity(0.7))
+                .frame(width: 48, height: 48).background(catColors.calmSurface, in: Circle())
+                .shadow(color: catColors.calmShadow.opacity(0.06), radius: 8, y: 3)
         }
-        .buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(label).accessibilityIdentifier(id)
+        .buttonStyle(catPressButtonStyle()).accessibilityLabel(label).accessibilityIdentifier(id)
     }
 }
 

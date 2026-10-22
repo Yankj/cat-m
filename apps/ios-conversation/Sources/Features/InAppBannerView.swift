@@ -4,7 +4,7 @@ import SwiftUI
 // Usage: attach `.catpawInAppBanner(center)` near the root; call `center.show(...)` from the foreground
 // UNUserNotificationCenter delegate or proactive-event poller (wiring belongs to M2 on the Mac side).
 
-struct CatpawInAppBanner: Identifiable, Equatable, Sendable {
+struct catInAppBanner: Identifiable, Equatable, Sendable {
     let id = UUID()
     var title: String
     var body: String
@@ -12,16 +12,16 @@ struct CatpawInAppBanner: Identifiable, Equatable, Sendable {
     var deepLink: URL?
 }
 
-@MainActor @Observable final class CatpawInAppBannerCenter {
-    static let shared = CatpawInAppBannerCenter()
-    private(set) var current: CatpawInAppBanner?
-    private var queue: [CatpawInAppBanner] = []
+@MainActor @Observable final class catInAppBannerCenter {
+    static let shared = catInAppBannerCenter()
+    private(set) var current: catInAppBanner?
+    private var queue: [catInAppBanner] = []
     private var dismissTask: Task<Void, Never>?
     var duration: Duration = .seconds(4)
     /// Tap handler; default opens `deepLink` through the app's URL handling.
-    var onTap: ((CatpawInAppBanner) -> Void)?
+    var onTap: ((catInAppBanner) -> Void)?
 
-    func show(_ banner: CatpawInAppBanner) {
+    func show(_ banner: catInAppBanner) {
         if current == nil { present(banner) } else { queue.append(banner) }
     }
 
@@ -40,7 +40,7 @@ struct CatpawInAppBanner: Identifiable, Equatable, Sendable {
         dismiss()
     }
 
-    private func present(_ banner: CatpawInAppBanner) {
+    private func present(_ banner: catInAppBanner) {
         current = banner
         dismissTask?.cancel()
         let d = duration
@@ -53,18 +53,18 @@ struct CatpawInAppBanner: Identifiable, Equatable, Sendable {
 }
 
 @MainActor struct InAppBannerView: View {
-    let banner: CatpawInAppBanner
+    let banner: catInAppBanner
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: banner.symbol)
-                .foregroundStyle(CatpawColors.onInk)
+                .foregroundStyle(catColors.onInk)
                 .frame(width: 32, height: 32)
-                .background(CatpawBrand.paw, in: Circle())
+                .background(catBrand.paw, in: Circle())
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(banner.title).font(CatpawTypography.Role.secondary.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1)
+                Text(banner.title).font(catTypography.Role.secondary.font.weight(.semibold)).foregroundStyle(catColors.ink).lineLimit(1)
                 if !banner.body.isEmpty {
-                    Text(banner.body).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).lineLimit(2)
+                    Text(banner.body).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).lineLimit(2)
                 }
             }
             Spacer(minLength: 0)
@@ -79,7 +79,7 @@ struct CatpawInAppBanner: Identifiable, Equatable, Sendable {
 }
 
 private struct InAppBannerOverlay: ViewModifier {
-    @Bindable var center: CatpawInAppBannerCenter
+    @Bindable var center: catInAppBannerCenter
     @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -102,5 +102,5 @@ private struct InAppBannerOverlay: ViewModifier {
 }
 
 extension View {
-    func catpawInAppBanner(_ center: CatpawInAppBannerCenter = .shared) -> some View { modifier(InAppBannerOverlay(center: center)) }
+    func catpawInAppBanner(_ center: catInAppBannerCenter = .shared) -> some View { modifier(InAppBannerOverlay(center: center)) }
 }

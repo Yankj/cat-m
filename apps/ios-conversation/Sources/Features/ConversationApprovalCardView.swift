@@ -42,12 +42,12 @@ import SwiftUI
             if turn?.state == .failed, !doneSummaries.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(doneSummaries, id: \.self) { line in
-                        Label(line, systemImage: "checkmark.circle.fill").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                        Label(line, systemImage: "checkmark.circle.fill").font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                     }
                     HStack(spacing: 12) {
-                        Text(ui("小猫的回复没有完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        Text(ui("小猫的回复没有完成")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                         Button(ui("继续回复")) { model.draft = ui("继续"); model.send() }
-                            .font(CatpawTypography.Role.caption.font.weight(.semibold)).accessibilityIdentifier("chat.deviceCall.followupRetry")
+                            .font(catTypography.Role.caption.font.weight(.semibold)).accessibilityIdentifier("chat.deviceCall.followupRetry")
                     }
                 }.accessibilityElement(children: .contain).accessibilityIdentifier("chat.deviceCall.finalLine")
             }
@@ -83,7 +83,7 @@ import SwiftUI
         case .cancelled: (ui("已取消，未执行：{0}", [name]), "xmark.circle")
         case .failed(let message): (ui(message), "info.circle")
         }
-        return Label(text, systemImage: icon).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+        return Label(text, systemImage: icon).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
     }
 }
 
@@ -130,7 +130,7 @@ import SwiftUI
         case .unverified: (ui("结果待核对，请在手机上查看", []), "questionmark.circle")   // P1-5: pending_timeout ≠ 未执行
         case .notExecuted, .pending: (ui("未执行：{0}", [name]), "minus.circle")
         }
-        return Label(text, systemImage: icon).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+        return Label(text, systemImage: icon).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
     }
 }
 
@@ -189,28 +189,28 @@ import SwiftUI
         return f.date(from: approval.expiresAt) ?? ISO8601DateFormatter().date(from: approval.expiresAt)
     }
     private var riskText: String {
-        switch approval.risk { case "device_write": ui("将修改此设备上的数据"); case "external_write": ui("将修改外部服务中的数据"); default: ui("将修改你的 Catpaw 数据") }
+        switch approval.risk { case "device_write": ui("将修改此设备上的数据"); case "external_write": ui("将修改外部服务中的数据"); default: ui("将修改你的 cat 数据") }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Image(systemName: "hand.raised.fill").foregroundStyle(CatpawBrand.paw).accessibilityHidden(true)
-                Text(ui("需要你的确认")).font(CatpawTypography.Role.caption.font.weight(.semibold)).foregroundStyle(CatpawColors.secondary)
+                Image(systemName: "hand.raised.fill").foregroundStyle(catBrand.paw).accessibilityHidden(true)
+                Text(ui("需要你的确认")).font(catTypography.Role.caption.font.weight(.semibold)).foregroundStyle(catColors.secondary)
                 Spacer()
                 if let expires {
                     TimelineView(.periodic(from: .now, by: 30)) { context in
                         Text(expires > context.date ? ui("{0} 后过期", [expires.formatted(.relative(presentation: .numeric))]) : ui("已过期"))
-                            .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                            .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     }.accessibilityIdentifier("chat.approval.expiry")
                 }
             }
-            Text(Self.toolTitle(approval.tool, ui)).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+            Text(Self.toolTitle(approval.tool, ui)).font(catTypography.Role.body.font.weight(.semibold)).foregroundStyle(catColors.ink)
             if !approval.summary.isEmpty {
-                Text(Self.friendlySummary(approval.summary, ui: ui, locale: locale)).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
+                Text(Self.friendlySummary(approval.summary, ui: ui, locale: locale)).font(catTypography.Role.body.font).foregroundStyle(catColors.ink).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("chat.approval.summary")
             }
-            Text(riskText).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            Text(riskText).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
             HStack(spacing: 10) {
                 Button { decide(.approve) } label: { Text(ui("允许")).frame(maxWidth: .infinity) }
                     .primaryAction().accessibilityIdentifier("chat.approval.approve")
@@ -223,10 +223,10 @@ import SwiftUI
                     .disabled(working).accessibilityIdentifier("chat.approval.approveAlways")
             }
             if working { ProgressView().frame(maxWidth: .infinity).accessibilityIdentifier("chat.approval.working") }
-            if let error { Text(error).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.approval.error") }
+            if let error { Text(error).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.approval.error") }
         }
         .padding(14)
-        .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(catColors.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.approval." + approval.interruptID)
     }
