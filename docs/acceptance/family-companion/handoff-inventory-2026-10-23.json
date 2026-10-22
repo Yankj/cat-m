@@ -1,0 +1,806 @@
+{
+  "recorded_at_utc": "2026-10-22T17:24:25.873562+00:00",
+  "kind": "dated_shutdown_inventory",
+  "integration_before_handoff": "bae90a0dfa3eeae395408905d3a94a724d59b667",
+  "worktrees": [
+    {
+      "worktree": "~/.codex/worktrees/family-m0/catpaw-m",
+      "branch": "docs/family-m0",
+      "head": "bae90a0dfa3eeae395408905d3a94a724d59b667",
+      "uncommitted_files": [],
+      "ignored_evidence": [
+        {
+          "path": "build/family-handoff",
+          "file_count": 4,
+          "total_bytes": 15408,
+          "note": "Closeout receipt directory continues to receive this handoff verification; no recursive self-hash manifest."
+        },
+        {
+          "path": "build/family-m0-audit",
+          "file_count": 57,
+          "total_bytes": 2372796,
+          "manifest_local_only": "build/family-handoff/ignored-family-m0-family-m0-audit.json",
+          "manifest_sha256": "de383d44b9b44c95d5f5e1841fae1c7dcc8b691546db4f100d0db57abe27e3f0"
+        },
+        {
+          "path": "build/family-contract-integration",
+          "file_count": 13,
+          "total_bytes": 233291,
+          "manifest_local_only": "build/family-handoff/ignored-family-m0-family-contract-integration.json",
+          "manifest_sha256": "ae83ce1f046ab7593e4150f7f5cef085926c8765c13709958261352adba3ea99"
+        }
+      ],
+      "observed_status": "paused_goal_integration"
+    },
+    {
+      "worktree": "~/.codex/worktrees/family-m0-qa/catpaw-m",
+      "branch": "test/family-m0",
+      "head": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "uncommitted_files": [],
+      "ignored_evidence": [
+        {
+          "path": "build/family-contract-review",
+          "file_count": 10,
+          "total_bytes": 177578,
+          "manifest_local_only": "build/family-handoff/ignored-family-m0-qa-family-contract-review.json",
+          "manifest_sha256": "53f827a3f84e986d3732032ef85fe3133247122108eb4374b10c46bb1f9d1609"
+        },
+        {
+          "path": "build/family-crosswalk-review",
+          "file_count": 7,
+          "total_bytes": 436792,
+          "manifest_local_only": "build/family-handoff/ignored-family-m0-qa-family-crosswalk-review.json",
+          "manifest_sha256": "20fd3d63ececaa0a6ec048c428c27b909d98be9dfff149a50d34aca1581df657"
+        },
+        {
+          "path": "build/family-m0-audit",
+          "file_count": 44,
+          "total_bytes": 5656470,
+          "manifest_local_only": "build/family-handoff/ignored-family-m0-qa-family-m0-audit.json",
+          "manifest_sha256": "b297dcffd4fa9c09b0dafc27d6270a40f0cb39bfe04ad97eb26ca0e76392e79a"
+        },
+        {
+          "path": "build/family-bootstrap-review",
+          "file_count": 14,
+          "total_bytes": 149751,
+          "manifest_local_only": "build/family-handoff/ignored-family-m0-qa-family-bootstrap-review.json",
+          "manifest_sha256": "dabf32983af93e98bf3f18fd6d9cce27939317386f13522970e2e90371dd2a0b"
+        }
+      ],
+      "observed_status": "stopped_or_idle"
+    },
+    {
+      "worktree": "~/.codex/worktrees/family-m0-memory/catpaw-m",
+      "branch": "test/family-memory-cases",
+      "head": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "uncommitted_files": [
+        {
+          "status": "??",
+          "path": "docs/acceptance/family-companion/memory-cases-v1.json",
+          "bytes": 3950467,
+          "sha256": "23f0ffc74c71ab7947440e41da08ae405b3b0d52f3375f2ce0611a7dbfb21c74",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "docs/acceptance/family-companion/memory-evaluation-v1.md",
+          "bytes": 15389,
+          "sha256": "7e8047215c6fc8c6da242fc45c4090bbd1e3ed5ab56e11efab75aba694fe2259",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        }
+      ],
+      "ignored_evidence": [
+        {
+          "path": "build/family-m0-memory",
+          "file_count": 11,
+          "total_bytes": 1640004,
+          "manifest_local_only": "build/family-handoff/ignored-family-m0-memory-family-m0-memory.json",
+          "manifest_sha256": "f18a71fd43a6b634cfdb6b900532aa3cab7fb312bd87792753c108672eb93a15"
+        },
+        {
+          "path": "build/family-contract-alignment",
+          "file_count": 21,
+          "total_bytes": 1434082,
+          "manifest_local_only": "build/family-handoff/ignored-family-m0-memory-family-contract-alignment.json",
+          "manifest_sha256": "63190826df050e45c0e987ef5ff50c0e60ded3efc99e0bf559c7793c65cdc902"
+        }
+      ],
+      "observed_status": "stopped_or_idle"
+    },
+    {
+      "worktree": "~/.codex/worktrees/family-m0-provenance/catpaw-m",
+      "branch": "docs/family-source-audit",
+      "head": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "uncommitted_files": [],
+      "ignored_evidence": [
+        {
+          "path": "build/family-source-audit",
+          "file_count": 9,
+          "total_bytes": 403572,
+          "manifest_local_only": "build/family-handoff/ignored-family-m0-provenance-family-source-audit.json",
+          "manifest_sha256": "578b1191e56a4d995ea3d8c5349fd7a09fd2cb790cee9d10e7d41bec91c823d6"
+        },
+        {
+          "path": "build/family-bootstrap-plan",
+          "file_count": 2,
+          "total_bytes": 37340,
+          "manifest_local_only": "build/family-handoff/ignored-family-m0-provenance-family-bootstrap-plan.json",
+          "manifest_sha256": "c0b5eb738995eff001f26bc453d7a13aea581412fa05bc5c48308b067cef4cc8"
+        }
+      ],
+      "observed_status": "stopped_or_idle"
+    },
+    {
+      "worktree": "~/.codex/worktrees/family-local-recheck/catpaw-m",
+      "branch": "test/family-local-recheck",
+      "head": "88c71ac753bb2f52fa6ddbe2a1c25b6629293946",
+      "uncommitted_files": [
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/ASSERTION-MAP.json",
+          "bytes": 9927,
+          "sha256": "b228d50bfadb7a76b67a5bac21b06ad7a437c27950f27a0b02c65ad3cdb8f9d2",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/BASELINE.json",
+          "bytes": 8044,
+          "sha256": "248010388cac214c40e8bf4ce1faa77d4087b78881069d4d9b195f2713af6d23",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/CAPABILITIES.json",
+          "bytes": 4722,
+          "sha256": "8694c6a239eab1a77069d42adb84198992fcba5564ff0f3fbf818e220a0762d7",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/DELIVERY-CHECKS.json",
+          "bytes": 2668,
+          "sha256": "f6203ce49d540353754ac58b124a69ff2f78f57dd5d4c91fa5674303594140fb",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/FILES.json",
+          "bytes": 7560,
+          "sha256": "21d993927df95f7defe51443654f1f3f69b27ae1c91a7963fcfe93c4f4867151",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/HANDOFF.md",
+          "bytes": 8074,
+          "sha256": "724b59269f0d990829cf23a4ae0473f96fa5e9f837465cb50a80221b0ef73c9d",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/OWNERSHIP.md",
+          "bytes": 4401,
+          "sha256": "b16b7d1310b30deba8ca152291e1fc1c402cf1fd5d0b2c05709c834d1fad5724",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/ROOT-RECHECK.json",
+          "bytes": 13548,
+          "sha256": "d9cb46e7b34fbe5513283f91ce4291fe2eca150cbb87665f04404add7f9893aa",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline-guard.mjs",
+          "bytes": 953,
+          "sha256": "85ffcfca025c8b481de16d67cd08978da6f97691848721e0c7dfa918234fb9f4",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/ACCEPTANCE-MATRIX.md",
+          "bytes": 7439,
+          "sha256": "764e26d6b0b4ee34df1bd67c0267de5fbd9d389051c454decffee66ef8381784",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/AGENT-CONFIGURATION.json",
+          "bytes": 1984,
+          "sha256": "7d0e80a8d159027130209146de2736c7eb820546e4ea53df3c39f0b1d9d23b16",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/EVIDENCE.json",
+          "bytes": 24705,
+          "sha256": "6a6f7a6d15d25e2a4b308e4412dbefa3302a6ec5f2550243ab376fb865265663",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/REPORT.md",
+          "bytes": 6959,
+          "sha256": "aba9eeb4dfdd464dd1a6fdeeb8c89cbaaf25c9750e0631db50044128106d6d87",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/bootstrap.test.mjs",
+          "bytes": 3492,
+          "sha256": "fa47a0c5e78868e2d3a674f163fbd5359bc290a9e6618ae4ff57f54e5c8cbd2b",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/helpers.mjs",
+          "bytes": 963,
+          "sha256": "5a827b3a7b34909ea5392103e92bc2bdf6f3b748e03ce24af5379247c45bf47a",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/jose-boundary.mjs",
+          "bytes": 371,
+          "sha256": "5a5e9843ea6cc5fe5048d3cbe9a48f172bb6f3321f443aa8dcb20dd0be1aa698",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/memory.test.mjs",
+          "bytes": 6845,
+          "sha256": "832b706956e7f6d12223ea4327db1f75180c3f404dc60b24b115532a549b6a35",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/network-guard.test.mjs",
+          "bytes": 1166,
+          "sha256": "2070529076c4a67f9f5a9d376f1a8f772add85ea2f0d233b2918cdfe467696c8",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/offline-loader.mjs",
+          "bytes": 188,
+          "sha256": "d5d391cf65bbf14f937d87875ed082d9f2242e18c58d428faefa1a78873b8110",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/offline-prelude.mjs",
+          "bytes": 1284,
+          "sha256": "f7b45148c3508ecabc20387d939a589944358ca25b38913b2dba6926d41b3ae0",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/postgres-boundary.mjs",
+          "bytes": 1480,
+          "sha256": "a6aa3f2c5912a9dd314ce43c4b382d49aea1e31188ff734a0fbc56e86e7aaaa6",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/reminder.test.mjs",
+          "bytes": 10910,
+          "sha256": "fc71a429a167876c7917f9985b5f58f53e4d9abe97f330478246747b74c2ac5b",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/run.mjs",
+          "bytes": 6963,
+          "sha256": "05d6793ed1a54786f628e0a0aa8a95067a365cd5003d7677b13143d2bf880845",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/offline/source-loader.mjs",
+          "bytes": 870,
+          "sha256": "984c3a75007300c9bb6e10992b24a7fb1dc8b69f32fcb6849bb23241ae986f45",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/run-existing-offline.mjs",
+          "bytes": 1468,
+          "sha256": "112a580555eb8086f8d463f2b7679336c10a28510a9a13005f64b5db45814d2f",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/README.md",
+          "bytes": 7638,
+          "sha256": "07e26d446af5a436f52b05a896230276cbe22b33eb802e1b48382eb8c77be1db",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/acceptance-checklist.json",
+          "bytes": 7305,
+          "sha256": "a5259276481e0bd271f926c12051555b82bcf9fbcf98315c933faeac53f8a7fb",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/fixture-results.json",
+          "bytes": 8223,
+          "sha256": "7af18fa65add53d2bf28f332ebc82a10b4cb7cf44089186a447101f27c1f484d",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/log-probe-results.json",
+          "bytes": 1803,
+          "sha256": "a90acfb0b8931c8dfc65d0be958c203f81e61b43a620715412fc61c88ca12989",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/permission-fixtures.mjs",
+          "bytes": 6152,
+          "sha256": "c8702f071b04ba37a523d6de4c48f9c77aa3ea501ebeb8fa54d2d4dac9a17df3",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/run-fixtures.mjs",
+          "bytes": 639,
+          "sha256": "05ee64c1c9a695757cb6533231bd8ff13326a8b217c4082221957d0f5364c853",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/run-ledger.json",
+          "bytes": 3762,
+          "sha256": "e17819c81b3c22d166556fcd37ccce327a42f2287eb88ca6d647126504943551",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/run-log-probe.mjs",
+          "bytes": 2460,
+          "sha256": "14707ce02a07b5681e314642e7067c9a4982b84389eac953014821b7ef9fd40e",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/run-source-probes.mjs",
+          "bytes": 7082,
+          "sha256": "a880d4bd8ab28b669e50a6ce6de1d76d8de4b3384eeb53493ebc0cbefa4d853b",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/source-audit-results.json",
+          "bytes": 23128,
+          "sha256": "83fa3e85df04d2bcbacabffab2e4c9de5a1d232381215de6369db404babcf7e3",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/source-audit.mjs",
+          "bytes": 4934,
+          "sha256": "ca0f3db7e2e1fd9e8bd6e51c2267e74b513f995c752f5130b2b1040fba5c65b2",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/source-pin.mjs",
+          "bytes": 1480,
+          "sha256": "6bd8f7a05a58d018145c146fd1adfee015f4e03797781dd2b9a7befb8d3e8566",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/source-probe-results.json",
+          "bytes": 4575,
+          "sha256": "3fda9fe094d302d8bf54db7c58142d9a51ae7380f09eb79b24f0d9addc44ba78",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        },
+        {
+          "status": "??",
+          "path": "qa/family-cloud-verification/security/verification-results.json",
+          "bytes": 2942,
+          "sha256": "a129872cb7d594fadf8641f722e804bca0dcdcf544c35b9fab83023e46c47e1b",
+          "same_bytes_in_integration_checkout": true,
+          "disposition": "duplicate retained; integrated copy committed"
+        }
+      ],
+      "ignored_evidence": [
+        {
+          "path": "build/family-cloud-recheck",
+          "file_count": 11,
+          "total_bytes": 76399,
+          "manifest_local_only": "build/family-handoff/ignored-family-local-recheck-family-cloud-recheck.json",
+          "manifest_sha256": "824b0742e32c3ab6a22bd89a980126670b42cafe11fbabf4051fd5e75b7aac47"
+        }
+      ],
+      "observed_status": "stopped_or_idle"
+    },
+    {
+      "worktree": "~/Desktop/ai-work/catpaw-m",
+      "branch": "feat/family-website",
+      "head": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+      "uncommitted_files": [
+        {
+          "status": " M",
+          "path": "docs/status/master-plan.md",
+          "bytes": 91928,
+          "sha256": "779781b09dbb9c9b8c052ca57330162f2d0e2615262981b317051460ba88f44e",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": " M",
+          "path": "scripts/reviewed-findings.json",
+          "bytes": 176305,
+          "sha256": "f2e1141d5894a56f6a6c4e4cf29a6406100b8d4a27ee742b8b1e8748e9ded392",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/.gitignore",
+          "bytes": 8,
+          "sha256": "020c2606e8ed484089c2083e0be438b9d0736bee1558a6b76af0d58bd23f69cf",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/ASSETS.md",
+          "bytes": 3499,
+          "sha256": "2da5b2e30cbcc12fec03ff0aff7ea66d2729e1f2b73f24f8b63179f54d4a3945",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/README.md",
+          "bytes": 2251,
+          "sha256": "73697a81369295424540ba1fd8d0b62cf5fe384a041ca007f93ceaa366a5e879",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/app.js",
+          "bytes": 7094,
+          "sha256": "cd9f64eded7def266726b383a65ba62789e9d8432ec23cab3489a7377d9b75d6",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/assets/cat-done.webp",
+          "bytes": 10542,
+          "sha256": "40bdaf59d3ba9c8e36f719355b6299b3c14cbc931974d663efdd22848a29b9a1",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/assets/cat-idle.webp",
+          "bytes": 8158,
+          "sha256": "3fda76e25b70b6e5463ddb8f0fcf6b273ffe57ad4c2433bade01f9ac1ce5b64e",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/assets/cat-thinking.webp",
+          "bytes": 9516,
+          "sha256": "b4044fa1ff3f5e21cb2883bcdc5cb1fbdf5966d673a5a0d6af07d2e7ec33e59b",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/assets/family-moment.jpg",
+          "bytes": 433110,
+          "sha256": "c0208bc90618842c011dd747e1026fe52486936ab967317580e641a8e66a277c",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/assets/mark.png",
+          "bytes": 29909,
+          "sha256": "abdf48431859d286322cbd7324f9875744d136508421c445c813a7133dcade55",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/build.mjs",
+          "bytes": 1698,
+          "sha256": "d53d2ef572a6ed60a87022d91efe18f6c170d3c702b09bbc7f09c06aa3ff8639",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/index.html",
+          "bytes": 15445,
+          "sha256": "5995ff5224ce23356231703dca8c8fa2bd19d54fb69fea0c34cc834ba5d9e081",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/server.mjs",
+          "bytes": 4737,
+          "sha256": "e41de175a09b7d40807f7e44182a149f2a51e068d2ccb07772fd305f2d861e7b",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/styles.css",
+          "bytes": 20222,
+          "sha256": "8717406df44cea7d7b1e55dbd823a2328ad4617f11f4ed8869ddddc66b8660fa",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "apps/website/family/verify.mjs",
+          "bytes": 6359,
+          "sha256": "42ec5500f3e66e51cf3560e21d661c9d06fc42f98f1e776f9dc9e49dc3102b46",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "docs/acceptance/family-website-2026-10-23.md",
+          "bytes": 3161,
+          "sha256": "fee0ba877b9b4967ef9f8b203ad5d524306058f24373344e6b9ebec56eb3d373",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        },
+        {
+          "status": "??",
+          "path": "docs/design/family-companion/website.md",
+          "bytes": 2509,
+          "sha256": "80fd9f8f954771c7fc9d7b4c6003c2764c605f4508afc442f369e03ab894a552",
+          "same_bytes_in_integration_checkout": false,
+          "disposition": "external-owner WIP; preserved in place, not imported"
+        }
+      ],
+      "ignored_evidence": [
+        {
+          "path": "build/family-website",
+          "file_count": 12,
+          "total_bytes": 5240571,
+          "manifest_local_only": "build/family-handoff/ignored-ai-work-family-website.json",
+          "manifest_sha256": "ea65458a3314e3b9a50b92158023f6fb4b21c056ff04bf10898e7ca392512ecc"
+        }
+      ],
+      "observed_status": "independent_website_task_active"
+    },
+    {
+      "worktree": "~/Documents/Codex/2026-10-22/task-2/cloud-verification-worktree",
+      "branch": "test/family-cloud-verification",
+      "head": "a54d7f2b34db4bcda13fb1a22eaaf4b847dd9e17",
+      "uncommitted_files": [],
+      "ignored_evidence": [],
+      "observed_status": "stopped_or_idle"
+    }
+  ],
+  "cloud_plan_comparison": [
+    {
+      "path": "docs/architecture/family-companion-technical-plan.md",
+      "source_sha256": "7d423abef57a5870f63a11c5af4c1b109e3c2fd1d08b3b99d823a9e5d630328e",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/architecture/family-companion-technical-plan.pdf",
+      "source_sha256": "2cd132c23cc2c46c36bf84fbb7e8dc4bb125c12bb0ab0bbdd9c9f089ad8d4fbf",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/README.md",
+      "source_sha256": "7f7133e7f3f67cd14fce6ea2342d7144bc88355b529e224c734c25ded4c63086",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/asset-manifest.json",
+      "source_sha256": "057149854be9cec9a1fb81a602f50b59de8b0d11ec829a580d24934cc224dfea",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/assets/cat-product-architecture-v0.1.pdf",
+      "source_sha256": "dbc1df843ba1263f3435ea82e8e26a2e7cba4530ddb2102321187e64ced8c832",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/assets/cat-product-architecture-v0.1.png",
+      "source_sha256": "113c0125f8c3f10b16c3fd6b1cc54ae24349a764b42f887834fb897c3496ca43",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/assets/cat-product-architecture-v0.1.svg",
+      "source_sha256": "f676f102094e6d2211b9c0e746392cf15eacffa4f5ad7e23bde9d541d6522602",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/assets/technical-architecture.png",
+      "source_sha256": "bae24afe78c6ffe4eb2e3a098e7989c6570b6ebbcb2bbcc27762af8aef4c2123",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/assets/visual-v0.2-review.png",
+      "source_sha256": "6f9a94692ddba2b8e99c352f638ee05112ac378d744a47a984c555d2fdd2848f",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/assets/warm-ui-details-v1-review.png",
+      "source_sha256": "903730420d6b3b686699a0bef14da90177cdab7de97e938bc968146682adb7bc",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/decisions.md",
+      "source_sha256": "0a6cb7af2f4335918fd54cfec4095b0787bad9baa2f8912c6c6445b141d5b327",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/execution-goal.md",
+      "source_sha256": "d514b8572d985f0c457c3588c1e6aac2e3ffbb17fed1fe803e9ab100892e9418",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/explorations/visual-v0.1-not-implementation-baseline.png",
+      "source_sha256": "c434b7459d7626f3fa35b9d6b0f737a2222c73fa811dfe4bfb18e297a4c74d83",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/tools/draw-product-architecture.py",
+      "source_sha256": "a9ea4384ec04e8e6ff95d91dfbda0248fa4a27433ce8aea33254c1e1a3bd6f2e",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "docs/design/family-companion/tools/render-technical-plan.swift",
+      "source_sha256": "f29cf578b43185f82c6b3cd070a8e498ee5cddda93ea2dda81d62b1759c34608",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "scripts/check-git-policy.py",
+      "source_sha256": "45248ad3fc6ba408948fceae2f7295de6cbc959ee21ae337a33188af2e1d897c",
+      "local_status": "EXACT_BYTES"
+    },
+    {
+      "path": "scripts/reviewed-findings.json",
+      "source_sha256": "fe6896c6d932dc45ef26bb16a4cfce33355e0346432801db3e4bcce5e4f9b0f2",
+      "local_status": "EXACT_BYTES"
+    }
+  ],
+  "hosted_status": {
+    "recorded_at": "2026-10-22T17:22:30Z",
+    "project_alias": "existing-cat-project",
+    "project_status": "ACTIVE_HEALTHY",
+    "region": "us-east-1",
+    "database_version": "17.11.0.003",
+    "functions": [
+      {
+        "slug": "catpaw-api",
+        "version": 56,
+        "status": "ACTIVE",
+        "package_sha256": "c3f704df78f7a449b8b7dbec7ad6e306ac7e6f8205f39ab359120c30ed9c7801"
+      },
+      {
+        "slug": "catpaw-tick",
+        "version": 16,
+        "status": "ACTIVE",
+        "package_sha256": "8f767ae860bbb1dd09c2caf51aeb3837ef97a8c8a287290c266f2769b4c594aa"
+      },
+      {
+        "slug": "catpaw-proactive",
+        "version": 10,
+        "status": "ACTIVE",
+        "package_sha256": "2eb0abd2438fcdb6e881f6e4c6cdf7b0e2019ebc0438e766c9fdcbe86636de48"
+      }
+    ],
+    "cron_jobs": [
+      {
+        "jobid": 1,
+        "jobname": "catpaw-proactive-tick",
+        "schedule": "* * * * *",
+        "active": true,
+        "last_run_status": "succeeded",
+        "last_start_time": "2026-10-22 17:22:00.019011+00",
+        "last_end_time": "2026-10-22 17:22:00.023383+00"
+      },
+      {
+        "jobid": 2,
+        "jobname": "catpaw-proactive-resurface",
+        "schedule": "* * * * *",
+        "active": true,
+        "last_run_status": "succeeded",
+        "last_start_time": "2026-10-22 17:22:00.018235+00",
+        "last_end_time": "2026-10-22 17:22:00.022045+00"
+      }
+    ],
+    "read_only_sql_queries": 2,
+    "sql_scope": "information_schema cron column names and cron job schedule/active/latest-run status only; no commands, payloads, credentials or user records",
+    "mutations": 0,
+    "functions_invoked": 0,
+    "product_pg_tests_run": 0,
+    "kept_running_reason": "Pre-existing production deployment and schedules; development pause does not authorize disrupting production reminders. No schedule or project shutdown attempted."
+  },
+  "goal": {
+    "thread_id": "01a16463-8c0e-7400-a6a1-03510707e602",
+    "status": "paused",
+    "source": "get_goal during user-requested closeout"
+  },
+  "scheduled_local_work": {
+    "codex_automation_files_inspected": 1,
+    "matching_automations": 0,
+    "matching_user_crontab_entries": 0,
+    "matching_user_launch_agents": 0,
+    "new_automations_created": 0
+  },
+  "processes": {
+    "family_goal_product_tests_builds_services": 0,
+    "website_preview": {
+      "pid": 50314,
+      "command": "node apps/website/family/server.mjs",
+      "listen": "127.0.0.1:4178",
+      "owner": "independent task: 设计并实现宝妈产品官网",
+      "stopped": false
+    },
+    "platform_cua_codex_processes": "left intact; shared app infrastructure, not product-test jobs"
+  },
+  "scope_note": "This inventory is a dated observation; concurrent external website work may change. No cleanup/reset/removal or external-owner commit performed. Ignored raw evidence remains local-only; published summaries contain its hashes.",
+  "local_branches_without_origin_ref_at_snapshot": [
+    "feat/family-website",
+    "test/family-m0",
+    "test/family-memory-cases",
+    "docs/family-source-audit",
+    "test/family-local-recheck"
+  ],
+  "synchronization_note": "Local preparation-lane copies are retained and their reviewed deliverables already exist in pushed docs/family-m0; raw ignored evidence remains local-only. Independent website WIP is not imported."
+}
