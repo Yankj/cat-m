@@ -13,7 +13,8 @@ export function todayIn(tz, now = Date.now()) {
 
 export function createFamilyService({ store, verifyUser, allow = () => true, log = () => {}, extraRoutes = [], now = () => Date.now() }) {
   async function actorOf(req) {
-    const u = await verifyUser(req.headers.get('authorization') ?? '').catch(() => null);
+    // a key-service outage is not a bad session: surface it as retryable 503 instead of logging the user out
+    const u = await verifyUser(req.headers.get('authorization') ?? '').catch(e => { if (e?.status === 503) throw new FamilyError(503, 'auth_unavailable', { retryable: true }); return null; });
     if (!u?.sub) throw new FamilyError(401, 'session_required');
     if (!allow(u.sub)) throw new FamilyError(404, 'not_found');
     return u.sub;
