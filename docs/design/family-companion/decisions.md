@@ -33,3 +33,5 @@
 2026-10-22 归档前重新读取 GitHub 并 fetch：main 为 `789ad4feceb0680b8e2e5913083c5b834dc63db1`；#112 已合并，#110 closed/unmerged。新增差异为官网/IPA 发布等，原生与后端源码相对旧审计 head 无新增变化。工作树干净后新建 `docs/family-product-plan`，原分支/worktree 保留。
 
 新增明确决定：GitHub / 项目名称改为 cat-m，App 品牌仍 cat。GitHub 新旧名 repository ID 相同，已改 origin；目标机目录迁移是独立阻塞，不影响文档分支同步。温馨 UI 细节沿用现有 token、SF Symbols 和真实回执边界。
+
+仓库改名接线：本地 pre-push 的精确目标名单从旧名改为 Yankj/cat-m 三种既有 URL 格式；禁止 main、错误目标、legacy remote、非快进与无关历史的规则保留。已验证新目标通过，旧/错误目标、main、legacy 被拒绝，没有绕过 hook。
