@@ -1,0 +1,245 @@
+{
+  "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "contract_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+  "classification_meaning": {
+    "known_defect": "所读执行/技术契约已列出的缺陷，本轮补出独立可跑复现。",
+    "new_finding": "相对所读契约的具体故障复现/窄边界新增发现；不宣称全仓或生产首次发现。",
+    "not_implemented": "提议安全机制或家庭能力尚未实现/冻结，不冒称违反已发布新合同。",
+    "fixture_limitation": "夹具/证据层局限，窄PASS不得放大为产品或真实PG/设备验收。"
+  },
+  "test_sets_must_remain_separate": {
+    "existing_selected_suite": {
+      "files": 20,
+      "tests": 223,
+      "pass": 222,
+      "skip": 1,
+      "fail": 0
+    },
+    "new_target_assertions": {
+      "tests": 18,
+      "pass": 6,
+      "fail": 12
+    },
+    "new_current_behavior_probes": {
+      "tests": 18,
+      "reproduced": 18
+    },
+    "rule": "同一18项运行两种断言模式，不当作36个独立用例；不与既有222PASS混为一套。"
+  },
+  "assertions": [
+    {
+      "id": "BOOT-01",
+      "categories": [
+        "fixture_limitation"
+      ],
+      "product_target_status": "PASS",
+      "explanation": "健康初始化支持性检查；真实bootstrap加合成驱动，不证明真实PG连接/JSON绑定。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/bootstrap.test.mjs"
+    },
+    {
+      "id": "BOOT-02",
+      "categories": [
+        "known_defect",
+        "fixture_limitation"
+      ],
+      "product_target_status": "FAIL",
+      "explanation": "契约已列rejected Promise缓存缺陷；新100并发复现。立即重试是探针目标，实际退避需冻结。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/bootstrap.test.mjs"
+    },
+    {
+      "id": "BOOT-03",
+      "categories": [
+        "fixture_limitation"
+      ],
+      "product_target_status": "PASS",
+      "explanation": "缺配置fail-closed支持性检查；不使用宿主真实配置。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/bootstrap.test.mjs"
+    },
+    {
+      "id": "MEM-01",
+      "categories": [
+        "known_defect",
+        "not_implemented"
+      ],
+      "product_target_status": "FAIL",
+      "explanation": "契约已列缺内容CAS；迟到await覆盖更正。409/content-version兼容协议尚未实现/冻结，不把提案当现v1合同。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/memory.test.mjs"
+    },
+    {
+      "id": "MEM-02",
+      "categories": [
+        "fixture_limitation",
+        "new_finding"
+      ],
+      "product_target_status": "PASS",
+      "explanation": "窄PASS仅为单行删除后不复活与sync墓碑；另发现迟到PATCH返回500，不代表完整删除正确。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/memory.test.mjs"
+    },
+    {
+      "id": "MEM-03",
+      "categories": [
+        "new_finding",
+        "fixture_limitation"
+      ],
+      "product_target_status": "FAIL",
+      "explanation": "新具体复现：clear先完成，在途journal随后重建并被召回；无真实缓存/索引/模型。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/memory.test.mjs"
+    },
+    {
+      "id": "MEM-04",
+      "categories": [
+        "new_finding"
+      ],
+      "product_target_status": "FAIL",
+      "explanation": "新具体复现：已删原memory_save operation重放创建新记忆；不是当前v1已承诺409的合同失败。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/memory.test.mjs"
+    },
+    {
+      "id": "MEM-05",
+      "categories": [
+        "new_finding",
+        "fixture_limitation"
+      ],
+      "product_target_status": "FAIL",
+      "explanation": "新写点故障复现：takeFragments之后insert失败，原片段丢失、重试无结果；无真实PG。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/memory.test.mjs"
+    },
+    {
+      "id": "REM-01",
+      "categories": [
+        "known_defect",
+        "fixture_limitation"
+      ],
+      "product_target_status": "FAIL",
+      "explanation": "契约已列claim中断不可恢复；两个模拟60秒周期，新service对象共享内存store，非OS强杀。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/reminder.test.mjs"
+    },
+    {
+      "id": "REM-02",
+      "categories": [
+        "new_finding",
+        "fixture_limitation"
+      ],
+      "product_target_status": "FAIL",
+      "explanation": "已知claim缺陷的新饥饿路径：前50条未完成claim阻塞后50条；SQL仅静态对应。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/reminder.test.mjs"
+    },
+    {
+      "id": "REM-03",
+      "categories": [
+        "known_defect",
+        "fixture_limitation"
+      ],
+      "product_target_status": "FAIL",
+      "explanation": "契约已列取消围栏缺口；四位置各25次，100事件/100惰性APNs函数调用，无真实通知。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/reminder.test.mjs"
+    },
+    {
+      "id": "REM-04",
+      "categories": [
+        "known_defect",
+        "fixture_limitation"
+      ],
+      "product_target_status": "FAIL",
+      "explanation": "契约已列insertEvent失败丢due；在真实store端口写前注入，非数据库COMMIT故障。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/reminder.test.mjs"
+    },
+    {
+      "id": "REM-05",
+      "categories": [
+        "new_finding",
+        "fixture_limitation"
+      ],
+      "product_target_status": "FAIL",
+      "explanation": "同恢复缺口新增写点：首次finish失败丢下一次recurrence；无事务回滚实测。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/reminder.test.mjs"
+    },
+    {
+      "id": "REM-06",
+      "categories": [
+        "new_finding",
+        "fixture_limitation"
+      ],
+      "product_target_status": "FAIL",
+      "explanation": "新增双finish失败路径：事件存在但fire_count未推进、原claim无法恢复。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/reminder.test.mjs"
+    },
+    {
+      "id": "REM-07",
+      "categories": [
+        "fixture_limitation"
+      ],
+      "product_target_status": "PASS",
+      "explanation": "窄支持性结果：claim写前失败恢复；不证明claim提交unknown或真实PG事务。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/reminder.test.mjs"
+    },
+    {
+      "id": "REM-08",
+      "categories": [
+        "fixture_limitation",
+        "new_finding"
+      ],
+      "product_target_status": "PASS",
+      "explanation": "窄持久状态目标PASS：finish写后ack丢失不重复；新副发现首tick仍报告fire_failed。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/reminder.test.mjs"
+    },
+    {
+      "id": "REM-09",
+      "categories": [
+        "new_finding"
+      ],
+      "product_target_status": "FAIL",
+      "explanation": "新创建幂等缺口：task已写、task_created失败后，同operation重试不补创建事件。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/reminder.test.mjs"
+    },
+    {
+      "id": "SAFE-01",
+      "categories": [
+        "fixture_limitation"
+      ],
+      "product_target_status": "PASS",
+      "explanation": "验证harness禁网自检；6次传输前拒绝，不是产品功能PASS。",
+      "source_and_actual_target_ref": "ROOT-RECHECK.json#/offline/case_outcomes",
+      "test_path": "qa/family-cloud-verification/offline/network-guard.test.mjs"
+    }
+  ],
+  "household_permission": {
+    "categories": [
+      "not_implemented",
+      "fixture_limitation"
+    ],
+    "cases": 32,
+    "product_cases_executed": 0,
+    "status": "NOT_RUN",
+    "meaning": "尚未接入真实家庭权限层；固定base缺少家庭API/schema。不是执行32次越权，也没有32次已证越权。"
+  },
+  "log_canary": {
+    "categories": [
+      "new_finding",
+      "fixture_limitation"
+    ],
+    "id": "LP-01",
+    "real_entry": "services/edge/supabase/functions/_shared/proactive/service.mjs:201",
+    "injection": "Synthetic listTasks failure passed into real createProactiveService.handle; its injected log sink captured the raw canary via error stack/message.",
+    "runtime_adapter_static": "services/edge/supabase/functions/catpaw-proactive/index.ts:26,44",
+    "production_leak_observed": false,
+    "meaning": "仅合成错误进入真实service日志边界的离线证据。未读线上日志、未用真实家庭数据，不能称已有生产泄漏。"
+  }
+}
