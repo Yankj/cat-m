@@ -1,0 +1,205 @@
+{
+  "branch": "test/family-cloud-verification",
+  "base_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "change_type": "additions_only",
+  "product_files_modified": [],
+  "file_count": 39,
+  "files": [
+    {
+      "path": "qa/family-cloud-verification/ASSERTION-MAP.json",
+      "bytes": 9927,
+      "sha256": "b228d50bfadb7a76b67a5bac21b06ad7a437c27950f27a0b02c65ad3cdb8f9d2"
+    },
+    {
+      "path": "qa/family-cloud-verification/BASELINE.json",
+      "bytes": 8044,
+      "sha256": "248010388cac214c40e8bf4ce1faa77d4087b78881069d4d9b195f2713af6d23"
+    },
+    {
+      "path": "qa/family-cloud-verification/CAPABILITIES.json",
+      "bytes": 4722,
+      "sha256": "8694c6a239eab1a77069d42adb84198992fcba5564ff0f3fbf818e220a0762d7"
+    },
+    {
+      "path": "qa/family-cloud-verification/DELIVERY-CHECKS.json",
+      "bytes": 2668,
+      "sha256": "f6203ce49d540353754ac58b124a69ff2f78f57dd5d4c91fa5674303594140fb"
+    },
+    {
+      "path": "qa/family-cloud-verification/FILES.json",
+      "bytes": null,
+      "sha256": null,
+      "note": "Manifest self-hash omitted; repository commit supplies immutable identity."
+    },
+    {
+      "path": "qa/family-cloud-verification/HANDOFF.md",
+      "bytes": 8074,
+      "sha256": "724b59269f0d990829cf23a4ae0473f96fa5e9f837465cb50a80221b0ef73c9d"
+    },
+    {
+      "path": "qa/family-cloud-verification/OWNERSHIP.md",
+      "bytes": 4401,
+      "sha256": "b16b7d1310b30deba8ca152291e1fc1c402cf1fd5d0b2c05709c834d1fad5724"
+    },
+    {
+      "path": "qa/family-cloud-verification/ROOT-RECHECK.json",
+      "bytes": 13548,
+      "sha256": "d9cb46e7b34fbe5513283f91ce4291fe2eca150cbb87665f04404add7f9893aa"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline-guard.mjs",
+      "bytes": 953,
+      "sha256": "85ffcfca025c8b481de16d67cd08978da6f97691848721e0c7dfa918234fb9f4"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/ACCEPTANCE-MATRIX.md",
+      "bytes": 7439,
+      "sha256": "764e26d6b0b4ee34df1bd67c0267de5fbd9d389051c454decffee66ef8381784"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/AGENT-CONFIGURATION.json",
+      "bytes": 1984,
+      "sha256": "7d0e80a8d159027130209146de2736c7eb820546e4ea53df3c39f0b1d9d23b16"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/EVIDENCE.json",
+      "bytes": 24705,
+      "sha256": "6a6f7a6d15d25e2a4b308e4412dbefa3302a6ec5f2550243ab376fb865265663"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/REPORT.md",
+      "bytes": 6959,
+      "sha256": "aba9eeb4dfdd464dd1a6fdeeb8c89cbaaf25c9750e0631db50044128106d6d87"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/bootstrap.test.mjs",
+      "bytes": 3492,
+      "sha256": "fa47a0c5e78868e2d3a674f163fbd5359bc290a9e6618ae4ff57f54e5c8cbd2b"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/helpers.mjs",
+      "bytes": 963,
+      "sha256": "5a827b3a7b34909ea5392103e92bc2bdf6f3b748e03ce24af5379247c45bf47a"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/jose-boundary.mjs",
+      "bytes": 371,
+      "sha256": "5a5e9843ea6cc5fe5048d3cbe9a48f172bb6f3321f443aa8dcb20dd0be1aa698"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/memory.test.mjs",
+      "bytes": 6845,
+      "sha256": "832b706956e7f6d12223ea4327db1f75180c3f404dc60b24b115532a549b6a35"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/network-guard.test.mjs",
+      "bytes": 1166,
+      "sha256": "2070529076c4a67f9f5a9d376f1a8f772add85ea2f0d233b2918cdfe467696c8"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/offline-loader.mjs",
+      "bytes": 188,
+      "sha256": "d5d391cf65bbf14f937d87875ed082d9f2242e18c58d428faefa1a78873b8110"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/offline-prelude.mjs",
+      "bytes": 1284,
+      "sha256": "f7b45148c3508ecabc20387d939a589944358ca25b38913b2dba6926d41b3ae0"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/postgres-boundary.mjs",
+      "bytes": 1480,
+      "sha256": "a6aa3f2c5912a9dd314ce43c4b382d49aea1e31188ff734a0fbc56e86e7aaaa6"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/reminder.test.mjs",
+      "bytes": 10910,
+      "sha256": "fc71a429a167876c7917f9985b5f58f53e4d9abe97f330478246747b74c2ac5b"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/run.mjs",
+      "bytes": 6963,
+      "sha256": "05d6793ed1a54786f628e0a0aa8a95067a365cd5003d7677b13143d2bf880845"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/source-loader.mjs",
+      "bytes": 870,
+      "sha256": "984c3a75007300c9bb6e10992b24a7fb1dc8b69f32fcb6849bb23241ae986f45"
+    },
+    {
+      "path": "qa/family-cloud-verification/run-existing-offline.mjs",
+      "bytes": 1468,
+      "sha256": "112a580555eb8086f8d463f2b7679336c10a28510a9a13005f64b5db45814d2f"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/README.md",
+      "bytes": 7638,
+      "sha256": "07e26d446af5a436f52b05a896230276cbe22b33eb802e1b48382eb8c77be1db"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/acceptance-checklist.json",
+      "bytes": 7305,
+      "sha256": "a5259276481e0bd271f926c12051555b82bcf9fbcf98315c933faeac53f8a7fb"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/fixture-results.json",
+      "bytes": 8223,
+      "sha256": "7af18fa65add53d2bf28f332ebc82a10b4cb7cf44089186a447101f27c1f484d"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/log-probe-results.json",
+      "bytes": 1803,
+      "sha256": "a90acfb0b8931c8dfc65d0be958c203f81e61b43a620715412fc61c88ca12989"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/permission-fixtures.mjs",
+      "bytes": 6152,
+      "sha256": "c8702f071b04ba37a523d6de4c48f9c77aa3ea501ebeb8fa54d2d4dac9a17df3"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/run-fixtures.mjs",
+      "bytes": 639,
+      "sha256": "05ee64c1c9a695757cb6533231bd8ff13326a8b217c4082221957d0f5364c853"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/run-ledger.json",
+      "bytes": 3762,
+      "sha256": "e17819c81b3c22d166556fcd37ccce327a42f2287eb88ca6d647126504943551"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/run-log-probe.mjs",
+      "bytes": 2460,
+      "sha256": "14707ce02a07b5681e314642e7067c9a4982b84389eac953014821b7ef9fd40e"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/run-source-probes.mjs",
+      "bytes": 7082,
+      "sha256": "a880d4bd8ab28b669e50a6ce6de1d76d8de4b3384eeb53493ebc0cbefa4d853b"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/source-audit-results.json",
+      "bytes": 23128,
+      "sha256": "83fa3e85df04d2bcbacabffab2e4c9de5a1d232381215de6369db404babcf7e3"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/source-audit.mjs",
+      "bytes": 4934,
+      "sha256": "ca0f3db7e2e1fd9e8bd6e51c2267e74b513f995c752f5130b2b1040fba5c65b2"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/source-pin.mjs",
+      "bytes": 1480,
+      "sha256": "6bd8f7a05a58d018145c146fd1adfee015f4e03797781dd2b9a7befb8d3e8566"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/source-probe-results.json",
+      "bytes": 4575,
+      "sha256": "3fda9fe094d302d8bf54db7c58142d9a51ae7380f09eb79b24f0d9addc44ba78"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/verification-results.json",
+      "bytes": 2942,
+      "sha256": "a129872cb7d594fadf8641f722e804bca0dcdcf544c35b9fab83023e46c47e1b"
+    }
+  ]
+}

@@ -1,0 +1,391 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-10-23",
+  "status": "READ_ONLY_PREPARATION_ONLY",
+  "unique_owner": "Root (/root); any future implementation must be assigned to one explicit writer",
+  "implementation_started": false,
+  "model_topology_or_formal_implementation_confirmed": false,
+  "goal_or_acceptance_status_changed": false,
+  "audit_worktree": "managed worktree on docs/family-source-audit (local path omitted)",
+  "audit_HEAD": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "source_base": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "cloud_qa_commit": "b5d365f8c8cd49a0525f6ae76d18af74b9759567",
+  "product_acceptance_archive_commit": "a54d7f2b34db4bcda13fb1a22eaaf4b847dd9e17",
+  "latest_root_preparation_commit": "58d7e741cd1ff865e32ecd9a8995bf6dc7a4ab00",
+  "product_sources_equal_between_base_archive_latest": true,
+  "cloud_qa_copied_to_execution_worktree_not_assumed_committed_to_latest_root": true,
+  "write_scope": "ignored build/family-bootstrap-plan only",
+  "minimal_product_target": [
+    "services/edge/supabase/functions/_shared/bootstrap.ts"
+  ],
+  "optional_test_path_proposal_not_authorized": "services/edge/supabase/functions/_shared/bootstrap-recovery.test.mjs",
+  "outer_test_or_migration_write": false,
+  "test_network_sql_model_execution": false,
+  "dependency_install": false,
+  "recommended_resource_policy": "One owned same-binding SQL/pool context per existing lane. Only initialization failure with confirmed reservation cleanup enters failed-clean and permits identity-guarded retry. Unconfirmed/failed cleanup quarantines that lane for this handler lifetime; retained handles are not reused, re-reserved or replaced.",
+  "config_policy": "Per-request selector/readConfig validation remains. pending and ready retain their existing captured A context for valid B requests; only failed-clean compares full captured context and rejects mismatch. quarantined remains 503 for A/B without resource activity; empty has no old resource to mix.",
+  "sources": [
+    {
+      "path": "services/edge/supabase/functions/_shared/bootstrap.ts",
+      "source_commit": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "role": "product_read_only",
+      "git_blob": "290555678d3380a3c966feb207bfaf2cff2c0cc5",
+      "sha256": "f4f3a080cdc59aaa6fa8a01671867a066c3e44c64fc55effaf5832a79f88346d",
+      "bytes": 3551,
+      "line_count": 32,
+      "present_in_latest_root_preparation_commit": true,
+      "same_bytes_in_latest_root_preparation_commit": true
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/postgres-pool.mjs",
+      "source_commit": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "role": "product_read_only",
+      "git_blob": "975801c2f5c04859c3fc3ce291462de4e1501e56",
+      "sha256": "5151efd5cb92adb146f0a6092aa2ef4881c94dbe6745d8721506dc4a65d2cf29",
+      "bytes": 2729,
+      "line_count": 20,
+      "present_in_latest_root_preparation_commit": true,
+      "same_bytes_in_latest_root_preparation_commit": true
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/bootstrap-stores.mjs",
+      "source_commit": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "role": "product_read_only",
+      "git_blob": "816fcf7bb3fa761799947316f8af91a9ab1892fa",
+      "sha256": "5202ae50e0e199651c7aeb550d16338a4ce4fa22ab7c8bc8621e7c5b8a691499",
+      "bytes": 519,
+      "line_count": 8,
+      "present_in_latest_root_preparation_commit": true,
+      "same_bytes_in_latest_root_preparation_commit": true
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/config.mjs",
+      "source_commit": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "role": "product_read_only",
+      "git_blob": "065436f3e8bbb616868f8586d692ea853a31ccfe",
+      "sha256": "dd1a033fa7eeed08fa32a8a616580778928a2650ae25aba923b068f16bc17b48",
+      "bytes": 14132,
+      "line_count": 103,
+      "present_in_latest_root_preparation_commit": true,
+      "same_bytes_in_latest_root_preparation_commit": true
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/api.mjs",
+      "source_commit": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "role": "product_read_only",
+      "git_blob": "bbc0b28696cfee7021602dc45a40462bae9c98a5",
+      "sha256": "2be4b65aeb1f67330e8bf1886912c3e9ad602a2bd52a0721c31baa9fabf221b3",
+      "bytes": 58707,
+      "line_count": 429,
+      "present_in_latest_root_preparation_commit": true,
+      "same_bytes_in_latest_root_preparation_commit": true
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/foundation-runtime.mjs",
+      "source_commit": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "role": "product_read_only",
+      "git_blob": "4f2e77b4705577591344952a6ff2664c4b3bea66",
+      "sha256": "fa544052ce38317d3481b95ba6559412d731697cff373bdf2012d2942538a0c8",
+      "bytes": 9297,
+      "line_count": 104,
+      "present_in_latest_root_preparation_commit": true,
+      "same_bytes_in_latest_root_preparation_commit": true
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/supabase-auth.mjs",
+      "source_commit": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "role": "product_read_only",
+      "git_blob": "dd5f1e8ba8746ac8fb0a1ea6650cb324258aff57",
+      "sha256": "fbc6025bb785ee0ea16b40c43e214fd491ed0aeec3666e4e834d5866f3a5ae36",
+      "bytes": 4150,
+      "line_count": 23,
+      "present_in_latest_root_preparation_commit": true,
+      "same_bytes_in_latest_root_preparation_commit": true
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/model-route-review-probe.mjs",
+      "source_commit": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "role": "product_read_only",
+      "git_blob": "e3b738fbe7fc4cd27573d64c145178ac7993eb8e",
+      "sha256": "1694c91a0675aee590dc161a21e9a6c57b92de22306a0f6b2166ef7befc60a0c",
+      "bytes": 8077,
+      "line_count": 70,
+      "present_in_latest_root_preparation_commit": true,
+      "same_bytes_in_latest_root_preparation_commit": true
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/model-route-review-probe-next.mjs",
+      "source_commit": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "role": "product_read_only",
+      "git_blob": "9ef3051f13facc4f63196be9c9797ec9304aebd2",
+      "sha256": "a7270c8867674762b975349d1d7c3e10ef8ae00595eb645672ee53582dbd5cc1",
+      "bytes": 9930,
+      "line_count": 94,
+      "present_in_latest_root_preparation_commit": true,
+      "same_bytes_in_latest_root_preparation_commit": true
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/bootstrap.test.mjs",
+      "source_commit": "b5d365f8c8cd49a0525f6ae76d18af74b9759567",
+      "role": "frozen_cloud_qa_read_only",
+      "git_blob": "2829efebce3e9ef4027d1b0f6a21f7753a6f6aa7",
+      "sha256": "fa47a0c5e78868e2d3a674f163fbd5359bc290a9e6618ae4ff57f54e5c8cbd2b",
+      "bytes": 3492,
+      "line_count": 44,
+      "present_in_latest_root_preparation_commit": false,
+      "same_bytes_in_latest_root_preparation_commit": null
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/postgres-boundary.mjs",
+      "source_commit": "b5d365f8c8cd49a0525f6ae76d18af74b9759567",
+      "role": "frozen_cloud_qa_read_only",
+      "git_blob": "dd5282a1b7ec95e85b9d43b457e81eb69315ca87",
+      "sha256": "a6aa3f2c5912a9dd314ce43c4b382d49aea1e31188ff734a0fbc56e86e7aaaa6",
+      "bytes": 1480,
+      "line_count": 34,
+      "present_in_latest_root_preparation_commit": false,
+      "same_bytes_in_latest_root_preparation_commit": null
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/helpers.mjs",
+      "source_commit": "b5d365f8c8cd49a0525f6ae76d18af74b9759567",
+      "role": "frozen_cloud_qa_read_only",
+      "git_blob": "f4c3b91097bbe280a1eb871df171cebeeb1a9681",
+      "sha256": "5a827b3a7b34909ea5392103e92bc2bdf6f3b748e03ce24af5379247c45bf47a",
+      "bytes": 963,
+      "line_count": 13,
+      "present_in_latest_root_preparation_commit": false,
+      "same_bytes_in_latest_root_preparation_commit": null
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/offline-prelude.mjs",
+      "source_commit": "b5d365f8c8cd49a0525f6ae76d18af74b9759567",
+      "role": "frozen_cloud_qa_read_only",
+      "git_blob": "598c6e6931142da7577bbc4d80ce4f3dc38a550b",
+      "sha256": "f7b45148c3508ecabc20387d939a589944358ca25b38913b2dba6926d41b3ae0",
+      "bytes": 1284,
+      "line_count": 23,
+      "present_in_latest_root_preparation_commit": false,
+      "same_bytes_in_latest_root_preparation_commit": null
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/offline-loader.mjs",
+      "source_commit": "b5d365f8c8cd49a0525f6ae76d18af74b9759567",
+      "role": "frozen_cloud_qa_read_only",
+      "git_blob": "36467646b6e88dd33b03c1534b471c70aa7dc713",
+      "sha256": "d5d391cf65bbf14f937d87875ed082d9f2242e18c58d428faefa1a78873b8110",
+      "bytes": 188,
+      "line_count": 3,
+      "present_in_latest_root_preparation_commit": false,
+      "same_bytes_in_latest_root_preparation_commit": null
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/source-loader.mjs",
+      "source_commit": "b5d365f8c8cd49a0525f6ae76d18af74b9759567",
+      "role": "frozen_cloud_qa_read_only",
+      "git_blob": "a7ed98ab7e073e0034c1453ad9d8fe7aa5b070ec",
+      "sha256": "984c3a75007300c9bb6e10992b24a7fb1dc8b69f32fcb6849bb23241ae986f45",
+      "bytes": 870,
+      "line_count": 16,
+      "present_in_latest_root_preparation_commit": false,
+      "same_bytes_in_latest_root_preparation_commit": null
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/network-guard.test.mjs",
+      "source_commit": "b5d365f8c8cd49a0525f6ae76d18af74b9759567",
+      "role": "frozen_cloud_qa_read_only",
+      "git_blob": "360db8cfb56ef94c2e193e3643257aaa082d7d70",
+      "sha256": "2070529076c4a67f9f5a9d376f1a8f772add85ea2f0d233b2918cdfe467696c8",
+      "bytes": 1166,
+      "line_count": 23,
+      "present_in_latest_root_preparation_commit": false,
+      "same_bytes_in_latest_root_preparation_commit": null
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/run.mjs",
+      "source_commit": "b5d365f8c8cd49a0525f6ae76d18af74b9759567",
+      "role": "frozen_cloud_qa_read_only",
+      "git_blob": "c8d275c493c87c36da04c284a7df58476e7b8a23",
+      "sha256": "05d6793ed1a54786f628e0a0aa8a95067a365cd5003d7677b13143d2bf880845",
+      "bytes": 6963,
+      "line_count": 73,
+      "present_in_latest_root_preparation_commit": false,
+      "same_bytes_in_latest_root_preparation_commit": null
+    },
+    {
+      "path": "services/edge/test/postgres-json-binding.test.mjs",
+      "source_commit": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "role": "existing_test_reference_only",
+      "git_blob": "d87926ee05ad8796a2789d57f391e83efcd0c511",
+      "sha256": "24f6fdb09089f0a412e7c734ba44d912d8da3fb590af1aa5c691f492774bd8a0",
+      "bytes": 11006,
+      "line_count": 117,
+      "present_in_latest_root_preparation_commit": true,
+      "same_bytes_in_latest_root_preparation_commit": true
+    }
+  ],
+  "key_anchors": [
+    {
+      "path": "services/edge/supabase/functions/_shared/bootstrap.ts",
+      "lines": [
+        14,
+        15,
+        20,
+        22,
+        23,
+        26,
+        27,
+        29,
+        30
+      ],
+      "meaning": "three cache slots, per-request config, initialization ownership, late getter, dispatch return and broad catch"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/postgres-pool.mjs",
+      "lines": [
+        2,
+        10,
+        11,
+        13,
+        15,
+        17,
+        18,
+        20
+      ],
+      "meaning": "reserved client adapter/JSON binding/idempotent release, role+JSON verification and finally release"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/config.mjs",
+      "lines": [
+        51,
+        72,
+        88
+      ],
+      "meaning": "readConfig builds private config using getter; valid config change is not a keyed runtime cache"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/bootstrap.test.mjs",
+      "lines": [
+        20,
+        29,
+        40
+      ],
+      "meaning": "healthy 100 concurrent; one failed request then 100 retries; missing configuration"
+    }
+  ],
+  "critical_scope_limits": [
+    "Only source/plan artifacts were written; implementation remains unassigned until Root confirms formal topology and stage.",
+    "No wire retryable flag, provider route, lane selector, auth authority, schema or request replay change is proposed.",
+    "Successful-cache behavior and no config-keying are observed source behavior, not a newly granted hot-reload contract.",
+    "Cloud BOOT three-case results alone cannot demonstrate resource disposal, complete initialization recovery timings, real JSON binding or release acceptance.",
+    "Resource reuse is permitted only after positively confirmed reservation cleanup and exact failed-clean context comparison. Unknown cleanup is quarantined, not silently retried.",
+    "No proposal state or test case has been implemented; Root alone integrates the formal proposal."
+  ],
+  "proposal_revision": 2,
+  "amendment_provenance": {
+    "recorded_on": "2026-10-23",
+    "request": "Root directed plan-only clarification after independent QA review",
+    "previous_plan_sha256": "8e40b6d91c8cff5492fd795103a662dce471d659d1701267d497d459a91d88cb",
+    "previous_manifest_sha256": "4b5741c820c8ed0434832d9430657f9d8f5326925c0c84b94d6f0e674c28c557",
+    "implementation_or_execution_started": false
+  },
+  "state_specific_policy": {
+    "empty": "Capture current candidate context and create one flight/owned resource; fail closed for unsupported projection types/keys.",
+    "pending_A": "Valid B joins A flight, never mutates A context or starts B; invalid config early-returns without cancelling A.",
+    "failed_clean_A": "Only full semantic equality may start one retry reusing A pool; mismatch returns existing generic 503 without reserve/new SQL/factory and retains A.",
+    "ready_A": "Valid B continues using ready A; no hot reload or mismatch-503; dispatch errors never evict A. Invalid config retains legacy early-return behavior.",
+    "quarantined_A": "Any later A/B request returns 503 with zero additional reserve, SQL/pool construction, verify or runtime factory calls; other lanes unaffected. Only a separate explicit new handler lifecycle can independently attempt."
+  },
+  "cleanup_confirmation": {
+    "no_client_acquired": "No application reservation to release, provided the attempt lifecycle proves no client was obtained.",
+    "client_acquired": "Original release must normally return according to existing synchronous pool release contract; entering finally/calling release/observing rejected initialization alone is insufficient.",
+    "uncertain_conditions": [
+      "release throw",
+      "untracked asynchronous release or rejection",
+      "unknown or duplicate cleanup settlement",
+      "cannot establish whether reservation is still held"
+    ],
+    "uncertain_action": "Persist quarantined state independently of any cleared rejected Promise; retain owned SQL/pool/context without reserve/new pool/automatic end/timer/handler recreation.",
+    "classification_source": "Observed lifecycle ownership, never exception message matching. If final verify rejection cannot distinguish cleanup failure, do not default to failed-clean."
+  },
+  "config_semantic_projection": {
+    "version": 1,
+    "root_fields": [
+      "lane",
+      "kind",
+      "selectedReviewIdentity",
+      "effectiveProactiveToolsGate",
+      "configProjection"
+    ],
+    "config_fields": [
+      "projectUrl",
+      "publishableKey",
+      "databaseUrl",
+      "sseTextIntervalMs",
+      "generativeUI",
+      "taskTools",
+      "featureAllowlist",
+      "agentMemory",
+      "deviceTools",
+      "proactiveSuggestionsSSE",
+      "proactive",
+      "schedulerSecret",
+      "attachmentStorage",
+      "publicSourcePolicy",
+      "visionContractEnabled",
+      "visionRoute",
+      "visionLiveEnabled",
+      "ready",
+      "missing",
+      "configurationIssues",
+      "authReady",
+      "modelKey",
+      "tickKey",
+      "guardKey",
+      "route",
+      "routeHash",
+      "freeChain",
+      "apns",
+      "chatBudgetMs",
+      "chatFinalizationReserveMs",
+      "tickBudgetMs",
+      "modelTimeoutMs",
+      "dailyCallLimit",
+      "dailyCallExempt"
+    ],
+    "primitive_equality": "same type and value; distinguish null/undefined/missing; exact secret and URL values without normalization",
+    "arrays": "same length and ordered elements",
+    "plain_data_objects": "complete own key sets and recursively projected values, ignoring key insertion order; reject unknown fields/non-enumerable attributes/accessors/functions/unsupported containers rather than omit them",
+    "featureAllowlist": "sorted exact Set members plus explicit own non-enumerable blocked-property presence and sorted blocked Set members",
+    "dailyCallExempt": "sorted exact Set membership",
+    "set_order": "insertion order ignored, membership changes significant; newly allocated equal Sets are equal",
+    "forbidden_shortcuts": [
+      "JSON.stringify(config)",
+      "object identity or shallow Set comparison",
+      "blind structuredClone that loses custom non-enumerable blocked",
+      "Object.freeze(Set) treated as member immutability"
+    ],
+    "private_capture": "Projection and private factory configuration copy derive from the same captured values; do not retain caller mutable containers as the snapshot.",
+    "secrecy": "No config/URL/secret/membership values or configuration/credential-derived hashes in logs, reports or receipts; only boolean equality/cleanup flags and fixed phase codes."
+  },
+  "getter_capture_policy": {
+    "scope": "One new lazy per-key memoizing getter per request, installed before selectors and used by selectors, readConfig, and effective late gate capture.",
+    "per_key": "Cache first string/undefined value; do not use nullish fallback to re-read undefined; getter throws remain failures.",
+    "after_capture": "Complete context before first await/resource use; factory never reads original getter after capture.",
+    "guarantee": "same-key request consistency and no post-await re-read",
+    "not_guaranteed": "No atomic transaction or revision consistency across different environment keys; stable environment remains existing premise, no new hot reload support."
+  },
+  "additional_proposed_cases": {
+    "BR-08": "failed-clean mismatch on secret, gate, review identity, allowlist-only, blocked-only or dailyCallExempt-only; equal new Sets/different insertion orders must compare equal.",
+    "BR-09": "state-by-state valid-B/invalid-config matrix, especially ready and pending must not inherit failed-clean mismatch rejection.",
+    "BR-10": "cleanup failure then 100 A and 100 B requests: every response 503 and reserve/SQL/verify/factory deltas all zero; other lanes healthy; old callbacks cannot clear quarantine.",
+    "BR-13": "per-request getter key call count one including undefined across selectors/readConfig/gate; no post-await getter calls; no cross-key atomic claim; cancellation does not cancel shared initialization."
+  },
+  "raw_source_manifest_sha256": "25930f3cf53546facb70c6df872419dd30288dfea7b2e75eefa99fb9bc55fb14",
+  "raw_plan_sha256": "2336adcc000011df0a0b9dfdff5f744d4749bf81dabac3d6e25884db524e1db0",
+  "curated_plan": {
+    "path": "docs/design/family-companion/bootstrap-recovery-plan.md",
+    "sha256": "cf798d7be0fe3cc7c742edc86971c20513faf4d7a25e0b91b2c90940e427f3e9"
+  },
+  "curation": "Only local absolute path replaced by runtime variable and provenance link added; product policy remains proposed."
+}

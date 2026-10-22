@@ -1,0 +1,54 @@
+{
+  "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "contract_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+  "branch": "test/family-cloud-verification",
+  "checks": [
+    {
+      "command": "python3 scripts/check-repository-layout.py",
+      "exit_code": 0,
+      "stdout": "PASS one active native entry, independent website, two local packages, declared maintenance/history/source paths\nPASS Domain imports and package host/network boundaries; layout validation only",
+      "stdout_sha256": "96555d463a7edf4a2a76f332a6e976ced39649106e2234a99857fdfa0f534ab6"
+    },
+    {
+      "command": "python3 scripts/check-repository.py",
+      "exit_code": 0,
+      "stdout": "PASS frozen contract, 44 pinned originals (SHA256 + Git blob SHA1), MIT identity\nPASS exact patch reconstruction and all runtime TypeScript copies\nPASS 188 imported bytes/provenance, final v1 source identity, 10 frozen specs, 3 screenshots\nPASS 121 frozen r3 imports, 43 App sources/101-item final manifest, contract/spec/replay and 4 synthetic screenshots\nLIMIT no iOS SDK build, Simulator, service listener, real model/Intelligence/SQL or deployment executed",
+      "stdout_sha256": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d"
+    },
+    {
+      "command": "python3 scripts/check-deployed-source.py",
+      "exit_code": 0,
+      "stdout": "PASS deployed source snapshots: [50, 43], 14 shared-file differences preserved",
+      "stdout_sha256": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228"
+    },
+    {
+      "command": "python3 scripts/scan-repository.py",
+      "exit_code": 0,
+      "stdout": "{\"candidate_files\": 1817, \"candidate_bytes\": 65886146, \"blocking_hits\": [], \"manual_review_hits\": [], \"reviewed_false_positives\": 144, \"png_files\": 115}",
+      "stdout_sha256": "a1bdf2875cebd2b37af28e1be86c9f7cb0521913b6f4cde3dc172e8d2d77b60a"
+    }
+  ],
+  "diff_check_exit_code": 0,
+  "cached_diff_check_exit_code": 0,
+  "product_and_shared_document_diff": [],
+  "original_checkout": {
+    "head": "cb3bc90a6f35d93e9ad57a6c01c7dc83291d06ee",
+    "status": "clean_preserved"
+  },
+  "remote_main_prepublication": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "remote_verification_branch_prepublication": "absent",
+  "known_test_red": {
+    "new_targets": {
+      "tests": 18,
+      "pass": 6,
+      "fail": 12,
+      "exit_code": 1
+    },
+    "purpose": "Deliberately exposed acceptance gaps against unchanged source; distinct from original selected suite 222 PASS/1 SKIP."
+  },
+  "production_actions": false,
+  "main_merged": false,
+  "denied_actions": [],
+  "pending_approval_actions": [],
+  "uncertain_mutations": []
+}

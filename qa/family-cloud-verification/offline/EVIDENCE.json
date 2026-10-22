@@ -1,0 +1,755 @@
+{
+  "schema_version": 1,
+  "run_id": "family-offline-2026-10-22T16-30-16-533Z",
+  "started_at": "2026-10-22T16:30:16.533Z",
+  "ended_at": "2026-10-22T16:30:20.136Z",
+  "lane": "cloud-offline-A",
+  "host_alias": "cloud-offline-node",
+  "branch": "test/family-offline-regression",
+  "worktree_alias": "family-offline",
+  "base_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "candidate_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "candidate_head": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "plan_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+  "maintenance_source_tree": "92ad25cb57128d264c3645875d2cb24500866d45",
+  "maintenance_inputs_equal_candidate": true,
+  "expected_case_ids": [
+    "BOOT-01",
+    "BOOT-02",
+    "BOOT-03",
+    "MEM-01",
+    "MEM-02",
+    "MEM-03",
+    "MEM-04",
+    "MEM-05",
+    "REM-01",
+    "REM-02",
+    "REM-03",
+    "REM-04",
+    "REM-05",
+    "REM-06",
+    "REM-07",
+    "REM-08",
+    "REM-09",
+    "SAFE-01"
+  ],
+  "source_fingerprints": [
+    {
+      "path": "services/edge/supabase/functions/_shared/bootstrap.ts",
+      "git_blob": "290555678d3380a3c966feb207bfaf2cff2c0cc5",
+      "sha256": "f4f3a080cdc59aaa6fa8a01671867a066c3e44c64fc55effaf5832a79f88346d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/postgres-pool.mjs",
+      "git_blob": "975801c2f5c04859c3fc3ce291462de4e1501e56",
+      "sha256": "5151efd5cb92adb146f0a6092aa2ef4881c94dbe6745d8721506dc4a65d2cf29"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/service.mjs",
+      "git_blob": "fae32cb9137795ffc510127297161f85c69086d3",
+      "sha256": "860332dce13220fa07395ca99a2d456a4e7a20bf3d9bb47e9b6ab2eeed27bb90"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/memory-store.mjs",
+      "git_blob": "c70fbe14de0e2caa874ebfe5fb1a962a3cbc87df",
+      "sha256": "bf95f7a340392d6cf5ad4e618ec38077e8d392240c63f7dca5a067cb31f7f194"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/pg-store.mjs",
+      "git_blob": "8b7b4e542f594efab25fe1efe00de552a364db24",
+      "sha256": "7f9e3404cc28041e4262c746bd398e41ba1a180b1b7f5014dcbf9d843ca00184"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/service.mjs",
+      "git_blob": "2ff42f4917c7b191baa84bd3996723c87f542e7e",
+      "sha256": "b5e383bc9c7e6696f2978f8daba2433dadc928665dce2c058786ccb36b1a015a"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/memory-store.mjs",
+      "git_blob": "0a961d8e9631ad75b2bef05ca4b19fabc1e67c2d",
+      "sha256": "5c80d0cfb8aa22442306b29605acb7a1a60d9db195cfd5233bd77080712e6452"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/pg-store.mjs",
+      "git_blob": "9d4b2e509232032a5758f97a46cb574d964809d6",
+      "sha256": "51ff077034c25db88e99bc239364e09be5d9a4db92961eb616a66f0cafd6a5f7"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261015120000_proactive_tasks.sql",
+      "git_blob": "4fdf313c47975e063214734a35538e62c5a99703",
+      "sha256": "59d212e000b8d50f4d46c1d4ea5dbc203faefc34c9546ab60eb37bae9efcb4ce"
+    }
+  ],
+  "requested_model": "gpt-6.1-sol",
+  "requested_effort": "ultra",
+  "accepted_model": "gpt-6.1-sol",
+  "accepted_effort": "ultra",
+  "model_evidence": {
+    "source": "parent delegation reports explicit spawn accepted",
+    "effective_model": null,
+    "effective_effort": null,
+    "status": "UNVERIFIED"
+  },
+  "parent_goal_id": null,
+  "objective_version": null,
+  "native_goal_status": "NOT_CREATED_BY_THIS_TASK",
+  "protocol": [
+    "existing catpaw.task-tools.v1",
+    "existing catpaw.agent-memory.v1"
+  ],
+  "test_data_version": "synthetic-family-offline-v1",
+  "release_manifest": null,
+  "authorization_ref": "parent-delegated isolated offline verification; no product implementation or real service calls",
+  "evidence_layer": "offline/fixture",
+  "node": "v24.19.0",
+  "deno_run": false,
+  "swift_run": false,
+  "status": "OFFLINE_TARGETS_FAIL",
+  "product_acceptance": "NOT_ACCEPTED",
+  "results": [
+    {
+      "mode": "probes",
+      "exit_code": 0,
+      "signal": null,
+      "error": null,
+      "tests": 18,
+      "pass": 18,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "denominator_complete": true,
+      "observation_count": 18,
+      "product_target_pass": 6,
+      "product_target_fail": 12,
+      "observations": [
+        {
+          "id": "BOOT-01",
+          "actual": {
+            "ok": 100,
+            "driverCreated": 1,
+            "roleQueries": 1,
+            "reserved": 1,
+            "released": 1
+          },
+          "target": {
+            "ok": 100,
+            "driverCreated": 1,
+            "roleQueries": 1,
+            "reserved": 1,
+            "released": 1
+          },
+          "product_status": "PASS",
+          "limitation": "Driver boundary only; no real PostgreSQL connections."
+        },
+        {
+          "id": "BOOT-02",
+          "actual": {
+            "recovered": 0,
+            "unavailable": 100,
+            "boundedConstructors": true,
+            "roleQueries": 1,
+            "released": 1,
+            "balancedReservations": true
+          },
+          "target": {
+            "recovered": 100,
+            "unavailable": 0,
+            "boundedConstructors": true,
+            "roleQueries": 2,
+            "released": 2,
+            "balancedReservations": true
+          },
+          "product_status": "FAIL",
+          "limitation": "One initial failure plus 100 concurrent retries. Reusing a pool is allowed; immediate retry target and bounded-backoff timing still need M0 freeze."
+        },
+        {
+          "id": "BOOT-03",
+          "actual": {
+            "status": 503,
+            "code": "configuration_missing",
+            "driverCreated": 0
+          },
+          "target": {
+            "status": 503,
+            "code": "configuration_missing",
+            "driverCreated": 0
+          },
+          "product_status": "PASS",
+          "limitation": null
+        },
+        {
+          "id": "MEM-01",
+          "actual": {
+            "lateStatus": 200,
+            "content": "synthetic-stale-content"
+          },
+          "target": {
+            "lateStatus": 409,
+            "content": "synthetic-new-correction"
+          },
+          "product_status": "FAIL",
+          "limitation": "Current v1 PATCH has no content-CAS field. 409 is the proposed target; its versioned wire extension is still an M0 contract decision."
+        },
+        {
+          "id": "MEM-02",
+          "actual": {
+            "rows": 0,
+            "recalled": 0,
+            "syncDeleted": 1
+          },
+          "target": {
+            "rows": 0,
+            "recalled": 0,
+            "syncDeleted": 1
+          },
+          "product_status": "PASS",
+          "limitation": "Only same-store deletion/recall/tombstone is checked. The 500 response remains a separate API correctness gap."
+        },
+        {
+          "id": "MEM-03",
+          "actual": {
+            "rowsAfterClear": 1,
+            "recalledAfterClear": 1
+          },
+          "target": {
+            "rowsAfterClear": 0,
+            "recalledAfterClear": 0
+          },
+          "product_status": "FAIL",
+          "limitation": "Real journal service and memory store; summary is an inert delayed function. No actual summarization model/cache/index/native client."
+        },
+        {
+          "id": "MEM-04",
+          "actual": {
+            "rowsAfterOriginalOperationReplay": 1,
+            "recalled": 1
+          },
+          "target": {
+            "rowsAfterOriginalOperationReplay": 0,
+            "recalled": 0
+          },
+          "product_status": "FAIL",
+          "limitation": "Reuses the original operation_id without new consent or allow_relearn. Original save idempotency currently lives only on the deleted row."
+        },
+        {
+          "id": "MEM-05",
+          "actual": {
+            "journalRows": 0,
+            "fragments": 0,
+            "writtenOnRetry": 0
+          },
+          "target": {
+            "journalRows": 1,
+            "fragments": 0,
+            "writtenOnRetry": 1
+          },
+          "product_status": "FAIL",
+          "limitation": "Failure at the real store insert port after takeFragments; real transaction/process recovery is unverified."
+        },
+        {
+          "id": "SAFE-01",
+          "actual": {
+            "deniedBeforeTransport": 6
+          },
+          "target": {
+            "deniedBeforeTransport": 6
+          },
+          "product_status": "PASS",
+          "limitation": "These six intentional guard checks are blocked synchronously; maintenance tests must have zero attempted network calls."
+        },
+        {
+          "id": "REM-01",
+          "actual": {
+            "initialClaim": 1,
+            "recoveryClaims": 0,
+            "dueUnresolved": true,
+            "reminderEvents": 0
+          },
+          "target": {
+            "initialClaim": 1,
+            "recoveryClaims": 1,
+            "dueUnresolved": false,
+            "reminderEvents": 1
+          },
+          "product_status": "FAIL",
+          "limitation": "Claim abandonment is injected at the store boundary; worker object restart preserves one in-memory store. No process kill, database persistence or SQL lease proof."
+        },
+        {
+          "id": "REM-02",
+          "actual": {
+            "recoveryClaims": 0,
+            "reminderEvents": 0,
+            "completedOccurrences": 0
+          },
+          "target": {
+            "recoveryClaims": 100,
+            "reminderEvents": 100,
+            "completedOccurrences": 100
+          },
+          "product_status": "FAIL",
+          "limitation": "Two synthetic 60-second periods and limit=50; real SQL fairness/lease timing remains unverified."
+        },
+        {
+          "id": "REM-03",
+          "actual": {
+            "interleavings": 100,
+            "positions": 4,
+            "postCancelEvents": 100,
+            "dispatches": 100,
+            "cancellationRetained": 100
+          },
+          "target": {
+            "interleavings": 100,
+            "positions": 4,
+            "postCancelEvents": 0,
+            "dispatches": 0,
+            "cancellationRetained": 100
+          },
+          "product_status": "FAIL",
+          "limitation": "Dispatches are calls to an inert synthetic APNs adapter; no notification left this process."
+        },
+        {
+          "id": "REM-04",
+          "actual": {
+            "reminderEvents": 0,
+            "fireCount": 1,
+            "nextFire": null
+          },
+          "target": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "product_status": "FAIL",
+          "limitation": "Fault before the real store write; not a database COMMIT failure."
+        },
+        {
+          "id": "REM-05",
+          "actual": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": null
+          },
+          "target": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "product_status": "FAIL",
+          "limitation": null
+        },
+        {
+          "id": "REM-06",
+          "actual": {
+            "reminderEvents": 1,
+            "fireCount": 0,
+            "nextFire": "2026-10-22T12:00:00.000Z"
+          },
+          "target": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "product_status": "FAIL",
+          "limitation": null
+        },
+        {
+          "id": "REM-07",
+          "actual": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "target": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "product_status": "PASS",
+          "limitation": null
+        },
+        {
+          "id": "REM-08",
+          "actual": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "target": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "product_status": "PASS",
+          "limitation": "Durable-state safety only: first tick still reports fire_failed despite a committed result."
+        },
+        {
+          "id": "REM-09",
+          "actual": {
+            "tasks": 1,
+            "createdEvents": 0
+          },
+          "target": {
+            "tasks": 1,
+            "createdEvents": 1
+          },
+          "product_status": "FAIL",
+          "limitation": "Existing createTask operation identity is retained; this checks a missing creation event, not an external notification."
+        }
+      ],
+      "output": "qa/family-cloud-verification/offline/build/family-offline-2026-10-22T16-30-16-533Z/probes.tap",
+      "output_sha256": "45d66d312b2950c6ed4efc0542a4c1e11fa19e939e108587ee05d969ba606d7e"
+    },
+    {
+      "mode": "targets",
+      "exit_code": 1,
+      "signal": null,
+      "error": null,
+      "tests": 18,
+      "pass": 6,
+      "fail": 12,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "denominator_complete": true,
+      "observation_count": 18,
+      "product_target_pass": 6,
+      "product_target_fail": 12,
+      "observations": [
+        {
+          "id": "BOOT-01",
+          "actual": {
+            "ok": 100,
+            "driverCreated": 1,
+            "roleQueries": 1,
+            "reserved": 1,
+            "released": 1
+          },
+          "target": {
+            "ok": 100,
+            "driverCreated": 1,
+            "roleQueries": 1,
+            "reserved": 1,
+            "released": 1
+          },
+          "product_status": "PASS",
+          "limitation": "Driver boundary only; no real PostgreSQL connections."
+        },
+        {
+          "id": "BOOT-02",
+          "actual": {
+            "recovered": 0,
+            "unavailable": 100,
+            "boundedConstructors": true,
+            "roleQueries": 1,
+            "released": 1,
+            "balancedReservations": true
+          },
+          "target": {
+            "recovered": 100,
+            "unavailable": 0,
+            "boundedConstructors": true,
+            "roleQueries": 2,
+            "released": 2,
+            "balancedReservations": true
+          },
+          "product_status": "FAIL",
+          "limitation": "One initial failure plus 100 concurrent retries. Reusing a pool is allowed; immediate retry target and bounded-backoff timing still need M0 freeze."
+        },
+        {
+          "id": "BOOT-03",
+          "actual": {
+            "status": 503,
+            "code": "configuration_missing",
+            "driverCreated": 0
+          },
+          "target": {
+            "status": 503,
+            "code": "configuration_missing",
+            "driverCreated": 0
+          },
+          "product_status": "PASS",
+          "limitation": null
+        },
+        {
+          "id": "MEM-01",
+          "actual": {
+            "lateStatus": 200,
+            "content": "synthetic-stale-content"
+          },
+          "target": {
+            "lateStatus": 409,
+            "content": "synthetic-new-correction"
+          },
+          "product_status": "FAIL",
+          "limitation": "Current v1 PATCH has no content-CAS field. 409 is the proposed target; its versioned wire extension is still an M0 contract decision."
+        },
+        {
+          "id": "MEM-02",
+          "actual": {
+            "rows": 0,
+            "recalled": 0,
+            "syncDeleted": 1
+          },
+          "target": {
+            "rows": 0,
+            "recalled": 0,
+            "syncDeleted": 1
+          },
+          "product_status": "PASS",
+          "limitation": "Only same-store deletion/recall/tombstone is checked. The 500 response remains a separate API correctness gap."
+        },
+        {
+          "id": "MEM-03",
+          "actual": {
+            "rowsAfterClear": 1,
+            "recalledAfterClear": 1
+          },
+          "target": {
+            "rowsAfterClear": 0,
+            "recalledAfterClear": 0
+          },
+          "product_status": "FAIL",
+          "limitation": "Real journal service and memory store; summary is an inert delayed function. No actual summarization model/cache/index/native client."
+        },
+        {
+          "id": "MEM-04",
+          "actual": {
+            "rowsAfterOriginalOperationReplay": 1,
+            "recalled": 1
+          },
+          "target": {
+            "rowsAfterOriginalOperationReplay": 0,
+            "recalled": 0
+          },
+          "product_status": "FAIL",
+          "limitation": "Reuses the original operation_id without new consent or allow_relearn. Original save idempotency currently lives only on the deleted row."
+        },
+        {
+          "id": "MEM-05",
+          "actual": {
+            "journalRows": 0,
+            "fragments": 0,
+            "writtenOnRetry": 0
+          },
+          "target": {
+            "journalRows": 1,
+            "fragments": 0,
+            "writtenOnRetry": 1
+          },
+          "product_status": "FAIL",
+          "limitation": "Failure at the real store insert port after takeFragments; real transaction/process recovery is unverified."
+        },
+        {
+          "id": "SAFE-01",
+          "actual": {
+            "deniedBeforeTransport": 6
+          },
+          "target": {
+            "deniedBeforeTransport": 6
+          },
+          "product_status": "PASS",
+          "limitation": "These six intentional guard checks are blocked synchronously; maintenance tests must have zero attempted network calls."
+        },
+        {
+          "id": "REM-01",
+          "actual": {
+            "initialClaim": 1,
+            "recoveryClaims": 0,
+            "dueUnresolved": true,
+            "reminderEvents": 0
+          },
+          "target": {
+            "initialClaim": 1,
+            "recoveryClaims": 1,
+            "dueUnresolved": false,
+            "reminderEvents": 1
+          },
+          "product_status": "FAIL",
+          "limitation": "Claim abandonment is injected at the store boundary; worker object restart preserves one in-memory store. No process kill, database persistence or SQL lease proof."
+        },
+        {
+          "id": "REM-02",
+          "actual": {
+            "recoveryClaims": 0,
+            "reminderEvents": 0,
+            "completedOccurrences": 0
+          },
+          "target": {
+            "recoveryClaims": 100,
+            "reminderEvents": 100,
+            "completedOccurrences": 100
+          },
+          "product_status": "FAIL",
+          "limitation": "Two synthetic 60-second periods and limit=50; real SQL fairness/lease timing remains unverified."
+        },
+        {
+          "id": "REM-03",
+          "actual": {
+            "interleavings": 100,
+            "positions": 4,
+            "postCancelEvents": 100,
+            "dispatches": 100,
+            "cancellationRetained": 100
+          },
+          "target": {
+            "interleavings": 100,
+            "positions": 4,
+            "postCancelEvents": 0,
+            "dispatches": 0,
+            "cancellationRetained": 100
+          },
+          "product_status": "FAIL",
+          "limitation": "Dispatches are calls to an inert synthetic APNs adapter; no notification left this process."
+        },
+        {
+          "id": "REM-04",
+          "actual": {
+            "reminderEvents": 0,
+            "fireCount": 1,
+            "nextFire": null
+          },
+          "target": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "product_status": "FAIL",
+          "limitation": "Fault before the real store write; not a database COMMIT failure."
+        },
+        {
+          "id": "REM-05",
+          "actual": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": null
+          },
+          "target": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "product_status": "FAIL",
+          "limitation": null
+        },
+        {
+          "id": "REM-06",
+          "actual": {
+            "reminderEvents": 1,
+            "fireCount": 0,
+            "nextFire": "2026-10-22T12:00:00.000Z"
+          },
+          "target": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "product_status": "FAIL",
+          "limitation": null
+        },
+        {
+          "id": "REM-07",
+          "actual": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "target": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "product_status": "PASS",
+          "limitation": null
+        },
+        {
+          "id": "REM-08",
+          "actual": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "target": {
+            "reminderEvents": 1,
+            "fireCount": 1,
+            "nextFire": "2026-10-22T13:00:00.000Z"
+          },
+          "product_status": "PASS",
+          "limitation": "Durable-state safety only: first tick still reports fire_failed despite a committed result."
+        },
+        {
+          "id": "REM-09",
+          "actual": {
+            "tasks": 1,
+            "createdEvents": 0
+          },
+          "target": {
+            "tasks": 1,
+            "createdEvents": 1
+          },
+          "product_status": "FAIL",
+          "limitation": "Existing createTask operation identity is retained; this checks a missing creation event, not an external notification."
+        }
+      ],
+      "output": "qa/family-cloud-verification/offline/build/family-offline-2026-10-22T16-30-16-533Z/targets.tap",
+      "output_sha256": "c62534ac5e5fe575a462e21a179ac8f11110f285adb5307133679d50437d1190"
+    }
+  ],
+  "curated_evidence": "Full synthetic observations and hashes, raw TAP remains in ignored build path.",
+  "harness_fingerprints": [
+    {
+      "path": "qa/family-cloud-verification/offline/bootstrap.test.mjs",
+      "sha256": "fa47a0c5e78868e2d3a674f163fbd5359bc290a9e6618ae4ff57f54e5c8cbd2b"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/helpers.mjs",
+      "sha256": "5a827b3a7b34909ea5392103e92bc2bdf6f3b748e03ce24af5379247c45bf47a"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/jose-boundary.mjs",
+      "sha256": "5a5e9843ea6cc5fe5048d3cbe9a48f172bb6f3321f443aa8dcb20dd0be1aa698"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/memory.test.mjs",
+      "sha256": "832b706956e7f6d12223ea4327db1f75180c3f404dc60b24b115532a549b6a35"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/network-guard.test.mjs",
+      "sha256": "2070529076c4a67f9f5a9d376f1a8f772add85ea2f0d233b2918cdfe467696c8"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/offline-loader.mjs",
+      "sha256": "d5d391cf65bbf14f937d87875ed082d9f2242e18c58d428faefa1a78873b8110"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/offline-prelude.mjs",
+      "sha256": "f7b45148c3508ecabc20387d939a589944358ca25b38913b2dba6926d41b3ae0"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/postgres-boundary.mjs",
+      "sha256": "a6aa3f2c5912a9dd314ce43c4b382d49aea1e31188ff734a0fbc56e86e7aaaa6"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/reminder.test.mjs",
+      "sha256": "fc71a429a167876c7917f9985b5f58f53e4d9abe97f330478246747b74c2ac5b"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/run.mjs",
+      "sha256": "05d6793ed1a54786f628e0a0aa8a95067a365cd5003d7677b13143d2bf880845"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/source-loader.mjs",
+      "sha256": "984c3a75007300c9bb6e10992b24a7fb1dc8b69f32fcb6849bb23241ae986f45"
+    }
+  ],
+  "configuration_audit": "qa/family-cloud-verification/offline/AGENT-CONFIGURATION.json",
+  "governance_checks": {
+    "repository_layout": "PASS",
+    "frozen_repository": "PASS",
+    "deployed_snapshots": "PASS",
+    "sensitivity_scan": "PASS; zero blocking/manual-review hits",
+    "diff_check": "PASS",
+    "product_runtime_log_content_gate": "NOT_RUN"
+  }
+}
