@@ -23,7 +23,7 @@ actor ConversationUITestHarness: ConversationBackend {
     }
     private func detach(_ id: UUID) { streams.removeValue(forKey: id) }
     func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation {
-        guard requests[request.operationID] != nil else { throw CatpawError.unavailable("测试原请求不存在") }
+        guard requests[request.operationID] != nil else { throw catError.unavailable("测试原请求不存在") }
         return ConversationObservation(request: request, events: [started(request)], requestHash: textHash("explicit-ui-test:" + request.operationID.uuidString), grantEpoch: 1, goals: [])
     }
 }

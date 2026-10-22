@@ -1,6 +1,6 @@
 # NoBug B · 演示视频方案（会议出发助理）
 
-> 冻结 tip：`f8e86d8` · 分支 `feat/ios-mvp-integration-v2`  
+> 冻结 tip：`f8e86d8` · 分支 `feat/ios-mvp-integration-v2`
 > 目标：**≤ 4 分钟**，拍齐 B 八步；**不出现**电话/购物；不假装 prod migration 已上。
 
 ## 1. 八步分镜
@@ -19,10 +19,10 @@
 
 ## 2. 旁白要点（短）
 
-1. 会还没到，它先算出该什么时候出发。  
-2. 提前量来自设置里那条记忆，不是隐藏开关。  
-3. 路途用 MapKit；没定位就说「未用到 ETA」，绝不偷用假原点。  
-4. 写提醒、发短信都要你点头；模拟器发不了短信就绝不假装已发。  
+1. 会还没到，它先算出该什么时候出发。
+2. 提前量来自设置里那条记忆，不是隐藏开关。
+3. 路途用 MapKit；没定位就说「未用到 ETA」，绝不偷用假原点。
+4. 写提醒、发短信都要你点头；模拟器发不了短信就绝不假装已发。
 5. 删掉记忆，下一次建议立刻改口。
 
 ## 3. 设备分工
@@ -35,17 +35,17 @@
 
 ## 4. 录制前检查
 
-- `git rev-parse --short HEAD` == `f8e86d8`（或文档已声明的更新 tip）  
-- DeviceTrial 已装 BE5C；Info `CatpawGitSHA` 可见  
-- `xcrun simctl location BE5C60E0-B415-4BF4-8F36-8975FB5314AA set 39.9961,116.4806`  
-- 中文环境；假会议「产品评审会 · 望京 SOHO」  
+- `git rev-parse --short HEAD` == `f8e86d8`（或文档已声明的更新 tip）
+- DeviceTrial 已装 BE5C；Info `CatpawGitSHA` 可见
+- `xcrun simctl location BE5C60E0-B415-4BF4-8F36-8975FB5314AA set 39.9961,116.4806`
+- 中文环境；假会议「产品评审会 · 望京 SOHO」
 - **不要**演示电话/购物；**不要**声称 prod 已 migration
 
 ## 5. 真机视频仍缺（剩余）
 
-1. MessageUI **发送成功** → 卡片 done 的完整镜头  
-2. （可选）灵动岛实机观感补拍  
-3. （可选）EventKit 提醒事项 App 切回对比  
-4. 配音 / 字幕 / 片头尾卡合成  
+1. MessageUI **发送成功** → 卡片 done 的完整镜头
+2. （可选）灵动岛实机观感补拍
+3. （可选）EventKit 提醒事项 App 切回对比
+4. 配音 / 字幕 / 片头尾卡合成
 
 模拟器可先剪辑 S1–S5、S7–S8 + S6 unavailable；真机补 S6 sent。

@@ -1,5 +1,5 @@
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 final class MarkdownStreamingParserTests: XCTestCase {
     static let sample = """

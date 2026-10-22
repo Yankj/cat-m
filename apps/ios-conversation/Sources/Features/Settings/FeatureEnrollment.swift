@@ -16,7 +16,7 @@ import SwiftUI
         (Bundle.main.infoDictionary?["CatpawBackendOrigin"] as? String).flatMap { $0.isEmpty ? nil : URL(string: $0) }?.appendingPathComponent("catpaw/features/v1")
     }
     private func request(_ path: String, method: String, body: [String: Any]? = nil) async -> (Int, [String: Any], HTTPURLResponse?)? {
-        guard let base, let bearer = try? await CatpawPushTokenUploader.shared.bearer() else { return nil }
+        guard let base, let bearer = try? await catPushTokenUploader.shared.bearer() else { return nil }
         var r = URLRequest(url: base.appendingPathComponent(path), timeoutInterval: 10)
         r.httpMethod = method; r.setValue(bearer, forHTTPHeaderField: "Authorization")
         if let body { r.setValue("application/json", forHTTPHeaderField: "Content-Type"); r.httpBody = try? JSONSerialization.data(withJSONObject: body) }
@@ -63,7 +63,7 @@ import SwiftUI
             if enrollment.enrolled == false || enrollment.proactiveDisabled {
                 Section {
                     Button { presented = true } label: {
-                        Label(ui("邀请码"), systemImage: "ticket").foregroundStyle(CatpawColors.ink)
+                        Label(ui("邀请码"), systemImage: "ticket").foregroundStyle(catColors.ink)
                     }.accessibilityIdentifier("settings.invite")
                 } footer: { Text(ui("输入邀请码开启主动提醒、记忆和设备工具。")) }
             }
@@ -91,15 +91,15 @@ import SwiftUI
             VStack(alignment: .leading, spacing: 16) {
                 TextField(ui("输入邀请码"), text: $code, prompt: Text(verbatim: "CP-XXXX-XXXX-XXXX"))
                     .textInputAutocapitalization(.characters).autocorrectionDisabled().privacySensitive()
-                    .font(CatpawTypography.Role.body.font.monospaced())
-                    .padding(14).background(CatpawColors.input, in: RoundedRectangle(cornerRadius: 14))
+                    .font(catTypography.Role.body.font.monospaced())
+                    .padding(14).background(catColors.input, in: RoundedRectangle(cornerRadius: 14))
                     .focused($focused).submitLabel(.done).onSubmit(submit)
                     .accessibilityIdentifier("invite.field")
-                if let message { Text(message).font(CatpawTypography.Role.secondary.font).foregroundStyle(messageIsError ? CatpawColors.destructive : CatpawColors.secondary).transition(.opacity) }
+                if let message { Text(message).font(catTypography.Role.secondary.font).foregroundStyle(messageIsError ? catColors.destructive : catColors.secondary).transition(.opacity) }
                 Button(action: submit) {
-                    HStack { if enrollment.phase == .submitting { ProgressView().tint(CatpawColors.onInk) }; Text(ui("提交")) }.frame(maxWidth: .infinity)
+                    HStack { if enrollment.phase == .submitting { ProgressView().tint(catColors.onInk) }; Text(ui("提交")) }.frame(maxWidth: .infinity)
                 }
-                .buttonStyle(CatpawPrimaryButtonStyle())
+                .buttonStyle(catPrimaryButtonStyle())
                 .disabled(!valid || locked || enrollment.phase == .submitting)
                 .accessibilityIdentifier("invite.submit")
                 Spacer()

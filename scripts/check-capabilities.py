@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """v1.2 capability manifest check.
 
-docs/product/capabilities/catpaw-capabilities.json is the single source of truth for what Catpaw can do.
+docs/product/capabilities/cat-capabilities.json is the single source of truth for what cat can do.
 This check fails when:
   * the manifest is malformed (ids, status, planned entries carrying a UI entry, ...);
   * a UI anchor (accessibility identifier) named in the manifest does not exist in the iOS app or navigation package;
-  * an in-app link (catpawm://<host>) is not handled by CatpawAppRoute in DeepLinks.swift;
+  * an in-app link (catpawm://<host>) is not handled by catAppRoute in DeepLinks.swift;
   * the backend mirror services/edge/supabase/functions/_shared/capabilities.mjs is out of sync.
 `--write` regenerates the backend mirror's data block from the manifest.
 """
 import json, re, sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = ROOT / 'docs/product/capabilities/catpaw-capabilities.json'
+MANIFEST = ROOT / 'docs/product/capabilities/cat-capabilities.json'
 MIRROR = ROOT / 'services/edge/supabase/functions/_shared/capabilities.mjs'
 SOURCES = [ROOT / 'apps/ios-conversation/Sources', ROOT / 'packages/ios-navigation/Sources']
 DEEPLINKS = ROOT / 'apps/ios-conversation/Sources/Domain/DeepLinks.swift'
-START = 'export const CATPAW_CAPABILITIES=Object.freeze('
+START = 'export const catCapabilities=Object.freeze('
 errors = []
 m = json.loads(MANIFEST.read_text())
 data = json.dumps(m, ensure_ascii=False, indent=1)

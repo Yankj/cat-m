@@ -14,18 +14,18 @@ actor ConversationTaskPlanFixtureBackend:ConversationTaskPlanBackend {
     func amendPlan(_ reference:ConversationTaskPlanReference,request:ConversationTaskPlanAmendRequest) async throws -> ConversationTaskPlanEnvelope {
         if let existing=receipts[request.operationID] {return existing}
         let previous=try snapshot(reference)
-        guard previous.acceptedRevision==request.expectedRevision,previous.acceptedPlanHash==request.expectedPlanHash,request.expectedGrantEpoch==reference.binding.grant_epoch else {throw CatpawError.conflict}
+        guard previous.acceptedRevision==request.expectedRevision,previous.acceptedPlanHash==request.expectedPlanHash,request.expectedGrantEpoch==reference.binding.grant_epoch else {throw catError.conflict}
         try request.content.validate();postIDs.append(request.operationID)
         let state:ConversationTaskPlanApplicationState=mode == .applied ? .applied : (mode == .pending ? .pending : .blockedUnknown)
         let hash=try request.content.canonicalHash(),revision=previous.acceptedRevision+1
         let next=ConversationTaskPlanSnapshot(runID:reference.id,taskID:reference.binding.task_id,conversationID:reference.binding.conversation_id,acceptedRevision:revision,acceptedPlanHash:hash,appliedRevision:mode == .applied ? revision : previous.appliedRevision,appliedPlanHash:mode == .applied ? hash : previous.appliedPlanHash,applicationState:state,taskStatus:"scheduled",content:request.content,appliedContent:mode == .applied ? request.content : previous.appliedContent)
         let envelope=ConversationTaskPlanEnvelope(plan:next,amendment:.init(operationID:request.operationID,state:state,acceptedRevision:revision,acceptedPlanHash:hash))
         plans[reference.id]=next;receipts[request.operationID]=envelope
-        if mode == .unknown {throw CatpawError.unavailable("明确离线测试：修改响应中断，仅核对原操作。")}
+        if mode == .unknown {throw catError.unavailable("明确离线测试：修改响应中断，仅核对原操作。")}
         return envelope
     }
     func readAmendment(_ reference:ConversationTaskPlanReference,operationID:UUID) async throws -> ConversationTaskPlanEnvelope {
-        readIDs.append(operationID);guard let envelope=receipts[operationID],envelope.plan.runID==reference.id else {throw CatpawError.missing};return envelope
+        readIDs.append(operationID);guard let envelope=receipts[operationID],envelope.plan.runID==reference.id else {throw catError.missing};return envelope
     }
     func counts()->([UUID],[UUID]) {(postIDs,readIDs)}
     private func snapshot(_ reference:ConversationTaskPlanReference) throws -> ConversationTaskPlanSnapshot {

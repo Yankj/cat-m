@@ -9,7 +9,7 @@ FINAL-G1的对话必需细分：[CGUI-1](../design/conversation-generative-ui-sp
 <details>
 <summary>历史产品规格与 v1/r2/r3 能力边界</summary>
 
-[旧对话式spec](conversation-first-delivery-spec.md)保留当时4条故事、状态/API与R1–R3门槛；[连续多模态P0](../acceptance/r1-continuous-multimodal-issues.md)保留旧失败反馈。[此前一页说明](Catpaw-m_Product_Delivery_Baseline_2026-10-12.md)是用户真机失败反馈前的快照，不是最新通过声明。
+[旧对话式spec](conversation-first-delivery-spec.md)保留当时4条故事、状态/API与R1–R3门槛；[连续多模态P0](../acceptance/r1-continuous-multimodal-issues.md)保留旧失败反馈。[此前一页说明](cat_Product_Delivery_Baseline_2026-10-12.md)是用户真机失败反馈前的快照，不是最新通过声明。
 
 当前产品方向、owner与验收只维护在 [主交付计划](../status/master-plan.md)。用户不接受散装Demo/手建委托；新主线是自然对话中的真实回复、服务端任务卡、审批与产物。下面保留v1规格/能力历史，不能充当当前产品接受。新记忆需求以 [brief v1](../architecture/memory-brief-v1.md) 为建议输入，待Store/合同适配与验收。
 

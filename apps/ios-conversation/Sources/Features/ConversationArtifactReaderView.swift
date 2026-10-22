@@ -25,12 +25,12 @@ import SwiftUI
             VStack(alignment:.leading,spacing:24) {
                 if let reading {
                     VStack(alignment:.leading,spacing:10) {
-                        CatpawVersionedTitle(title:reading.title,version:"v\(reading.identity.version)",titleAccessibilityIdentifier:"chat.artifact.reader.title",versionAccessibilityIdentifier:"chat.artifact.reader.version")
-                        if !reading.summary.isEmpty {Text(verbatim:reading.summary).font(.subheadline).foregroundStyle(CatpawColors.secondary).textSelection(.enabled)}
+                        catVersionedTitle(title:reading.title,version:"v\(reading.identity.version)",titleAccessibilityIdentifier:"chat.artifact.reader.title",versionAccessibilityIdentifier:"chat.artifact.reader.version")
+                        if !reading.summary.isEmpty {Text(verbatim:reading.summary).font(.subheadline).foregroundStyle(catColors.secondary).textSelection(.enabled)}
                     }
                     // Receipt links are separate controls. Report text never executes Markdown resources.
-                    Text(verbatim:reading.content).font(CatpawTypography.Role.body.font).lineSpacing(CatpawTypography.readingLineSpacing(for:CatpawTypography.font(.body,size:textSize))).frame(maxWidth:.infinity,alignment:.leading).textSelection(.enabled).accessibilityIdentifier("chat.artifact.reader.content")
-                    if isUserRevision {Text(ui("你编辑的版本；来源保留原资料快照，新增内容尚未重新核验。")).font(.footnote).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.artifact.reader.userRevision")}
+                    Text(verbatim:reading.content).font(catTypography.Role.body.font).lineSpacing(catTypography.readingLineSpacing(for:catTypography.font(.body,size:textSize))).frame(maxWidth:.infinity,alignment:.leading).textSelection(.enabled).accessibilityIdentifier("chat.artifact.reader.content")
+                    if isUserRevision {Text(ui("你编辑的版本；来源保留原资料快照，新增内容尚未重新核验。")).font(.footnote).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.artifact.reader.userRevision")}
                     if let openEdit {Button(ui("编辑成果")){openEdit(reading.identity)}.touchTarget().accessibilityIdentifier("chat.artifact.reader.edit")}
                     if let continueArtifact {
                         VStack(alignment:.leading,spacing:12) {
@@ -39,8 +39,8 @@ import SwiftUI
                         }
                     }
                     switch reading.sourceStatus {
-                    case .none:Text(ui("这份成果暂无可展示的网页读取来源。")).font(.footnote).foregroundStyle(CatpawColors.secondary)
-                    case .unverified:Text(ui("来源信息尚未验证，原正文仍可阅读。")).font(.footnote).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.artifact.reader.unverifiedSources")
+                    case .none:Text(ui("这份成果暂无可展示的网页读取来源。")).font(.footnote).foregroundStyle(catColors.secondary)
+                    case .unverified:Text(ui("来源信息尚未验证，原正文仍可阅读。")).font(.footnote).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.artifact.reader.unverifiedSources")
                     case .verified:
                         Button(ui("查看已读来源")){sourceEntry = .footer;sourcesPresented=true}.touchTarget().accessibilityFocused($sourceFocused,equals:.footer).accessibilityIdentifier("chat.artifact.reader.sources")
                     }
@@ -48,7 +48,7 @@ import SwiftUI
                         if let updated=reading.updatedAt {Text(ui("成果更新时间")+" · "+updated.formatted(date:.abbreviated,time:.standard)).accessibilityIdentifier("chat.artifact.reader.updatedAt")}
                         else {Text(ui("成果更新时间未提供"))}
                         Text(ui("最近读取")+" · "+reading.observedAt.formatted(date:.abbreviated,time:.standard)).accessibilityIdentifier("chat.artifact.reader.observedAt")
-                    }.font(.footnote).foregroundStyle(CatpawColors.secondary)
+                    }.font(.footnote).foregroundStyle(catColors.secondary)
                     DisclosureGroup {
                         VStack(alignment:.leading,spacing:12) {
                             Text(ui("成果编号")+" · "+reading.identity.artifactID).textSelection(.enabled)
@@ -59,9 +59,9 @@ import SwiftUI
                             }
                         }.font(.footnote).padding(.top,10)
                     } label:{Text(ui("版本与核对信息")).accessibilityIdentifier("chat.artifact.reader.history")}
-                } else {Text(failure.map{ui($0)} ?? ui("此成果版本尚未保存在本机。请返回原工作读取。")).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.artifact.reader.unavailable")}
+                } else {Text(failure.map{ui($0)} ?? ui("此成果版本尚未保存在本机。请返回原工作读取。")).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.artifact.reader.unavailable")}
             }.padding(20).frame(maxWidth:.infinity,alignment:.leading)
-        }.background(CatpawColors.background).accessibilityIdentifier("chat.artifact.reader.viewport").navigationTitle(ui("成果")).navigationBarTitleDisplayMode(.inline)
+        }.background(catColors.background).accessibilityIdentifier("chat.artifact.reader.viewport").navigationTitle(ui("成果")).navigationBarTitleDisplayMode(.inline)
             .toolbar {if let reading {ToolbarItemGroup(placement:.primaryAction) {
                 if let openEdit {Button {openEdit(reading.identity)} label:{Label(ui("编辑成果"),systemImage:"square.and.pencil")}.touchTarget().accessibilityLabel(ui("编辑成果")).accessibilityIdentifier("chat.artifact.reader.edit.toolbar")}
                 if let continueArtifact {
@@ -97,8 +97,8 @@ import SwiftUI
                     ConversationArtifactSourceDetail(source:source,identity:reading.identity)
                 } label:{VStack(alignment:.leading,spacing:6) {
                     Text(verbatim:source.finalURL.host ?? source.sourceID).font(.body)
-                    Text(verbatim:source.finalURL.absoluteString).font(.footnote).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true)
-                    Text(ui("读取时间")+" · "+source.readAt.formatted(date:.abbreviated,time:.standard)).font(.footnote).foregroundStyle(CatpawColors.secondary)
+                    Text(verbatim:source.finalURL.absoluteString).font(.footnote).foregroundStyle(catColors.secondary).fixedSize(horizontal:false,vertical:true)
+                    Text(ui("读取时间")+" · "+source.readAt.formatted(date:.abbreviated,time:.standard)).font(.footnote).foregroundStyle(catColors.secondary)
                 }.padding(.vertical,6)}.accessibilityIdentifier("chat.artifact.source."+source.sourceID)
             }.navigationTitle(ui("已读来源")).navigationBarTitleDisplayMode(.inline)
                 .toolbar {ToolbarItem(placement:.confirmationAction){Button(ui("完成")){dismiss()}.accessibilityIdentifier("chat.artifact.sources.close")}}
@@ -113,7 +113,7 @@ import SwiftUI
     private func ui(_ key:String)->String {AppLanguage(locale:locale).ui(key)}
     var body:some View {
         ScrollView {VStack(alignment:.leading,spacing:20) {
-            CatpawVersionedTitle(title:source.finalURL.host ?? source.sourceID,version:ui("对应成果版本")+" · v\(identity.version)",versionAccessibilityIdentifier:"chat.artifact.source.version")
+            catVersionedTitle(title:source.finalURL.host ?? source.sourceID,version:ui("对应成果版本")+" · v\(identity.version)",versionAccessibilityIdentifier:"chat.artifact.source.version")
             Text(ui("读取时间")+" · "+source.readAt.formatted(date:.abbreviated,time:.standard)).textSelection(.enabled)
             field(ui("原始网址"),source.requestedURL.absoluteString)
             field(ui("实际读取网址"),source.finalURL.absoluteString)

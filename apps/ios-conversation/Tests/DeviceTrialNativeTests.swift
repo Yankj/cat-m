@@ -1,7 +1,7 @@
 import XCTest
 import UIKit
-import CatpawImageComposer
-@testable import CatpawM
+import catImageComposer
+@testable import cat
 final class DeviceTrialNativeTests: XCTestCase {
  @MainActor func testConversationSwitchPreservesEachImageDraftWithoutReusingApproval() async throws {
   let (model,backend,service,_)=try makeVisionModel();let firstHash=try await selectVisionImage(model)
@@ -28,7 +28,7 @@ final class DeviceTrialNativeTests: XCTestCase {
   let ticket=model.imageDraft.beginSelection();model.imageDraft.receiveSelectedData(raw,ticket:ticket)
   try await p0Until {model.imageDraft.phase == .ready};let original=model.imageDraft,hash=original.attachment?.sha256
   model.editDraft("Unsent draft retained after failed switch");storage.rejectNextSave()
-  do {try await model.select(second);XCTFail("Storage rejection must prevent selection")} catch CatpawError.unavailable { }
+  do {try await model.select(second);XCTFail("Storage rejection must prevent selection")} catch catError.unavailable { }
   XCTAssertEqual(model.conversationID,first);XCTAssertEqual(model.draft,"Unsent draft retained after failed switch")
   XCTAssertTrue(model.imageDraft === original);XCTAssertEqual(model.imageDraft.attachment?.sha256,hash);await model.deactivate()
  }
@@ -97,7 +97,7 @@ final class DeviceTrialNativeTests: XCTestCase {
   try await store.save(.init(reference:ref,bytes:packet.encodedData),conversationID:cid,operationID:operation)
   let reopened=try FileConversationImageByteStore(root:root),bytes=try await reopened.read(reference:ref,conversationID:cid,operationID:operation),normalized=try await encoder.encode(bytes,id:packet.id,format:.png,limits:.init())
   XCTAssertEqual(bytes,packet.encodedData);XCTAssertEqual(normalized.sha256,packet.sha256)
-  do {_ = try await reopened.read(reference:ref,conversationID:UUID(),operationID:operation);XCTFail("Foreign operation cannot read image")}catch CatpawError.missing{}
+  do {_ = try await reopened.read(reference:ref,conversationID:UUID(),operationID:operation);XCTFail("Foreign operation cannot read image")}catch catError.missing{}
   try await reopened.remove(conversationID:cid,operationID:operation)
  }
 
@@ -325,11 +325,11 @@ final class DeviceTrialNativeTests: XCTestCase {
   try await service.saveDraft(scope:scope,conversationID:a,text:"Recent edit to A must not replace selected B")
   let restored = try await service.openLatest(scope:scope);XCTAssertEqual(restored,b)
   let before = await repo.read(scope:scope);store.rejectNextSave()
-  do { try await service.rememberSelection(scope:scope,conversationID:a);XCTFail("Failed selection save cannot commit") } catch CatpawError.unavailable { }
+  do { try await service.rememberSelection(scope:scope,conversationID:a);XCTFail("Failed selection save cannot commit") } catch catError.unavailable { }
   let after = await repo.read(scope:scope);XCTAssertEqual(after.sequence,before.sequence)
   let unchanged = try await service.openLatest(scope:scope);XCTAssertEqual(unchanged,b)
   let foreign = try await service.create(scope:Profiles.demo)
-  do { try await service.rememberSelection(scope:scope,conversationID:foreign);XCTFail("A foreign account conversation cannot be selected") } catch CatpawError.scopeMismatch { }
+  do { try await service.rememberSelection(scope:scope,conversationID:foreign);XCTFail("A foreign account conversation cannot be selected") } catch catError.scopeMismatch { }
   let other = try await service.openLatest(scope:Profiles.demo);XCTAssertEqual(other,foreign)
  }
 
@@ -437,7 +437,7 @@ private final class SelectedConversationTestStorage: SnapshotPersistence, @unche
  private let lock = NSLock();private var state = StoreSnapshot();private var reject = false
  func load() throws -> StoreSnapshot { lock.lock();defer { lock.unlock() };return state }
  func rejectNextSave() { lock.lock();reject = true;lock.unlock() }
- func save(_ snapshot:StoreSnapshot) throws { lock.lock();defer { lock.unlock() };if reject { reject = false;throw CatpawError.unavailable("Synthetic selection save rejection") };state = snapshot }
+ func save(_ snapshot:StoreSnapshot) throws { lock.lock();defer { lock.unlock() };if reject { reject = false;throw catError.unavailable("Synthetic selection save rejection") };state = snapshot }
 }
 
 /// p89i-4: every wait is named; success prints the stage + wall time, a timeout prints the stage, wall time, iterations and
@@ -450,7 +450,7 @@ private final class SelectedConversationTestStorage: SnapshotPersistence, @unche
  }
  let dump=await state()
  print("p0wait TIMEOUT stage=\(phase) ms=\(Int(Date().timeIntervalSince(t0)*1000)) state=\(dump)")
- throw CatpawError.invalid("P0 \(phase) deadline")
+ throw catError.invalid("P0 \(phase) deadline")
 }
 @MainActor private func p0State(_ m:ConversationFirstModel,_ b:P0ExperienceBackend? = nil) async -> String {
  let counts=await b?.consentInvocationCounts() ?? []
@@ -504,7 +504,7 @@ private actor VisionFlowTestBackend:ConversationBackend {
   .init(conversationID:conversationID,previewID:previewID,previewHash:previewHash,routeHash:route,expectedRevision:revision,title:"Synthetic image permission",body:"Offline fixture only; OpenRouter/Google AI Studio, 55 days, possible human review are contract labels; no transmission.",confirmation:"I confirm this synthetic fixture has no sensitive content",allowLabel:"Allow synthetic fixture",denyLabel:"Cancel")
  }
  func allowImageConsent(scope:DataScope,consent:ConversationImageConsent,nonSensitiveConfirmed:Bool) async throws ->Int {
-  guard nonSensitiveConfirmed,consent.expectedRevision==revision,consent.routeHash==route else {throw CatpawError.conflict}
+  guard nonSensitiveConfirmed,consent.expectedRevision==revision,consent.routeHash==route else {throw catError.conflict}
   grants += 1
   if grantHeld {grantWaiting=true;await withCheckedContinuation{grantWait=$0}}
   revision += 1;return revision
@@ -522,7 +522,7 @@ private actor VisionFlowTestBackend:ConversationBackend {
   return AsyncThrowingStream{continuation in for e in script(r,complete:!eof){continuation.yield(e)};continuation.finish()}
  }
  func observe(_ r:ConversationTurnRequest) async throws ->ConversationObservation {
-  guard let original=originals[r.operationID],original.image==r.image,r.imageBytes==nil else {throw CatpawError.missing};reads += 1
+  guard let original=originals[r.operationID],original.image==r.image,r.imageBytes==nil else {throw catError.missing};reads += 1
   return .init(request:r,events:script(r,complete:true),requestHash:textHash("VisionFlowTest:"+r.operationID.uuidString),grantEpoch:1,goals:[])
  }
 }

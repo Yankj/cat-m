@@ -10,7 +10,7 @@ public actor OpenMuseTaskService {
         let id = Self.recordID(input.operationID)
         if (await repository.read(scope: input.scope)).records[id] != nil {
             let old = try await session(operationID: input.operationID, scope: input.scope)
-            guard old.request.requestHash == frozen.requestHash else { throw CatpawError.conflict }
+            guard old.request.requestHash == frozen.requestHash else { throw catError.conflict }
             return old
         }
         let value = OpenMuseTaskSession(request: frozen, provenance: transport.provenance)
@@ -23,7 +23,7 @@ public actor OpenMuseTaskService {
     public func admit(operationID: UUID, scope: DataScope) async throws -> OpenMuseTaskSession {
         let (record, current) = try await load(operationID, scope)
         guard current.admission == .notSent, current.control == .active, current.provenance == transport.provenance else {
-            throw CatpawError.invalid("Read the original admission; accepted/unknown requests cannot be created again.")
+            throw catError.invalid("Read the original admission; accepted/unknown requests cannot be created again.")
         }
         var dispatched = current; dispatched.admission = .dispatchCommitted; dispatched.needsRead = true
         // No transport invocation occurs before durable commit. An interrupted dispatch is never retried.
@@ -49,7 +49,7 @@ public actor OpenMuseTaskService {
     public func refresh(operationID: UUID, scope: DataScope) async throws -> OpenMuseTaskSession {
         let (record, current) = try await load(operationID, scope)
         guard current.admission != .notSent, current.control == .active, current.provenance == transport.provenance else {
-            throw CatpawError.invalid("No active admitted task is available for authoritative read.")
+            throw catError.invalid("No active admitted task is available for authoritative read.")
         }
         var observing = current; observing.readGeneration += 1; observing.needsRead = true
         try await save(observing, revision: record.header.revision)
@@ -65,7 +65,7 @@ public actor OpenMuseTaskService {
             }
             guard latest.serverTaskID == nil || latest.serverTaskID == projection.binding.taskID,
                   (!projection.hasAuthoritativeRevision || projection.revision > 0), projection.attempts >= 0,
-                  projection.grantRevision == latest.grantRevision, projection.contextEpoch == latest.contextEpoch else { throw CatpawError.corrupt("Invalid original task projection or grant/epoch.") }
+                  projection.grantRevision == latest.grantRevision, projection.contextEpoch == latest.contextEpoch else { throw catError.corrupt("Invalid original task projection or grant/epoch.") }
             let hash = try openMuseDigest(projection)
             if let old = latest.projection {
                 guard projection.hasAuthoritativeRevision == old.hasAuthoritativeRevision,
@@ -75,10 +75,10 @@ public actor OpenMuseTaskService {
                       projection.binding.serverRequestHash == old.binding.serverRequestHash,
                       projection.binding.remoteScope == old.binding.remoteScope,
                       !old.status.terminal || (projection.status == old.status && projection.attempts == old.attempts) else {
-                    throw CatpawError.conflict
+                    throw catError.conflict
                 }
             }
-            if projection.workerAttempts.isEmpty, let observed = latest.observedWorkerRunID, let incoming = projection.workerRunID, observed != incoming { throw CatpawError.conflict }
+            if projection.workerAttempts.isEmpty, let observed = latest.observedWorkerRunID, let incoming = projection.workerRunID, observed != incoming { throw catError.conflict }
             try Self.validateWorkerAttempts(projection, previous: latest.projection, request: latest.request)
             var next = latest; next.admission = .accepted; next.serverTaskID = projection.binding.taskID
             next.projection = projection; next.projectionHash = hash; next.needsRead = false; next.note = nil
@@ -97,7 +97,7 @@ public actor OpenMuseTaskService {
         }
     }
     public func refreshUntilStable(operationID: UUID, scope: DataScope, maxReads: Int = 3) async throws -> OpenMuseTaskSession {
-        guard (1...5).contains(maxReads) else { throw CatpawError.invalid("Authoritative read budget must be between one and five.") }
+        guard (1...5).contains(maxReads) else { throw catError.invalid("Authoritative read budget must be between one and five.") }
         for _ in 0..<maxReads {
             try Task.checkCancellation()
             do { return try await refresh(operationID: operationID, scope: scope) }
@@ -126,7 +126,7 @@ public actor OpenMuseTaskService {
               current.control != .revoked,
               command != .pause || current.control == .active,
               command != .resume || (current.control == .paused && current.serverControlConfirmed && !current.resumeRequiresNewRun) else {
-            throw CatpawError.invalid("Control is unavailable; a revoked grant cannot be resumed or silently regranted.")
+            throw catError.invalid("Control is unavailable; a revoked grant cannot be resumed or silently regranted.")
         }
         var fenced = current; fenced.observationEpoch += 1; fenced.serverControlConfirmed = false; fenced.needsRead = true
         // A resume remains paused until its authority read/receipt confirms the same grant.
@@ -145,7 +145,7 @@ public actor OpenMuseTaskService {
             guard receipt.control == expected, latest.serverTaskID == nil || latest.serverTaskID == receipt.binding.taskID,
                   receipt.contextEpoch >= latest.contextEpoch,
                   receipt.grantRevision > latest.grantRevision, receipt.delegationRevision > latest.delegationRevision else {
-                throw CatpawError.corrupt("Control receipt changed the scope, grant or requested control.")
+                throw catError.corrupt("Control receipt changed the scope, grant or requested control.")
             }
             var confirmed = latest; confirmed.control = expected; confirmed.serverControlConfirmed = true
             confirmed.contextEpoch = receipt.contextEpoch; confirmed.grantRevision = receipt.grantRevision
@@ -176,7 +176,7 @@ public actor OpenMuseTaskService {
     public func prepareFreshRunAfterResume(operationID: UUID, scope: DataScope) async throws -> OpenMuseTaskSession {
         let (record, current) = try await load(operationID, scope)
         guard current.control == .paused, current.resumeRequiresNewRun, current.serverControlConfirmed else {
-            throw CatpawError.invalid("A revoked/unconfirmed grant cannot prepare a resumed Run.")
+            throw catError.invalid("A revoked/unconfirmed grant cannot prepare a resumed Run.")
         }
         var parent = current
         let nextOperation = current.nextRunOperationID ?? UUID()
@@ -195,9 +195,9 @@ public actor OpenMuseTaskService {
     public func preview(operationID: UUID, scope: DataScope, proposalID: String, now: Date = Date()) async throws -> OpenMuseApprovalPreview {
         let current = try await session(operationID: operationID, scope: scope)
         guard current.control == .active, !current.needsRead,
-              let approval = current.approvals[proposalID], approval.state == .pending else { throw CatpawError.invalid("Read the current pending proposal before previewing.") }
+              let approval = current.approvals[proposalID], approval.state == .pending else { throw catError.invalid("Read the current pending proposal before previewing.") }
         try Self.validateApproval(approval.snapshot, in: current, now: now)
-        guard let artifact = current.artifactHistory.first(where: { $0.reference == approval.snapshot.artifact }) else { throw CatpawError.missing }
+        guard let artifact = current.artifactHistory.first(where: { $0.reference == approval.snapshot.artifact }) else { throw catError.missing }
         try artifact.validate(taskID: approval.snapshot.binding.taskID)
         return try OpenMuseApprovalPreview(snapshot: approval.snapshot, artifact: artifact, observationEpoch: current.observationEpoch)
     }
@@ -205,10 +205,10 @@ public actor OpenMuseTaskService {
         let operation = preview.snapshot.binding.operationID, scope = preview.snapshot.binding.scope
         let current = try await session(operationID: operation, scope: scope)
         try Self.validatePreview(preview, in: current, now: now)
-        guard current.provenance == transport.provenance else { throw CatpawError.scopeMismatch }
+        guard current.provenance == transport.provenance else { throw catError.scopeMismatch }
         // Minimal original proposal GET; never the broad upstream workspace read.
         let authoritative = try await transport.readApproval(current.request, taskID: preview.snapshot.binding.taskID, proposalID: preview.snapshot.proposalID)
-        guard try openMuseDigest(authoritative) == preview.snapshotDigest else { throw CatpawError.conflict }
+        guard try openMuseDigest(authoritative) == preview.snapshotDigest else { throw catError.conflict }
         let (record, latest) = try await load(operation, scope)
         try Self.validatePreview(preview, in: latest, now: now)
         var dispatched = latest
@@ -241,13 +241,13 @@ public actor OpenMuseTaskService {
     public func reconcileReceipt(operationID: UUID, scope: DataScope, proposalID: String, performEvidenceCheck: Bool = false) async throws -> OpenMuseTaskSession {
         let current = try await session(operationID: operationID, scope: scope)
         guard current.provenance == transport.provenance, let approval = current.approvals[proposalID],
-              [.dispatchCommitted, .unknown, .accepted].contains(approval.state) else { throw CatpawError.invalid("Only the consumed original receipt can be reconciled.") }
+              [.dispatchCommitted, .unknown, .accepted].contains(approval.state) else { throw catError.invalid("Only the consumed original receipt can be reconciled.") }
         let receipt: OpenMuseDecisionReceipt
         if performEvidenceCheck { receipt = try await transport.checkReceiptEvidence(current.request, approval: approval.snapshot) }
         else { receipt = try await transport.readReceipt(current.request, approval: approval.snapshot) }
         try Self.validateReceipt(receipt, for: approval.snapshot, request: current.request)
         let (record, latest) = try await load(operationID, scope)
-        guard let original = latest.approvals[proposalID], try openMuseDigest(original.snapshot) == openMuseDigest(approval.snapshot) else { throw CatpawError.conflict }
+        guard let original = latest.approvals[proposalID], try openMuseDigest(original.snapshot) == openMuseDigest(approval.snapshot) else { throw catError.conflict }
         var reconciled = latest; reconciled.approvals[proposalID]?.state = receipt.status
         reconciled.approvals[proposalID]?.receipt = receipt
         reconciled.note = "Server receipt assertion read; no independent side-effect verification."
@@ -258,7 +258,7 @@ public actor OpenMuseTaskService {
         let (record, current) = try await load(operationID, scope)
         guard current.control == .active, current.admission == .accepted, !threadID.isEmpty, !aguiRunID.isEmpty,
               ![operationID.uuidString.lowercased(), current.request.input.businessRunID.uuidString.lowercased(), current.serverTaskID?.lowercased() ?? ""].contains(aguiRunID.lowercased()) else {
-            throw CatpawError.invalid("AG-UI run must have its own identity and cannot authorize a persistent task.")
+            throw catError.invalid("AG-UI run must have its own identity and cannot authorize a persistent task.")
         }
         var next = current; next.ephemeral = OpenMuseEphemeralObservation(threadID: threadID, aguiRunID: aguiRunID)
         try await save(next, revision: record.header.revision); return next
@@ -268,11 +268,11 @@ public actor OpenMuseTaskService {
         guard current.control == .active, current.observationEpoch == observationEpoch,
               var stream = current.ephemeral, !stream.terminal,
               event.aguiRunID == nil || event.aguiRunID == stream.aguiRunID,
-              event.threadID == nil || event.threadID == stream.threadID else { throw CatpawError.conflict }
+              event.threadID == nil || event.threadID == stream.threadID else { throw catError.conflict }
         var next = current
         switch event.type {
         case "TEXT_MESSAGE_CHUNK", "TEXT_MESSAGE_CONTENT":
-            guard let delta = event.delta, stream.advisoryText.utf8.count + delta.utf8.count <= 1024 * 1024 else { throw CatpawError.corrupt("Invalid ephemeral text delta.") }
+            guard let delta = event.delta, stream.advisoryText.utf8.count + delta.utf8.count <= 1024 * 1024 else { throw catError.corrupt("Invalid ephemeral text delta.") }
             stream.advisoryText += delta
         case "RUN_FINISHED", "RUN_ERROR":
             stream.terminal = true; next.needsRead = true
@@ -291,19 +291,19 @@ public actor OpenMuseTaskService {
               let journal = session.approvals[preview.snapshot.proposalID], journal.state == .pending,
               preview.snapshotDigest == (try openMuseDigest(preview.snapshot)), preview.snapshotDigest == (try openMuseDigest(journal.snapshot)),
               preview.artifact.reference == preview.snapshot.artifact,
-              session.artifactHistory.contains(preview.artifact) else { throw CatpawError.invalid("The displayed approval changed or has already been consumed.") }
+              session.artifactHistory.contains(preview.artifact) else { throw catError.invalid("The displayed approval changed or has already been consumed.") }
         try preview.artifact.validate(taskID: preview.snapshot.binding.taskID)
         let unresolvedSamePurpose = session.approvals.values.contains {
             $0.snapshot.proposalID != preview.snapshot.proposalID && [.dispatchCommitted, .unknown, .accepted].contains($0.state) &&
             $0.snapshot.artifact.artifactID == preview.snapshot.artifact.artifactID && $0.snapshot.destination == preview.snapshot.destination && $0.snapshot.toolID == preview.snapshot.toolID
         }
-        guard !unresolvedSamePurpose else { throw CatpawError.invalid("Reconcile the original action for this destination before a new decision.") }
+        guard !unresolvedSamePurpose else { throw catError.invalid("Reconcile the original action for this destination before a new decision.") }
     }
     private static func validateReceipt(_ receipt: OpenMuseDecisionReceipt, for snapshot: OpenMuseApprovalSnapshot, request: OpenMuseFrozenRequest) throws {
         try receipt.binding.validate(request)
         guard receipt.binding.taskID == snapshot.binding.taskID, receipt.proposalID == snapshot.proposalID,
               receipt.serverActionDigest == snapshot.serverActionDigest, [.accepted, .unknown, .denied].contains(receipt.status) else {
-            throw CatpawError.corrupt("Original receipt binding is invalid; HTTP success is not verification.")
+            throw catError.corrupt("Original receipt binding is invalid; HTTP success is not verification.")
         }
     }
     private static func markDispatchesUnknown(_ session: inout OpenMuseTaskSession) {
@@ -312,15 +312,15 @@ public actor OpenMuseTaskService {
     private static func mergeArtifactsAndApprovals(_ projection: OpenMuseTaskProjection, into session: inout OpenMuseTaskSession) throws {
         guard projection.artifacts.count <= 128, projection.approvals.count <= 32,
               projection.artifacts.reduce(0, { $0 + $1.body.utf8.count }) <= 4 * 1024 * 1024 else {
-            throw CatpawError.corrupt("Projection exceeds the declared client read budget.")
+            throw catError.corrupt("Projection exceeds the declared client read budget.")
         }
         var versionKeys = Set<String>()
         for artifact in projection.artifacts {
             try artifact.validate(taskID: projection.binding.taskID)
             let key = "\(artifact.reference.artifactID):\(artifact.reference.version)"
-            guard versionKeys.insert(key).inserted else { throw CatpawError.corrupt("Duplicate artifact version.") }
+            guard versionKeys.insert(key).inserted else { throw catError.corrupt("Duplicate artifact version.") }
             if let existing = session.artifactHistory.first(where: { $0.reference.artifactID == artifact.reference.artifactID && $0.reference.version == artifact.reference.version }) {
-                guard existing == artifact else { throw CatpawError.corrupt("Server changed an immutable artifact version.") }
+                guard existing == artifact else { throw catError.corrupt("Server changed an immutable artifact version.") }
             } else { session.artifactHistory.append(artifact) }
         }
         var proposalIDs = Set<String>()
@@ -334,15 +334,15 @@ public actor OpenMuseTaskService {
                   snapshot.contextEpoch == session.contextEpoch,
                   session.artifactHistory.contains(where: { $0.reference == snapshot.artifact }),
                   (try JSONSerialization.jsonObject(with: Data(snapshot.argumentsJSON.utf8))) is [String: Any] else {
-                throw CatpawError.corrupt("Invalid version-bound synthetic proposal.")
+                throw catError.corrupt("Invalid version-bound synthetic proposal.")
             }
-            if let wire = snapshot.wireActionBindingJSON { guard textHash(wire) == snapshot.serverActionDigest else { throw CatpawError.corrupt("Facade action digest mismatch.") } }
+            if let wire = snapshot.wireActionBindingJSON { guard textHash(wire) == snapshot.serverActionDigest else { throw catError.corrupt("Facade action digest mismatch.") } }
             if let existing = session.approvals[snapshot.proposalID] {
-                guard try openMuseDigest(existing.snapshot) == openMuseDigest(snapshot) else { throw CatpawError.conflict }
+                guard try openMuseDigest(existing.snapshot) == openMuseDigest(snapshot) else { throw catError.conflict }
             } else { session.approvals[snapshot.proposalID] = OpenMuseApprovalJournal(snapshot: snapshot) }
         }
         for receipt in projection.approvalReceipts {
-            guard let approval = session.approvals[receipt.proposalID] else { throw CatpawError.corrupt("Receipt lacks its original approval.") }
+            guard let approval = session.approvals[receipt.proposalID] else { throw catError.corrupt("Receipt lacks its original approval.") }
             try validateReceipt(receipt, for: approval.snapshot, request: session.request)
             session.approvals[receipt.proposalID]?.state = receipt.status; session.approvals[receipt.proposalID]?.receipt = receipt
         }
@@ -359,20 +359,20 @@ public actor OpenMuseTaskService {
               approval.grantID == session.request.input.grantID, approval.grantRevision == session.grantRevision,
               approval.contextEpoch == session.contextEpoch, now < approval.expiresAt,
               latest?.reference == approval.artifact, approval.argumentsHash == textHash(approval.argumentsJSON),
-              Self.allowedSyntheticEffect(approval) else { throw CatpawError.invalid("Preview is expired, changed, paused or revoked.") }
+              Self.allowedSyntheticEffect(approval) else { throw catError.invalid("Preview is expired, changed, paused or revoked.") }
     }
     private static func allowedSyntheticEffect(_ snapshot: OpenMuseApprovalSnapshot) -> Bool {
         snapshot.policyVersion == "synthetic-only-v1" && ((snapshot.effectClass == "synthetic_noop" && snapshot.toolID == "synthetic.noop") ||
         (snapshot.effectClass == "synthetic_preview" && snapshot.toolID == "catpaw.preview"))
     }
     private static func validateWorkerAttempts(_ projection: OpenMuseTaskProjection, previous: OpenMuseTaskProjection?, request: OpenMuseFrozenRequest) throws {
-        guard projection.workerAttempts.count <= 128, Set(projection.workerAttempts.map(\.upstreamRunID)).count == projection.workerAttempts.count else { throw CatpawError.corrupt("Duplicate worker attempts.") }
+        guard projection.workerAttempts.count <= 128, Set(projection.workerAttempts.map(\.upstreamRunID)).count == projection.workerAttempts.count else { throw catError.corrupt("Duplicate worker attempts.") }
         for attempt in projection.workerAttempts {
-            guard !attempt.upstreamRunID.isEmpty, ![request.input.operationID.uuidString.lowercased(), request.input.businessRunID.uuidString.lowercased(), projection.binding.taskID.lowercased()].contains(attempt.upstreamRunID.lowercased()) else { throw CatpawError.corrupt("Worker attempt conflates a stable business identity.") }
+            guard !attempt.upstreamRunID.isEmpty, ![request.input.operationID.uuidString.lowercased(), request.input.businessRunID.uuidString.lowercased(), projection.binding.taskID.lowercased()].contains(attempt.upstreamRunID.lowercased()) else { throw catError.corrupt("Worker attempt conflates a stable business identity.") }
         }
         for old in previous?.workerAttempts ?? [] {
             guard let current = projection.workerAttempts.first(where: { $0.upstreamRunID == old.upstreamRunID }), current.startedAt == old.startedAt,
-                  old.finishedAt == nil || current == old else { throw CatpawError.conflict }
+                  old.finishedAt == nil || current == old else { throw catError.conflict }
         }
     }
     public func sessions(scope: DataScope) async throws -> [OpenMuseTaskSession] {
@@ -399,10 +399,10 @@ public actor OpenMuseTaskService {
         return .preference(Preference(key: "openmuse_session:\(value.request.input.operationID)", value: String(decoding: try encoder.encode(value), as: UTF8.self)))
     }
     private static func decode(_ record: StoredRecord, operationID: UUID, scope: DataScope) throws -> OpenMuseTaskSession {
-        guard case .preference(let p) = record.payload, p.key == "openmuse_session:\(operationID)" else { throw CatpawError.corrupt("Invalid OpenMuse durable session.") }
+        guard case .preference(let p) = record.payload, p.key == "openmuse_session:\(operationID)" else { throw catError.corrupt("Invalid OpenMuse durable session.") }
         let value = try JSONDecoder().decode(OpenMuseTaskSession.self, from: Data(p.value.utf8))
         try value.request.validate()
-        guard value.request.input.operationID == operationID, value.request.input.scope == scope else { throw CatpawError.scopeMismatch }
+        guard value.request.input.operationID == operationID, value.request.input.scope == scope else { throw catError.scopeMismatch }
         return value
     }
 }

@@ -30,7 +30,7 @@ import UIKit
                 }
                 .padding(.horizontal, 4).padding(.top, 4)
             }
-            .animation(CatpawMotion.resolved(CatpawMotion.chip, reduceMotion), value: attachments.map(\.id))
+            .animation(catMotion.resolved(catMotion.chip, reduceMotion), value: attachments.map(\.id))
             .quickLookPreview($previewURL, in: attachments.map(\.localURL))
             .accessibilityIdentifier("chat.composer.attachments")
         }
@@ -54,21 +54,21 @@ import UIKit
                 } else {
                     VStack(spacing: 2) {
                         Image(systemName: item.kind.symbol).font(.body)
-                        Text((item.filename as NSString).pathExtension.uppercased()).font(CatpawTypography.Role.caption.font.weight(.semibold)).lineLimit(1)
-                    }.foregroundStyle(CatpawColors.secondary)
+                        Text((item.filename as NSString).pathExtension.uppercased()).font(catTypography.Role.caption.font.weight(.semibold)).lineLimit(1)
+                    }.foregroundStyle(catColors.secondary)
                 }
                 overlay
             }
             .frame(width: side, height: side)
-            .background(CatpawColors.panel)
+            .background(catColors.panel)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(borderColor, lineWidth: 1))
         }
-        .buttonStyle(CatpawPressButtonStyle())
+        .buttonStyle(catPressButtonStyle())
         .overlay(alignment: .topTrailing) {
             Button(action: remove) {
-                Image(systemName: "xmark").font(CatpawTypography.Role.caption.font.weight(.bold)).foregroundStyle(CatpawColors.onInk)
-                    .frame(width: 18, height: 18).background(CatpawColors.ink, in: Circle())
+                Image(systemName: "xmark").font(catTypography.Role.caption.font.weight(.bold)).foregroundStyle(catColors.onInk)
+                    .frame(width: 18, height: 18).background(catColors.ink, in: Circle())
                     .frame(width: 32, height: 32) // hit area
             }
             .offset(x: 10, y: -10)
@@ -85,23 +85,23 @@ import UIKit
         case .staged, .uploaded: EmptyView()
         case let .uploading(fraction):
             ZStack {
-                CatpawColors.ink.opacity(0.28)
-                Circle().stroke(CatpawColors.onInk.opacity(0.35), lineWidth: 2.5).frame(width: 22, height: 22)
-                Circle().trim(from: 0, to: max(0.04, fraction)).stroke(CatpawColors.onInk, style: .init(lineWidth: 2.5, lineCap: .round))
+                catColors.ink.opacity(0.28)
+                Circle().stroke(catColors.onInk.opacity(0.35), lineWidth: 2.5).frame(width: 22, height: 22)
+                Circle().trim(from: 0, to: max(0.04, fraction)).stroke(catColors.onInk, style: .init(lineWidth: 2.5, lineCap: .round))
                     .rotationEffect(.degrees(-90)).frame(width: 22, height: 22)
                     .animation(.linear(duration: 0.2), value: fraction)
             }
         case .failed:
             ZStack {
-                CatpawColors.ink.opacity(0.35)
+                catColors.ink.opacity(0.35)
                 Button(action: retry) {
-                    Image(systemName: "arrow.clockwise").font(CatpawTypography.Role.caption.font.weight(.bold)).foregroundStyle(CatpawColors.onInk).touchTarget()
+                    Image(systemName: "arrow.clockwise").font(catTypography.Role.caption.font.weight(.bold)).foregroundStyle(catColors.onInk).touchTarget()
                 }.accessibilityLabel(ui("重试上传"))
             }
         }
     }
 
-    private var borderColor: Color { if case .failed = item.status { return CatpawColors.failure }; return CatpawColors.separator }
+    private var borderColor: Color { if case .failed = item.status { return catColors.failure }; return catColors.separator }
     private var statusText: String {
         switch item.status {
         case .staged: ui("待上传")
@@ -139,7 +139,7 @@ import UIKit
         .buttonStyle(.plain)
         .sensoryFeedback(.selection, trigger: ComposerAttachPopoverState.shared.isPresented)
         .contextMenu { if let onDetails { Button(action: onDetails) { Label(ui("输入详情"), systemImage: "text.alignleft") }.accessibilityIdentifier("chat.composer.details") } }
-        .tint(CatpawColors.ink)
+        .tint(catColors.ink)
         .disabled(remaining <= 0)
         .accessibilityLabel(ui("添加附件"))
         .accessibilityIdentifier("chat.composer.add")
@@ -243,7 +243,7 @@ enum ComposerPasteHandling {
 private extension Label where Title == Text, Icon == Image {
     /// r9 §3: menu glyphs are ink, regular weight — never the accent tint.
     func menuInkIcon() -> some View {
-        self.symbolRenderingMode(.monochrome).fontWeight(.regular).foregroundStyle(CatpawColors.ink)
+        self.symbolRenderingMode(.monochrome).fontWeight(.regular).foregroundStyle(catColors.ink)
     }
 }
 

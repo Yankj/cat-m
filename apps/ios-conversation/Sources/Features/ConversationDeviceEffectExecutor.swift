@@ -184,7 +184,7 @@ public actor ConversationDeviceEffectExecutor {
     }
     private func load(_ action:ConversationApprovedDeviceAction,kind:ConversationDeviceSubeffectKind) async throws -> ConversationDeviceOSJournal? {
         let key=try key(action,kind:kind),record:StoredRecord
-        do {record=try await repository.record(stableID(key),scope:scope)}catch CatpawError.missing{return nil}
+        do {record=try await repository.record(stableID(key),scope:scope)}catch catError.missing{return nil}
         guard case .preference(let p)=record.payload,p.key==key,p.value.utf8.count<=512_000 else {throw ConversationDeviceExecutionError.invalidJournal}
         let data=Data(p.value.utf8);_=try ConversationStrictJSON.object(data,maxBytes:512_000)
         let value=try JSONDecoder().decode(ConversationDeviceOSJournal.self,from:data),intent=value.intent
@@ -202,7 +202,7 @@ public actor ConversationDeviceEffectExecutor {
         try ensure(epoch)
         let conversation=try await repository.record(action.reference.binding.conversation_id,scope:scope);try ensure(epoch)
         let key=try key(action,kind:value.intent.kind),existing:StoredRecord?
-        do {existing=try await repository.record(stableID(key),scope:scope)}catch CatpawError.missing{existing=nil}
+        do {existing=try await repository.record(stableID(key),scope:scope)}catch catError.missing{existing=nil}
         try ensure(epoch)
         if let existing {
             guard case .preference(let p)=existing.payload,p.key==key else {throw ConversationDeviceExecutionError.invalidJournal}

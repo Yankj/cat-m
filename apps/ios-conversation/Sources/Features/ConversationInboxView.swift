@@ -26,28 +26,28 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
         List {
             if allowed && model.matches(service: service, item: nil) {
                 Text(mode == .tasks ? ui("当前工作区的待办") : ui("当前工作区的记录"))
-                    .font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                    .font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                     .listRowBackground(Color.clear)
                 if model.loading && model.items.isEmpty { ProgressView(mode == .tasks ? ui("正在读取任务") : ui("正在读取成果")) }
                 if let error = model.errorText {
                     Section {
-                        Text(model.denied ? ui("当前账号无权访问这些工作。") : ui("无法读取工作列表")).font(CatpawTypography.Role.heading.font)
-                        Text(ui(error)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(model.denied ? ui("当前账号无权访问这些工作。") : ui("无法读取工作列表")).font(catTypography.Role.heading.font)
+                        Text(ui(error)).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true)
                         Button(ui("重新读取")) { model.reload() }.touchTarget().disabled(model.loading)
                             .accessibilityIdentifier("inbox.retry")
                     }.accessibilityIdentifier("inbox.error")
                 }
                 if !model.isFresh && !model.items.isEmpty {
-                    Text(ui("显示上次读取的内容；本次尚未完成更新。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                    Text(ui("显示上次读取的内容；本次尚未完成更新。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                         .accessibilityIdentifier("inbox.stale")
                 }
-                if mode == .tasks { ProactiveTodoSection() }   // v1.2 IA: 「待办」 = Catpaw-found cards on top + what you asked for
+                if mode == .tasks { ProactiveTodoSection() }   // v1.2 IA: 「待办」 = cat-found cards on top + what you asked for
                 if mode == .tasks { DeviceLedgerSection() }
                 if mode == .tasks {
                     ForEach(model.items) { item in
                         NavigationLink {
                             ConversationInboxDetailView(service: service, item: item, admissionAllowed: admissionAllowed, onReturn: onReturn)
-                        } label: { VStack(alignment: .leading, spacing: 4) { TodoSourceTag(catpaw: false); receiptRow(item, artifact: nil) } }
+                        } label: { VStack(alignment: .leading, spacing: 4) { TodoSourceTag(cat: false); receiptRow(item, artifact: nil) } }
                         .accessibilityIdentifier("inbox.item." + item.id.uuidString.lowercased())
                     }
                 } else {
@@ -60,13 +60,13 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                         // v1.2: one-tap jump back to the conversation that produced this result.
                         .swipeActions(edge: .leading, allowsFullSwipe: true) {
                             Button { Task { _ = await onReturn(row.item) } } label: { Label(ui("回到原对话"), systemImage: "arrow.uturn.backward") }
-                                .tint(CatpawColors.ink).accessibilityIdentifier("inbox.artifact.return")
+                                .tint(catColors.ink).accessibilityIdentifier("inbox.artifact.return")
                         }
                     }
                 }
                 if model.didLoad && !model.loading && model.errorText == nil && visibleCount == 0 && (mode != .tasks || DeviceLedger.shared.active.isEmpty) {
                     if mode == .results && model.hasMore {
-                        Text(ui("当前已读取的工作还没有成果，可以加载更多。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                        Text(ui("当前已读取的工作还没有成果，可以加载更多。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                     } else {
                         // v1.2: empty states say how this page fills up.
                         EmptyState(title: mode == .tasks ? ui("还没有待办") : ui("还没有记录"),
@@ -84,7 +84,7 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                 EmptyState(title: mode == .tasks ? ui("待办") : ui("记录"), detail: ui("允许网络后可读取当前工作区的任务与成果。"))
                     .listRowBackground(Color.clear).accessibilityIdentifier("inbox.unavailable")
             }
-        }.font(CatpawTypography.Role.body.font).scrollContentBackground(.hidden).background(CatpawColors.background)
+        }.font(catTypography.Role.body.font).scrollContentBackground(.hidden).background(catColors.background)
             .navigationTitle(mode == .tasks ? ui("待办") : ui("记录")).navigationBarTitleDisplayMode(.inline)
             .accessibilityIdentifier("inbox.list")
             .refreshable { if let request = model.reload() { await request.value } }
@@ -98,15 +98,15 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
     private func receiptRow(_ item: ConversationInboxItem, artifact: ConversationArtifactIdentity?) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if let artifact {
-                CatpawAdaptiveHeader(title: item.title, detail: "v\(artifact.version)", titleRole: .body, weight: .medium)
-            } else { Text(item.title).font(CatpawTypography.Role.body.font.weight(.medium)).fixedSize(horizontal: false, vertical: true) }
+                catAdaptiveHeader(title: item.title, detail: "v\(artifact.version)", titleRole: .body, weight: .medium)
+            } else { Text(item.title).font(catTypography.Role.body.font.weight(.medium)).fixedSize(horizontal: false, vertical: true) }
             StatusLabel(text: inboxStatus(item.taskStatus,locale:locale), symbol: "circle.dotted", tone: inboxTone(item.taskStatus))
-            Text(ui("原对话") + " · " + inboxOrigin(item)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
-            if item.pendingActionCount > 0 { Text(ui("待处理 {0} 项", arguments: [String(item.pendingActionCount)])).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.attention) }
+            Text(ui("原对话") + " · " + inboxOrigin(item)).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
+            if item.pendingActionCount > 0 { Text(ui("待处理 {0} 项", arguments: [String(item.pendingActionCount)])).font(catTypography.Role.secondary.font).foregroundStyle(catColors.attention) }
             if item.authorizationState == .superseded {
-                Text(ui("原工作授权已失效，查阅不代表可以继续执行。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)
+                Text(ui("原工作授权已失效，查阅不代表可以继续执行。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention)
             }
-            Text(inboxDate(item.updatedAt)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            Text(inboxDate(item.updatedAt)).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
         }.padding(.vertical, 6).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).accessibilityElement(children: .combine)
     }
 }
@@ -136,7 +136,7 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                     .accessibilityIdentifier("inbox.detail.refresh")
             } }
             .navigationTitle(artifact == nil ? ui("任务进展") : ui("记录")).navigationBarTitleDisplayMode(.inline)
-            .background(CatpawColors.background).accessibilityIdentifier("inbox.detail." + item.id.uuidString.lowercased())
+            .background(catColors.background).accessibilityIdentifier("inbox.detail." + item.id.uuidString.lowercased())
             .safeAreaInset(edge: .bottom) { if allowed && model.matches(service: service, item: item) && model.goal != nil && !model.denied {
                 ConversationInboxReturnAction(item: item, allowed: allowed, onReturn: onReturn)
             } }
@@ -149,11 +149,11 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
     }
     private var artifactReadStatus: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(ui("原对话") + " · " + inboxOrigin(item)).font(CatpawTypography.Role.secondary.font)
-            if let error = model.errorText { Text(ui(error)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention) }
-            else if !model.isFresh { Text(ui("显示上次读取的内容；本次尚未完成更新。")).font(CatpawTypography.Role.caption.font) }
-        }.foregroundStyle(CatpawColors.secondary).padding(.horizontal, 20).padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading).background(CatpawColors.background)
+            Text(ui("原对话") + " · " + inboxOrigin(item)).font(catTypography.Role.secondary.font)
+            if let error = model.errorText { Text(ui(error)).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention) }
+            else if !model.isFresh { Text(ui("显示上次读取的内容；本次尚未完成更新。")).font(catTypography.Role.caption.font) }
+        }.foregroundStyle(catColors.secondary).padding(.horizontal, 20).padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading).background(catColors.background)
     }
     @ViewBuilder private var detailContent: some View {
         if allowed && model.matches(service: service, item: item), let goal = model.goal, let artifact {
@@ -165,23 +165,23 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                 VStack(alignment: .leading, spacing: 20) {
                     if !allowed { Text(ui("允许网络后可读取当前工作区的任务与成果。")) }
                     else if model.matches(service: service, item: item) {
-                        Text(ui("原对话") + " · " + inboxOrigin(item)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                        Text(ui("原对话") + " · " + inboxOrigin(item)).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                         if model.loading { ProgressView(artifact == nil ? ui("正在读取任务") : ui("正在读取成果")) }
                         if let error = model.errorText {
-                            Text(model.denied ? ui("当前账号无权访问这些工作。") : ui("无法读取这项工作")).font(CatpawTypography.Role.heading.font)
-                            Text(ui(error)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.attention).fixedSize(horizontal: false, vertical: true)
+                            Text(model.denied ? ui("当前账号无权访问这些工作。") : ui("无法读取这项工作")).font(catTypography.Role.heading.font)
+                            Text(ui(error)).font(catTypography.Role.secondary.font).foregroundStyle(catColors.attention).fixedSize(horizontal: false, vertical: true)
                         }
                         if let goal = model.goal {
-                            if !model.isFresh { Text(ui("显示上次读取的内容；本次尚未完成更新。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
-                            if item.authorizationState == .superseded { Text(ui("原工作授权已失效，查阅不代表可以继续执行。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.attention) }
+                            if !model.isFresh { Text(ui("显示上次读取的内容；本次尚未完成更新。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary) }
+                            if item.authorizationState == .superseded { Text(ui("原工作授权已失效，查阅不代表可以继续执行。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.attention) }
                             ConversationGoalCard(goal: goal, busy: model.loading, refresh: { model.reload() },
                                                  openArtifact: { selectedArtifact = ConversationArtifactIdentity($0) })
-                            if let plan = goal.planReference { Text(ui("计划版本") + " · v\(plan.revision)").font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary) }
-                            Text(ui("请返回原对话继续修改或管理这项工作。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                            if let plan = goal.planReference { Text(ui("计划版本") + " · v\(plan.revision)").font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary) }
+                            Text(ui("请返回原对话继续修改或管理这项工作。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                         }
                         if !model.loading { Button(ui("重新读取")) { model.reload() }.touchTarget().accessibilityIdentifier("inbox.detail.retry") }
                     }
-                }.font(CatpawTypography.Role.body.font).padding(20).frame(maxWidth: .infinity, alignment: .leading)
+                }.font(catTypography.Role.body.font).padding(20).frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -208,9 +208,9 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                 VStack(spacing: 16) {
                     if model.loading { ProgressView(ui("正在读取成果")) }
                     else { Text(model.errorText.map { ui($0) } ?? ui("成果暂不可读")); Button(ui("重新读取")) { model.reload() }.touchTarget().disabled(!allowed) }
-                }.font(CatpawTypography.Role.body.font).padding(20)
+                }.font(catTypography.Role.body.font).padding(20)
             }
-        }.background(CatpawColors.background)
+        }.background(catColors.background)
             .safeAreaInset(edge: .bottom) { if allowed && model.goal != nil && !model.denied { ConversationInboxReturnAction(item: item, allowed: allowed, onReturn: onReturn) } }
             .task(id: InboxReadLifecycle(service: ObjectIdentifier(service), allowed: allowed)) {
                 model.activate(service: service, item: item, allowed: allowed, refreshIfLoaded: false)
@@ -230,7 +230,7 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
     private func ui(_ key: String) -> String { AppLanguage(locale: locale).ui(key) }
     var body: some View {
         VStack(spacing: 8) {
-            if let failure { Text(ui(failure)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).fixedSize(horizontal: false, vertical: true) }
+            if let failure { Text(ui(failure)).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention).fixedSize(horizontal: false, vertical: true) }
             Button {
                 guard allowed, !returning else { return }
                 returning = true; failure = nil
@@ -241,11 +241,11 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                     switch completed {case .returned:failure=nil;case .unavailable(let message):failure=message}
                 }
             } label: {
-                HStack { if returning { ProgressView().tint(CatpawColors.ink) }; Text(returning ? ui("正在返回原对话…") : ui("回到原对话")) }
-                    .font(CatpawTypography.Role.body.font.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
-            }.buttonStyle(CatpawPressButtonStyle())
-                .foregroundStyle(!allowed || returning ? CatpawColors.secondary : CatpawColors.ink)
-                .background(CatpawColors.panel,in:RoundedRectangle(cornerRadius:CatpawLayout.controlRadius,style:.continuous))
+                HStack { if returning { ProgressView().tint(catColors.ink) }; Text(returning ? ui("正在返回原对话…") : ui("回到原对话")) }
+                    .font(catTypography.Role.body.font.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
+            }.buttonStyle(catPressButtonStyle())
+                .foregroundStyle(!allowed || returning ? catColors.secondary : catColors.ink)
+                .background(catColors.panel,in:RoundedRectangle(cornerRadius:catLayout.controlRadius,style:.continuous))
                 .disabled(!allowed || returning).accessibilityIdentifier("inbox.return")
         }.padding(.horizontal, 20).padding(.vertical, 10).background(.regularMaterial)
             .onChange(of: allowed) { _, value in if !value { cancel() } }
@@ -281,7 +281,7 @@ private func inboxStatus(_ value: ConversationInboxTaskStatus,locale:Locale) -> 
     case .interrupted: return ui("工作已中断")
     }
 }
-private func inboxTone(_ value: ConversationInboxTaskStatus) -> CatpawTone {
+private func inboxTone(_ value: ConversationInboxTaskStatus) -> catTone {
     switch value {
     case .failed, .outcomeUnknown, .waitingInput, .waitingApproval, .interrupted: return .attention
     case .succeeded: return .success
@@ -358,7 +358,7 @@ private func inboxTone(_ value: ConversationInboxTaskStatus) -> CatpawTone {
     }
 }
 
-/// v1.2 IA: the Catpaw-found (proactive) part of 「待办」. Pending suggestions on top, each tagged 「Catpaw 发现」.
+/// v1.2 IA: the cat-found (proactive) part of 「待办」. Pending suggestions on top, each tagged 「cat 发现」.
 @MainActor struct ProactiveTodoSection: View {
     @ObservedObject private var store = ProactiveSuggestionStore.shared
     @Environment(\.locale) private var locale
@@ -367,11 +367,11 @@ private func inboxTone(_ value: ConversationInboxTaskStatus) -> CatpawTone {
         let rows = store.sorted(.pending).sorted { ($0.createdAt ?? .distantFuture) < ($1.createdAt ?? .distantFuture) }
         Group {
             if let notice = ProactiveRules.suppressionNotice(now: Date(), deliveredToday: ProactiveEngine.shared.quota.count(on: Date())) {
-                Label(ui(notice), systemImage: "moon.zzz").font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                Label(ui(notice), systemImage: "moon.zzz").font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                     .listRowBackground(Color.clear).accessibilityIdentifier("proactive.inbox.suppressed")
             }
             ForEach(rows) { s in
-                VStack(alignment: .leading, spacing: 6) { TodoSourceTag(catpaw: true); ProactiveSuggestionCard(suggestion: s) }
+                VStack(alignment: .leading, spacing: 6) { TodoSourceTag(cat: true); ProactiveSuggestionCard(suggestion: s) }
                     .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16)).listRowSeparator(.hidden).listRowBackground(Color.clear)
             }
         }
@@ -379,16 +379,16 @@ private func inboxTone(_ value: ConversationInboxTaskStatus) -> CatpawTone {
         .accessibilityIdentifier("todo.proactive")
     }
 }
-/// Small source tag on a 「待办」 row: 「Catpaw 发现」 (proactive) vs 「你交代的」 (asked in chat).
+/// Small source tag on a 「待办」 row: 「cat 发现」 (proactive) vs 「你交代的」 (asked in chat).
 struct TodoSourceTag: View {
-    let catpaw: Bool
+    let cat: Bool
     @Environment(\.locale) private var locale
     var body: some View {
-        Text(catpaw ? AppLanguage(locale: locale).ui("Catpaw 发现") : AppLanguage(locale: locale).ui("你交代的"))
-            .font(CatpawTypography.Role.caption.font.weight(.semibold))
-            .foregroundStyle(catpaw ? CatpawBrand.paw : CatpawColors.secondary)
+        Text(cat ? AppLanguage(locale: locale).ui("cat 发现") : AppLanguage(locale: locale).ui("你交代的"))
+            .font(catTypography.Role.caption.font.weight(.semibold))
+            .foregroundStyle(cat ? catBrand.paw : catColors.secondary)
             .padding(.horizontal, 8).padding(.vertical, 2)
-            .background((catpaw ? CatpawBrand.paw : CatpawColors.secondary).opacity(0.12), in: Capsule())
-            .accessibilityIdentifier(catpaw ? "todo.tag.catpaw" : "todo.tag.user")
+            .background((cat ? catBrand.paw : catColors.secondary).opacity(0.12), in: Capsule())
+            .accessibilityIdentifier(cat ? "todo.tag.catpaw" : "todo.tag.user")
     }
 }

@@ -4,13 +4,13 @@ import Foundation
 @main enum ConversationRevisionWorkRunner {
     private struct RawGolden:Decodable {struct Item:Decodable {let raw:String,wrapper:String};let cases:[Item]}
     static var checks=0
-    static func require(_ value:Bool,_ label:String) throws {guard value else {throw CatpawError.invalid(label)};checks += 1;print("PASS: "+label)}
+    static func require(_ value:Bool,_ label:String) throws {guard value else {throw catError.invalid(label)};checks += 1;print("PASS: "+label)}
     static func rejected(_ label:String,_ body:() throws -> Void) throws {var failed=false;do {try body()} catch {failed=true};try require(failed,label)}
     static func json<T:Encodable>(_ value:T) throws -> [String:Any] {try JSONSerialization.jsonObject(with:JSONEncoder().encode(value)) as! [String:Any]}
     static func data(_ value:[String:Any]) throws -> Data {try JSONSerialization.data(withJSONObject:value,options:[.sortedKeys,.withoutEscapingSlashes])}
     static func changeRequest(_ request:ConversationTurnRequest,_ change:(inout [String:Any])->Void) throws -> ConversationTurnRequest {var value=try json(request);change(&value);return try JSONDecoder().decode(ConversationTurnRequest.self,from:data(value))}
     static func main() throws {
-        guard CommandLine.arguments.count==2 else {throw CatpawError.invalid("golden path required")}
+        guard CommandLine.arguments.count==2 else {throw catError.invalid("golden path required")}
         let raw=try Data(contentsOf:URL(fileURLWithPath:CommandLine.arguments[1])),fixture=try ConversationStrictJSON.object(raw,maxBytes:500_000)
         let stringCases=try JSONDecoder().decode(RawGolden.self,from:raw).cases
         let cases=fixture["cases"] as! [[String:Any]],subject=UUID(uuidString:fixture["subject"] as! String)!,serverScope=UUID(uuidString:fixture["scope"] as! String)!,cid=UUID(uuidString:fixture["conversation"] as! String)!,operation=UUID(uuidString:fixture["turn"] as! String)!,message=UUID(uuidString:fixture["message"] as! String)!,decision=UUID(uuidString:fixture["decision"] as! String)!

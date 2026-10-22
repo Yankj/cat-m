@@ -7,13 +7,13 @@ import Foundation
         let suite = "catpaw.onboarding.portable." + UUID().uuidString
         guard let defaults = UserDefaults(suiteName: suite) else { expect(false, "suite"); return }
         defer { defaults.removePersistentDomain(forName: suite) }
-        expect(CatpawOnboarding.completedKey == "catpaw.onboarding.completed.v1", "stable key")
-        expect(CatpawOnboarding.initialState(defaults: defaults, arguments: []) == .needsOnboarding, "fresh install shows intro")
-        expect(CatpawOnboarding.initialState(defaults: defaults, arguments: [], fixture: true) == .completed, "auth fixtures skip intro")
-        expect(CatpawOnboarding.initialState(defaults: defaults, arguments: [CatpawOnboarding.skipArgument]) == .completed, "launch argument skips intro")
-        CatpawOnboarding.markCompleted(defaults)
+        expect(catOnboarding.completedKey == "catpaw.onboarding.completed.v1", "stable key")
+        expect(catOnboarding.initialState(defaults: defaults, arguments: []) == .needsOnboarding, "fresh install shows intro")
+        expect(catOnboarding.initialState(defaults: defaults, arguments: [], fixture: true) == .completed, "auth fixtures skip intro")
+        expect(catOnboarding.initialState(defaults: defaults, arguments: [catOnboarding.skipArgument]) == .completed, "launch argument skips intro")
+        catOnboarding.markCompleted(defaults)
         expect(defaults.bool(forKey: "catpaw.onboarding.completed.v1"), "flag persisted under key")
-        expect(CatpawOnboarding.initialState(defaults: defaults, arguments: []) == .completed, "flag skips intro on next launch")
+        expect(catOnboarding.initialState(defaults: defaults, arguments: []) == .completed, "flag skips intro on next launch")
         expect(OnboardingGateState.needsOnboarding.needsOnboarding, "intro visible")
         expect(OnboardingGateState.entering.needsOnboarding, "entering keeps intro")
         expect(OnboardingGateState.failed("x").needsOnboarding, "failure keeps intro with error")

@@ -147,14 +147,14 @@ public enum ModelRouteSelection {
     public static func cache(_ routes: [ModelRouteInfo]) { lock.lock(); cached = routes; lock.unlock() }
     public static var routes: [ModelRouteInfo] { lock.lock(); defer { lock.unlock() }; return cached }
     public static func info(_ id: String) -> ModelRouteInfo? { routes.first { $0.id == id } }
-    /// `X-Catpaw-Route`: `auto` or a listed id (unknown cached → auto, so headers stay valid).
+    /// `X-cat-Route`: `auto` or a listed id (unknown cached → auto, so headers stay valid).
     public static var headerRoute: String {
         let r = route
         if r == autoID { return autoID }
         let list = routes
         return list.isEmpty || list.contains(where: { $0.id == r }) ? r : autoID
     }
-    /// `X-Catpaw-Model`: only with a concrete route and only if in that route's allow-list.
+    /// `X-cat-Model`: only with a concrete route and only if in that route's allow-list.
     public static var headerModel: String? {
         let r = headerRoute
         guard r != autoID, let m = model, let info = info(r), info.models.contains(where: { $0.id == m }) else { return nil }
@@ -183,8 +183,8 @@ public enum ModelRoutesFixture {
 }
 
 /// First-launch intro gate (PR #24 OnboardingView). PR #24 defines no persisted flag, so this is
-/// the single shared key; UI and app model must both use `CatpawOnboarding.completedKey`.
-public enum CatpawOnboarding {
+/// the single shared key; UI and app model must both use `catOnboarding.completedKey`.
+public enum catOnboarding {
     public static let completedKey = "catpaw.onboarding.completed.v1"
     /// Launch argument used by UI tests/screenshots to start past the intro.
     public static let skipArgument = "-CatpawSkipOnboarding"
@@ -207,7 +207,7 @@ public enum OnboardingGateState: Equatable, Sendable {
 /// Debug-only: PUBLIC Supabase/Edge values supplied via scheme / UI-test launch environment are remembered, so a
 /// launch without that environment (system prewarm, BG refresh, relaunch after `activate()`) is still configured.
 /// Only public values (project URL, publishable key, edge origin, scope id) ever pass through here.
-public enum CatpawDebugPublicConfig {
+public enum catDebugPublicConfig {
     static let key = "catpaw.debug.publicConfig.v1"
     public static func remember(_ values: [String: String], defaults: UserDefaults = .standard) -> [String: String] {
         let present = values.filter { !$0.value.isEmpty }

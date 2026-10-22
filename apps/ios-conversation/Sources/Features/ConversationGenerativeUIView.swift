@@ -12,7 +12,7 @@ import Charts
     private func ui(_ key: String) -> String { AppLanguage(locale: locale).ui(key) }
     var body: some View {
         if !message.complete || message.role != .tool {
-            Text(ui("正在准备交互内容…")).font(.footnote).foregroundStyle(CatpawColors.secondary)
+            Text(ui("正在准备交互内容…")).font(.footnote).foregroundStyle(catColors.secondary)
         } else {
             switch CGUIRegistry.decode(Data(message.content.utf8)) {
             case .ready(let block):
@@ -59,9 +59,9 @@ import Charts
         VStack(alignment: .leading, spacing: 16) {
             Text(block.title).font(.body.weight(.semibold)).accessibilityAddTraits(.isHeader)
             if !block.summary.isEmpty { Text(block.summary).fixedSize(horizontal: false, vertical: true) }
-            if editor.loading { Text(ui("正在恢复本地选择…")).font(.footnote).foregroundStyle(CatpawColors.secondary) }
-            if editor.dataChanged { Text(ui("数据版本已更新；旧版本输入仍保留，当前使用新数据。")).font(.footnote).foregroundStyle(CatpawColors.secondary) }
-            if let issue=editor.issue { Text(localIssueText(issue)).font(.footnote).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.genui.localState.issue") }
+            if editor.loading { Text(ui("正在恢复本地选择…")).font(.footnote).foregroundStyle(catColors.secondary) }
+            if editor.dataChanged { Text(ui("数据版本已更新；旧版本输入仍保留，当前使用新数据。")).font(.footnote).foregroundStyle(catColors.secondary) }
+            if let issue=editor.issue { Text(localIssueText(issue)).font(.footnote).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.genui.localState.issue") }
             if let table = block.table {
                 ConversationGenerativeUITableView(table: table, preview: true,state:editor.stateBinding,onInteraction:onInteraction,onReset:editor.reset).disabled(editor.loading)
                 Button(ui("查看完整表")) { fullTable = true }.touchTarget().disabled(editor.loading).accessibilityIdentifier("chat.genui.fullTable")
@@ -87,10 +87,10 @@ import Charts
                             if let reference = source.reference { Text(reference).font(.footnote).textSelection(.enabled) }
                         }
                     }
-                }.foregroundStyle(CatpawColors.secondary).padding(.top, 8)
+                }.foregroundStyle(catColors.secondary).padding(.top, 8)
             }.accessibilityIdentifier("chat.genui.sources")
         }.font(.body).padding(16).frame(maxWidth: .infinity, alignment: .leading)
-            .foregroundStyle(CatpawColors.ink).background(CatpawColors.input, in: RoundedRectangle(cornerRadius: 20))
+            .foregroundStyle(catColors.ink).background(catColors.input, in: RoundedRectangle(cornerRadius: 20))
             .accessibilityElement(children: .contain)
             .task {await editor.load()}
             .onDisappear {editor.disappear()}
@@ -213,7 +213,7 @@ private enum ConversationGenerativeUILocalIssue {case restoreFailed,readFailed,s
         VStack(alignment: .leading, spacing: 12) {
             TextField(ui("筛选表格"), text: $state.tableFilter,onEditingChanged:{editing in if editing {onInteraction()}}).textFieldStyle(.roundedBorder).frame(minHeight: 44)
                 .accessibilityIdentifier(preview ? "chat.genui.filter" : "chat.genui.fullFilter")
-            Text(ui("显示 {0} / {1} 行", [String(rows.count),String(table.rows.count)])).font(.footnote).foregroundStyle(CatpawColors.secondary)
+            Text(ui("显示 {0} / {1} 行", [String(rows.count),String(table.rows.count)])).font(.footnote).foregroundStyle(catColors.secondary)
             ScrollView(.horizontal) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .top, spacing: 12) {
@@ -225,7 +225,7 @@ private enum ConversationGenerativeUILocalIssue {case restoreFailed,readFailed,s
                                 state=copy
                             } label: { Text(column.label + (column.unit.map {" (" + $0 + ")"} ?? "") + (state.sortColumnID == column.id ? (state.sortAscending ? " ↑" : " ↓") : ""))
                                     .font(.subheadline.weight(.semibold)).frame(width: 140, alignment: .leading).frame(minHeight: 44) }
-                                .buttonStyle(CatpawPressButtonStyle())
+                                .buttonStyle(catPressButtonStyle())
                                 .accessibilityHint(ui("按此列排序"))
                         }
                     }
@@ -275,7 +275,7 @@ private enum ConversationGenerativeUILocalIssue {case restoreFailed,readFailed,s
                 }
             }.frame(height: textSize.isAccessibilitySize ? 300 : 220)
                 .accessibilityLabel(ui("图表；原值见下方数据选择"))
-            } else { Text(ui("这些数值无法准确绘图，请查看原始数据表。")).font(.footnote).foregroundStyle(CatpawColors.secondary) }
+            } else { Text(ui("这些数值无法准确绘图，请查看原始数据表。")).font(.footnote).foregroundStyle(catColors.secondary) }
             Picker(ui("数据序列"), selection: Binding(get:{state.selectedSeriesID ?? ""},set:{id in
                 onInteraction();var copy=state;copy.selectedSeriesID=id;copy.selectedPointID=chart.series.first(where:{$0.id == id})?.points.first?.id;state=copy
             })) {
@@ -323,10 +323,10 @@ private enum ConversationGenerativeUILocalIssue {case restoreFailed,readFailed,s
             if let result {
                 Text(ui("剩余时间") + ": " + result.displayRemaining + " " + ui("分钟")).font(.body.weight(.semibold)).accessibilityIdentifier("chat.genui.duration.result")
                 if result.isOverBudget {
-                    Text(ui("已超出总时长，请调整参数。")).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.genui.duration.overBudget")
+                    Text(ui("已超出总时长，请调整参数。")).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.genui.duration.overBudget")
                     if result.displayRemaining == "0.00" {Text(result.remaining.rawValue + " " + ui("分钟")).font(.footnote).textSelection(.enabled)}
                 }
-            } else {Text(ui("请输入范围内的数值；步骤数量须为整数。")).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.genui.duration.error")}
+            } else {Text(ui("请输入范围内的数值；步骤数量须为整数。")).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.genui.duration.error")}
             ForEach(0..<4,id:\.self) {index in
                 VStack(alignment:.leading,spacing:4) {
                     Text(fieldLabel(index)).font(.subheadline)
@@ -335,8 +335,8 @@ private enum ConversationGenerativeUILocalIssue {case restoreFailed,readFailed,s
                         .accessibilityIdentifier("chat.genui.duration.field."+String(index))
                 }
             }
-            Text(ui("剩余 = 总时长 − 保留 − 步骤数 × 单步时长")).font(.footnote).foregroundStyle(CatpawColors.secondary)
-            Text(ui("仅本地试算，不创建日程或发送请求。")).font(.footnote).foregroundStyle(CatpawColors.secondary)
+            Text(ui("剩余 = 总时长 − 保留 − 步骤数 × 单步时长")).font(.footnote).foregroundStyle(catColors.secondary)
+            Text(ui("仅本地试算，不创建日程或发送请求。")).font(.footnote).foregroundStyle(catColors.secondary)
             Button(ui("重置")) {onInteraction();onReset()}
                 .touchTarget().accessibilityIdentifier("chat.genui.duration.reset")
         }
@@ -369,7 +369,7 @@ private enum ConversationGenerativeUILocalIssue {case restoreFailed,readFailed,s
                 ForEach(results,id:\.optionID) {result in
                     Text((input.options.first {$0.id == result.optionID}?.label ?? result.optionID) + ": " + result.displayScore + " / 100").textSelection(.enabled)
                 }
-            } else {Text(ui("权重须为 0–100，且总权重不能为零。")).foregroundStyle(CatpawColors.attention)}
+            } else {Text(ui("权重须为 0–100，且总权重不能为零。")).foregroundStyle(catColors.attention)}
             ForEach(Array(input.dimensions.enumerated()),id:\.element.id) {index,dimension in
                 VStack(alignment:.leading,spacing:4) {
                     Text(dimension.label).font(.subheadline)
@@ -377,8 +377,8 @@ private enum ConversationGenerativeUILocalIssue {case restoreFailed,readFailed,s
                         .accessibilityLabel(dimension.label + " " + ui("权重"))
                 }
             }
-            Text(ui("加权结果 = 得分 × 权重之和 / 总权重")).font(.footnote).foregroundStyle(CatpawColors.secondary)
-            Text(ui("仅本地试算，不创建日程或发送请求。")).font(.footnote).foregroundStyle(CatpawColors.secondary)
+            Text(ui("加权结果 = 得分 × 权重之和 / 总权重")).font(.footnote).foregroundStyle(catColors.secondary)
+            Text(ui("仅本地试算，不创建日程或发送请求。")).font(.footnote).foregroundStyle(catColors.secondary)
             Button(ui("重置")) {onInteraction();onReset()}.touchTarget()
         }
     }

@@ -1,7 +1,7 @@
 import Foundation
 #if !ACCEPTED_WORK_PORTABLE
 import XCTest
-@testable import CatpawM
+@testable import cat
 #endif
 
 private struct AcceptedWireFixture {

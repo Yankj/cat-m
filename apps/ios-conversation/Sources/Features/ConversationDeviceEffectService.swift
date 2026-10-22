@@ -141,7 +141,7 @@ public actor ConversationDeviceEffectService {
                 case .result(let r):response=try await backend.recordDeviceEffectResult(action.reference,action:action,request:r)
                 case .stop(let r):response=try await backend.stopDeviceEffect(action.reference,action:action,request:r)
                 }
-            } catch {provenNotSent=error is ConversationDeviceEffectDispatchFailure;if case CatpawError.conflict=error {rejected=true};throw error}
+            } catch {provenNotSent=error is ConversationDeviceEffectDispatchFailure;if case catError.conflict=error {rejected=true};throw error}
             try ensure(epoch);guard matches(request,record:response.effect) else {throw ConversationDeviceEffectError.invalidResponse}
             if case .dispatch=request {} else {guard response.dispatchPermit==nil else {throw ConversationDeviceEffectError.invalidResponse}}
             await lock()
@@ -203,11 +203,11 @@ public actor ConversationDeviceEffectService {
     private func state(_ j:DeviceEffectJournal,available:Bool) throws -> ConversationDeviceEffectLocalState {.init(latest:j.latest.map(historical),operations:j.operations.values.sorted{$0.request.operationID<$1.request.operationID},capabilitiesAvailable:available,snapshotHash:try j.latest.map(hash))}
     private func load(_ action:ConversationApprovedDeviceAction) async throws -> (DeviceEffectJournal,StoredRecord?) {
         let reference=action.reference
-        guard !invalidated,reference.scope==scope else {throw CatpawError.scopeMismatch}
+        guard !invalidated,reference.scope==scope else {throw catError.scopeMismatch}
         guard subjectID?.uuidString.lowercased()==reference.subjectID else {throw ConversationDeviceEffectServiceError.notConfigured}
         let conversation=try await repository.record(reference.binding.conversation_id,scope:scope);guard conversation.conversation != nil else {throw ConversationDeviceEffectServiceError.invalidJournal}
         let key=try key(reference),record:StoredRecord
-        do {record=try await repository.record(stableID(key),scope:scope)} catch CatpawError.missing {return (.init(identity:key,frozen:action.frozen,decision:action.decision),nil)}
+        do {record=try await repository.record(stableID(key),scope:scope)} catch catError.missing {return (.init(identity:key,frozen:action.frozen,decision:action.decision),nil)}
         guard case .preference(let p)=record.payload,p.key==key,p.value.utf8.count<=512_000 else {throw ConversationDeviceEffectServiceError.invalidJournal}
         let data=Data(p.value.utf8);_=try ConversationStrictJSON.object(data,maxBytes:512_000)
         let journal=try JSONDecoder().decode(DeviceEffectJournal.self,from:data)

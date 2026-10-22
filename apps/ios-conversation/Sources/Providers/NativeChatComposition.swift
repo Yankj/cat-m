@@ -8,7 +8,7 @@ public struct NativeChatComposition {
     public static func make(publicConfiguration: [String: String], localScope: DataScope) throws -> NativeChatComposition {
         let keys = ["CatpawBackendOrigin", "CatpawSupabaseProjectURL", "CatpawServerScopeID"]
         if keys.allSatisfy({ publicConfiguration[$0] == nil }) { return NativeChatComposition(backend: UnconfiguredConversationBackend(), loginSession: nil) }
-        guard let originText = publicConfiguration[keys[0]], let origin = URL(string: originText), let projectText = publicConfiguration[keys[1]], let project = URL(string: projectText), let scopeText = publicConfiguration[keys[2]], let serverScope = UUID(uuidString: scopeText) else { throw CatpawError.invalid("后台公开配置不完整；需要已核实的 origin、Supabase 项目和 scope。") }
+        guard let originText = publicConfiguration[keys[0]], let origin = URL(string: originText), let projectText = publicConfiguration[keys[1]], let project = URL(string: projectText), let scopeText = publicConfiguration[keys[2]], let serverScope = UUID(uuidString: scopeText) else { throw catError.invalid("后台公开配置不完整；需要已核实的 origin、Supabase 项目和 scope。") }
         let session = try SupabaseUserAccessSession(projectURL: project, localScope: localScope)
         let configuration = try NativeChatConfiguration(origin: origin, localScope: localScope, serverScopeID: serverScope)
         return NativeChatComposition(backend: NativeChatHTTPBackend(configuration: configuration, credentials: session), loginSession: session)
@@ -23,7 +23,7 @@ public struct NativeChatComposition {
             for (key, name) in ["CatpawBackendOrigin": "CATPAW_BACKEND_ORIGIN", "CatpawSupabaseProjectURL": "CATPAW_SUPABASE_PROJECT_URL", "CatpawServerScopeID": "CATPAW_SERVER_SCOPE_ID"] {
                 if let value = env[name], !value.isEmpty { values[key] = value }
             }
-            values = CatpawDebugPublicConfig.remember(values)
+            values = catDebugPublicConfig.remember(values)
         }
         #endif
         return try make(publicConfiguration: values, localScope: localScope)

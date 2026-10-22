@@ -29,10 +29,10 @@ public actor OpenMuseFixtureTransport: OpenMuseTaskTransport {
     }
     public func create(_ request: OpenMuseFrozenRequest) async throws -> OpenMuseTaskBinding {
         try request.validate()
-        guard records[request.requestHash] == nil else { throw CatpawError.invalid("Fixture original task already exists; read it instead of creating again.") }
+        guard records[request.requestHash] == nil else { throw catError.invalid("Fixture original task already exists; read it instead of creating again.") }
         let related = records.values.filter { $0.request.input.delegationID == request.input.delegationID }
         guard related.allSatisfy({ $0.delegationState == .active && $0.delegationRevision == request.input.delegationRevision && $0.grantEpoch == request.input.grantRevision }),
-              !related.isEmpty || (request.input.delegationRevision == 1 && request.input.grantRevision == 1) else { throw CatpawError.conflict }
+              !related.isEmpty || (request.input.delegationRevision == 1 && request.input.grantRevision == 1) else { throw catError.conflict }
         let task = "fixture-task-\(request.input.operationID.uuidString.lowercased())"
         let binding = OpenMuseTaskBinding(request: request, taskID: task)
         let body = "合成资料摘要\nAlpha synthetic record\nBeta synthetic record\n具名fixture，没有运行OpenMuse、Intelligence或真实模型。"
@@ -54,7 +54,7 @@ public actor OpenMuseFixtureTransport: OpenMuseTaskTransport {
     }
     private func record(_ request: OpenMuseFrozenRequest, knownTaskID: String? = nil) throws -> FixtureRecord {
         try request.validate()
-        guard let value = records[request.requestHash], knownTaskID == nil || knownTaskID == value.projection.binding.taskID else { throw CatpawError.missing }
+        guard let value = records[request.requestHash], knownTaskID == nil || knownTaskID == value.projection.binding.taskID else { throw catError.missing }
         return value
     }
     public func readOriginal(_ request: OpenMuseFrozenRequest, knownTaskID: String?) async throws -> OpenMuseTaskProjection {
@@ -67,7 +67,7 @@ public actor OpenMuseFixtureTransport: OpenMuseTaskTransport {
         let value = try record(request, knownTaskID: knownTaskID)
         guard value.delegationRevision == expectedRevision, value.grantEpoch == expectedGrantEpoch, value.delegationState != .revoked,
               command == .resume || value.delegationState == .active,
-              command != .resume || value.delegationState == .paused else { throw CatpawError.conflict }
+              command != .resume || value.delegationState == .paused else { throw catError.conflict }
         let control: OpenMuseLocalControl = command == .pause ? .paused : command == .resume ? .active : .revoked
         var candidate = records
         for (key, stored) in records where stored.request.input.delegationID == request.input.delegationID {
@@ -83,7 +83,7 @@ public actor OpenMuseFixtureTransport: OpenMuseTaskTransport {
         let value = try record(request, knownTaskID: taskID)
         guard value.delegationState == .active, let snapshot = value.projection.approvals.first(where: { $0.proposalID == proposalID }),
               value.grantEpoch == snapshot.grantRevision, value.delegationRevision == request.input.delegationRevision,
-              !value.projection.approvalReceipts.contains(where: { $0.proposalID == proposalID }) else { throw CatpawError.invalid("Fixture proposal is no longer pending.") }
+              !value.projection.approvalReceipts.contains(where: { $0.proposalID == proposalID }) else { throw catError.invalid("Fixture proposal is no longer pending.") }
         return snapshot
     }
     public func decide(_ preview: OpenMuseApprovalPreview, decision: OpenMuseDecision) async throws -> OpenMuseDecisionReceipt {
@@ -91,7 +91,7 @@ public actor OpenMuseFixtureTransport: OpenMuseTaskTransport {
         guard var value = records[key], value.delegationState == .active, value.grantEpoch == preview.snapshot.grantRevision,
               let snapshot = value.projection.approvals.first(where: { $0.proposalID == preview.snapshot.proposalID }),
               try openMuseDigest(snapshot) == preview.snapshotDigest,
-              !value.projection.approvalReceipts.contains(where: { $0.proposalID == snapshot.proposalID }) else { throw CatpawError.conflict }
+              !value.projection.approvalReceipts.contains(where: { $0.proposalID == snapshot.proposalID }) else { throw catError.conflict }
         let state: OpenMuseDecisionState = decision == .deny ? .denied : value.request.input.syntheticFixture == .previewUnknown ? .unknown : .accepted
         let receipt = OpenMuseDecisionReceipt(binding: snapshot.binding, proposalID: snapshot.proposalID, serverActionDigest: snapshot.serverActionDigest,
             status: state, providerStatus: state == .unknown ? "synthetic_outcome_unknown" : state == .denied ? "synthetic_denied" : "synthetic_succeeded")
@@ -101,7 +101,7 @@ public actor OpenMuseFixtureTransport: OpenMuseTaskTransport {
     }
     public func readReceipt(_ request: OpenMuseFrozenRequest, approval: OpenMuseApprovalSnapshot) async throws -> OpenMuseDecisionReceipt {
         let value = try record(request, knownTaskID: approval.binding.taskID)
-        guard let receipt = value.projection.approvalReceipts.first(where: { $0.proposalID == approval.proposalID }) else { throw CatpawError.missing }
+        guard let receipt = value.projection.approvalReceipts.first(where: { $0.proposalID == approval.proposalID }) else { throw catError.missing }
         return receipt
     }
     public func checkReceiptEvidence(_ request: OpenMuseFrozenRequest, approval: OpenMuseApprovalSnapshot) async throws -> OpenMuseDecisionReceipt {

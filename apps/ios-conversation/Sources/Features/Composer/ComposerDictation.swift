@@ -211,10 +211,10 @@ let voiceChatLog = Logger(subsystem: "catpaw", category: "voiceChat")
             .overlay(alignment: .topTrailing) {
                 if !voiceChatPresented, voiceChat.loop.phase == .paused(.needsConfirmation) {
                     HStack(spacing: 10) {
-                        Text(ui("语音对话已暂停，请先在屏幕上确认")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink).lineLimit(2)
+                        Text(ui("语音对话已暂停，请先在屏幕上确认")).font(catTypography.Role.caption.font).foregroundStyle(catColors.ink).lineLimit(2)
                         Button(ui("继续")) { voiceChatPresented = true; voiceChat.orbTapped() }
-                            .font(CatpawTypography.Role.caption.font.weight(.semibold)).accessibilityIdentifier("chat.voiceChat.resume")
-                        Button { voiceChat.exit() } label: { Image(systemName: "xmark").font(CatpawTypography.Role.caption.font) }
+                            .font(catTypography.Role.caption.font.weight(.semibold)).accessibilityIdentifier("chat.voiceChat.resume")
+                        Button { voiceChat.exit() } label: { Image(systemName: "xmark").font(catTypography.Role.caption.font) }
                             .accessibilityLabel(ui("结束语音对话")).accessibilityIdentifier("chat.voiceChat.capsule.close")
                     }
                     .padding(.horizontal, 12).padding(.vertical, 8).background(.regularMaterial, in: Capsule())
@@ -224,7 +224,7 @@ let voiceChatLog = Logger(subsystem: "catpaw", category: "voiceChat")
             }
             .overlay(alignment: .top) {
                 if comingSoon {
-                    Text(ui("语音对话即将支持")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink)
+                    Text(ui("语音对话即将支持")).font(catTypography.Role.caption.font).foregroundStyle(catColors.ink)
                         .padding(.horizontal, 12).padding(.vertical, 6).background(.regularMaterial, in: Capsule())
                         .fixedSize().offset(y: -44).transition(.opacity).accessibilityIdentifier("chat.composer.voice.comingSoon")
                 }
@@ -233,8 +233,8 @@ let voiceChatLog = Logger(subsystem: "catpaw", category: "voiceChat")
                 // Real failures only: a small inline hint above the composer, never a modal alert.
                 if dictation.notice != nil {
                     HStack(spacing: 8) {
-                        Text(noticeMessage).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink).lineLimit(3).fixedSize(horizontal: false, vertical: true)
-                        if dictation.notice == .permissionDenied { Button(ui("去设置")) { ComposerDictation.openSettings() }.font(CatpawTypography.Role.caption.font.weight(.semibold)) }
+                        Text(noticeMessage).font(catTypography.Role.caption.font).foregroundStyle(catColors.ink).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                        if dictation.notice == .permissionDenied { Button(ui("去设置")) { ComposerDictation.openSettings() }.font(catTypography.Role.caption.font.weight(.semibold)) }
                     }
                     .padding(.horizontal, 12).padding(.vertical, 8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     // Anchored to the narrow mic button: give the hint its own width so it never truncates.
@@ -247,7 +247,7 @@ let voiceChatLog = Logger(subsystem: "catpaw", category: "voiceChat")
             }
             .overlay(alignment: .topTrailing) {
                 if let voiceChatNotice {
-                    Text(voiceChatNotice).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                    Text(voiceChatNotice).font(catTypography.Role.caption.font).foregroundStyle(catColors.ink).lineLimit(3).fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 12).padding(.vertical, 8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .fixedSize(horizontal: false, vertical: true).frame(width: 280, alignment: .trailing).offset(y: -56)
                         .onTapGesture { self.voiceChatNotice = nil }
@@ -276,7 +276,7 @@ let voiceChatLog = Logger(subsystem: "catpaw", category: "voiceChat")
     private var noticeTitle: String { dictation.notice == .permissionDenied ? ui("需要麦克风和语音识别权限") : ui("暂时无法听写") }
     private var noticeMessage: String {
         switch dictation.notice {
-        case .permissionDenied: return ui("请在“设置”中允许 Catpaw 使用麦克风和语音识别，或直接输入文字。")
+        case .permissionDenied: return ui("请在“设置”中允许 cat 使用麦克风和语音识别，或直接输入文字。")
         case .failed: return ui("听写没有成功，可以直接输入文字。")
         default: return ui("此设备暂不支持本地听写，可以直接输入文字。")
         }
@@ -748,7 +748,7 @@ extension ConversationFirstModel: VoiceChatHost {
         case .completed:
             let speech = VoiceSpeechText.make(message?.content ?? "", english: english)
             // P2: phone numbers and e-mail addresses are never read aloud (same masker as the Live Activity title).
-            run(.replyFinished(.init(speech: CatpawTaskTitle.redact(speech.text), speakable: !textOnly, needsConfirmation: speech.hadCard)))
+            run(.replyFinished(.init(speech: catTaskTitle.redact(speech.text), speakable: !textOnly, needsConfirmation: speech.hadCard)))
             return true
         case .failed, .cancelledBeforeSend, .notSent:
             notice = english ? "That didn't go through. Check the conversation on screen." : "这一轮没有完成，请在屏幕上查看。"
@@ -848,35 +848,35 @@ extension ConversationFirstModel: VoiceChatHost {
                 HStack {
                     Spacer()
                     Button(action: onClose) {
-                        Image(systemName: "xmark").font(.body).foregroundStyle(CatpawColors.ink.opacity(0.7))
-                            .frame(width: 44, height: 44).background(CatpawColors.calmSurface, in: Circle())
+                        Image(systemName: "xmark").font(.body).foregroundStyle(catColors.ink.opacity(0.7))
+                            .frame(width: 44, height: 44).background(catColors.calmSurface, in: Circle())
                     }
-                    .buttonStyle(CatpawPressButtonStyle())
+                    .buttonStyle(catPressButtonStyle())
                     .accessibilityLabel(ui("结束语音对话")).accessibilityIdentifier("chat.voiceChat.close")
                 }
                 .padding(.top, 8)
                 Spacer()
-                Text(controller.statusText).font(.footnote).foregroundStyle(CatpawColors.secondary).padding(.bottom, 6)
+                Text(controller.statusText).font(.footnote).foregroundStyle(catColors.secondary).padding(.bottom, 6)
                     .accessibilityIdentifier("chat.voiceChat.status").accessibilityAddTraits(.updatesFrequently)
                 Group {
                     if controller.loop.phase == .listening || controller.loop.phase == .sending {
                         Text(controller.transcript.isEmpty ? ui("正在聆听…") : controller.transcript)
-                            .foregroundStyle(CatpawColors.ink.opacity(0.55))
+                            .foregroundStyle(catColors.ink.opacity(0.55))
                             .accessibilityIdentifier("chat.voiceChat.transcript")
                     } else {
                         Text(VoiceSpeechText.make(controller.reply, english: controller.english).text)
-                            .foregroundStyle(CatpawColors.ink.opacity(0.75)).lineLimit(8)
+                            .foregroundStyle(catColors.ink.opacity(0.75)).lineLimit(8)
                             .accessibilityIdentifier("chat.voiceChat.reply")
                     }
                 }
                 .font(.title3).lineSpacing(4).frame(maxWidth: .infinity, alignment: .leading)
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: controller.transcript)
                 if let notice = controller.notice {
-                    Text(notice).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).padding(.top, 10)
+                    Text(notice).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).padding(.top, 10)
                         .accessibilityIdentifier("chat.voiceChat.notice")
                 }
                 if controller.textOnly {
-                    Text(ui("当前为文字回复模式，不朗读")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).padding(.top, 6)
+                    Text(ui("当前为文字回复模式，不朗读")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).padding(.top, 6)
                 }
                 ThinWaveform(levels: reduceMotion ? Array(repeating: 0.08, count: 64) : levels).frame(height: 44).padding(.vertical, 28)
                 HStack {
@@ -884,7 +884,7 @@ extension ConversationFirstModel: VoiceChatHost {
                     Button { controller.orbTapped() } label: {
                         CalmOrb(size: 84, glyph: orbGlyph, level: reduceMotion ? 0 : Double(levels.last ?? 0))
                     }
-                    .buttonStyle(CatpawPressButtonStyle())
+                    .buttonStyle(catPressButtonStyle())
                     .accessibilityLabel(orbLabel).accessibilityValue(controller.statusText)
                     .accessibilityIdentifier("chat.voiceChat.orb")
                     Spacer()

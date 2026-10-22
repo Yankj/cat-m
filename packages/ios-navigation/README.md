@@ -1,4 +1,4 @@
-# CatpawNavigation
+# catNavigation
 
 独立 SwiftPM 侧栏组件，复用仓库 `docs/design/design-tokens.json` 的语义配色和系统字号。最低 iOS 17 / macOS 14，无第三方依赖。它只处理本地导航呈现；历史、任务、成果、记忆和设置由原生宿主提供，不产生模型回复、不请求网络、不管理账号或执行状态。
 
@@ -7,7 +7,7 @@
 在活跃原生工程添加本地 package，并将 `SidebarHost` 放在现有 `NavigationStack` 外。宿主保留现有 path、对话模型、草稿、生命周期和服务实例。以下只展示接线位置，`routeExistingDestination` / `snapshot` 是宿主自己的状态和方法，不能复制为新状态机。
 
 ```swift
-import CatpawNavigation
+import catNavigation
 
 SidebarHost(
     isPresented: $sidebarPresented,

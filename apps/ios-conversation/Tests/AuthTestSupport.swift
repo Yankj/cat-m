@@ -1,6 +1,6 @@
 import Foundation
-#if canImport(CatpawM)
-@testable import CatpawM
+#if canImport(cat)
+@testable import cat
 #endif
 final class AuthTestClock: @unchecked Sendable {
     private let lock = NSLock(); private var value = Date()
@@ -224,6 +224,6 @@ func verifySceneObservationReplacement() async throws {
  await backend.resolve(2);var freshAccepted=true
  do { try await fresh.value } catch { freshAccepted=false }
  let final=try await service.read(scope:Profiles.user,conversationID:id),posts=await backend.postCount()
- guard oldRejected,afterOld.turns.last?.state != .completed,freshAccepted,final.turns.last?.state == .completed,posts==1 else { throw CatpawError.invalid("Late stopped observer replaced the fresh observer: oldRejected=\(oldRejected),afterOld=\(afterOld.turns.last!.state.rawValue),freshAccepted=\(freshAccepted),posts=\(posts)") }
+ guard oldRejected,afterOld.turns.last?.state != .completed,freshAccepted,final.turns.last?.state == .completed,posts==1 else { throw catError.invalid("Late stopped observer replaced the fresh observer: oldRejected=\(oldRejected),afterOld=\(afterOld.turns.last!.state.rawValue),freshAccepted=\(freshAccepted),posts=\(posts)") }
  print("PASS: stopped old observer cannot clear or complete a replacement; same request recovered once, POST count1")
 }
