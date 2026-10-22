@@ -2600,6 +2600,13 @@
       "category": "png_metadata_requires_review",
       "sha256": "bae24afe78c6ffe4eb2e3a098e7989c6570b6ebbcb2bbcc27762af8aef4c2123",
       "reason": "Rendered page of generated technical proposal; eXIf contains only color space and pixel dimensions 595x841; no GPS, device, author or private data."
+    },
+    {
+      "path": "scripts/check-git-policy.py",
+      "category": "email_review",
+      "line": 43,
+      "sha256": "45248ad3fc6ba408948fceae2f7295de6cbc959ee21ae337a33188af2e1d897c",
+      "reason": "Authorized repository rename to Yankj/cat-m; this exact line is the public GitHub SSH transport URL, not a private email, recipient or credential. Only the three exact origin URL identities changed; other push safeguards remain."
     }
   ]
 }
