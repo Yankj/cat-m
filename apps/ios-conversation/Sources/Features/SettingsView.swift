@@ -30,7 +30,7 @@ struct ProfileExport: FileDocument {
                 Toggle(ui("文件删除确认"), isOn: booleanPreference("delete_confirmation", fallback: "true"))
                 Toggle(ui("Subagents · 仅新对话配置"), isOn: booleanPreference("subagents", fallback: "false"))
                 Toggle(ui("安全屋 · 仅新对话配置"), isOn: booleanPreference("safety", fallback: "true"))
-                Text(ui("尚未接执行沙箱或协作 worker。本地偏好不授予 OS 或服务权限。")).font(.system(size: 12)).foregroundStyle(CatpawColors.tertiary)
+                Text(ui("尚未接执行沙箱或协作 worker。本地偏好不授予 OS 或服务权限。")).font(.system(size: 12)).foregroundStyle(catColors.tertiary)
                 Picker(ui("新对话模型配置"), selection: Binding(get: { model.preference("model", fallback: "Auto") }, set: { model.setPreference("model", $0) })) { ForEach(["Auto", "Lite", "Pro", "Max", "LongCat-2.0", "deepseek-v4-flash"], id: \.self) { Text($0).tag($0) } }
             } header: { sectionHeader(ui("系统设置 · 本地偏好")) }
             Section {
@@ -46,7 +46,7 @@ struct ProfileExport: FileDocument {
             } header: { sectionHeader(ui("外观")) }
             Section {
                 StatusLabel(text: ui("云同步显式关闭"))
-                Text(ui("真实 Provider 未配置，远端执行均标明模拟。")).font(.system(size: 12)).foregroundStyle(CatpawColors.tertiary)
+                Text(ui("真实 Provider 未配置，远端执行均标明模拟。")).font(.system(size: 12)).foregroundStyle(catColors.tertiary)
             } header: { sectionHeader(ui("版本与数据")) }
             Section {
                 NavigationLink(ui("本地 Gateway · 合成数据"), value: AppRoute.localGateway).accessibilityIdentifier("settings.localGateway")
@@ -56,24 +56,24 @@ struct ProfileExport: FileDocument {
                 EmptyView()
             } footer: {
                 VStack(spacing: 4) {
-                    Text(ui("Catpaw-m 原生本地版 0.1.0"))
+                    Text(ui("cat 原生本地版 0.1.0"))
                     Text(ui("界面控件提供中英文；文档、用户内容、示例正文及系统或服务错误保留原文。英文布局与原生音频仍需设备验收。"))
-                }.font(.system(size: 12)).foregroundStyle(CatpawColors.tertiary).multilineTextAlignment(.center).frame(maxWidth: .infinity)
+                }.font(.system(size: 12)).foregroundStyle(catColors.tertiary).multilineTextAlignment(.center).frame(maxWidth: .infinity)
             }
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(CatpawColors.groupedBackground)
+        .background(catColors.groupedBackground)
         .environment(\.defaultMinListRowHeight, 48)
-        .tint(CatpawColors.ink)
+        .tint(catColors.ink)
         .navigationTitle(ui("设置"))
         .navigationBarTitleDisplayMode(.large)
-        .fileExporter(isPresented: $exporting, document: exportDocument, contentType: .json, defaultFilename: "Catpaw-workspace-export") { result in if case .failure(let error) = result { model.error = error.localizedDescription } }
+        .fileExporter(isPresented: $exporting, document: exportDocument, contentType: .json, defaultFilename: "cat-workspace-export") { result in if case .failure(let error) = result { model.error = error.localizedDescription } }
         .confirmationDialog(ui("只重置全部演示环境；用户分区保留。"), isPresented: $reset) { Button(ui("重置演示"), role: .destructive) { model.perform { await model.suspendRuntimes(); NativeVoiceController.shared.interrupt(); try await model.repository.resetDemo(); model.path = []; model.drafts = [:]; model.loaded = false; await model.start() } } }
     }
     /// r9 §5: section headers are 13pt tertiary, not uppercased.
     private func sectionHeader(_ title: String) -> some View {
-        Text(title).font(.system(size: 13)).foregroundStyle(CatpawColors.tertiary).textCase(nil)
+        Text(title).font(.system(size: 13)).foregroundStyle(catColors.tertiary).textCase(nil)
     }
     private func booleanPreference(_ key: String, fallback: String) -> Binding<Bool> { Binding(get: { model.preference(key, fallback: fallback) == "true" }, set: { model.setPreference(key, $0 ? "true" : "false") }) }
 }
@@ -98,7 +98,7 @@ struct LocalCommandDefinition: Codable { var name: String; var prompt: String }
             ForEach(commands) { r in if case .preference(let p) = r.payload, let data = p.value.data(using: .utf8), let command = try? JSONDecoder().decode(LocalCommandDefinition.self, from: data) { Panel { Text(command.name).font(.headline); Text(command.prompt).foregroundStyle(.secondary); Button(ui("带入输入")) { if let route = model.path.dropLast().last, case .conversation(let id) = route { model.editDraft(id, text: command.prompt); _ = model.path.popLast() } else { model.newConversation(prompt: command.prompt) } }; Button(ui("删除"), role: .destructive) { model.delete(r) } } } }
             Button(ui("创建本地命令")) { create = true }.primaryAction()
         }.navigationTitle(ui("自定义命令"))
-        .sheet(isPresented: $create) { NavigationStack { Form { TextField(ui("名称"), text: $name); TextEditor(text: $prompt).frame(minHeight: 180) }.navigationTitle(ui("创建本地命令")).toolbar { Button(ui("取消")) { create = false }; Button(ui("保存")) { model.perform { guard !name.isEmpty, !prompt.isEmpty else { throw CatpawError.invalid(ui("名称与提示词必填。")) }; let data = try JSONEncoder().encode(LocalCommandDefinition(name: name, prompt: prompt)); try await model.service.preference(scope: model.scope, key: "command:\(UUID())", value: String(data: data, encoding: .utf8)!); create = false; name = ""; prompt = "" } } } } }
+        .sheet(isPresented: $create) { NavigationStack { Form { TextField(ui("名称"), text: $name); TextEditor(text: $prompt).frame(minHeight: 180) }.navigationTitle(ui("创建本地命令")).toolbar { Button(ui("取消")) { create = false }; Button(ui("保存")) { model.perform { guard !name.isEmpty, !prompt.isEmpty else { throw catError.invalid(ui("名称与提示词必填。")) }; let data = try JSONEncoder().encode(LocalCommandDefinition(name: name, prompt: prompt)); try await model.service.preference(scope: model.scope, key: "command:\(UUID())", value: String(data: data, encoding: .utf8)!); create = false; name = ""; prompt = "" } } } } }
     }
     private var commands: [StoredRecord] { model.list("preference").filter { if case .preference(let p) = $0.payload { return p.key.hasPrefix("command:") }; return false } }
 }

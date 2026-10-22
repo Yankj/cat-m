@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 final class ConversationArtifactContinuationProjectionTests:XCTestCase {
     private func fixture() throws -> (ConversationTaskRevisionReceipt,ConversationTurnRequest) {

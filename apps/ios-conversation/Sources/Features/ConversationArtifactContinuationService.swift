@@ -26,7 +26,7 @@ public actor ConversationArtifactContinuationService {
         loaded.state.activeReferenceID=reference.id
         var additional:[Mutation]=[]
         if let ordinaryDraft {
-            guard var conversation=loaded.conversation.conversation else {throw CatpawError.missing}
+            guard var conversation=loaded.conversation.conversation else {throw catError.missing}
             conversation.draftText=ordinaryDraft
             additional=[.update(loaded.conversation.id,loaded.conversation.header.revision,.core(.conversation(conversation)))]
         }
@@ -64,9 +64,9 @@ public actor ConversationArtifactContinuationService {
     private func load(_ conversationID:UUID) async throws -> Loaded {
         guard !closed else {throw ConversationArtifactContinuationError.closed}
         let conversation=try await repository.record(conversationID,scope:scope)
-        guard conversation.conversation != nil else {throw CatpawError.missing}
+        guard conversation.conversation != nil else {throw catError.missing}
         let record:StoredRecord
-        do {record=try await repository.record(Self.recordID(conversationID),scope:scope)}catch CatpawError.missing{return .init(state:.init(),record:nil,conversation:conversation)}
+        do {record=try await repository.record(Self.recordID(conversationID),scope:scope)}catch catError.missing{return .init(state:.init(),record:nil,conversation:conversation)}
         guard case .preference(let preference)=record.payload,preference.key==Self.key(conversationID),preference.value.utf8.count<=1_000_000 else {throw ConversationArtifactContinuationError.invalidReference}
         let state=try JSONDecoder().decode(ConversationArtifactContinuationComposerState.self,from:Data(preference.value.utf8))
         guard state.schemaVersion==1,state.drafts.count<=20,state.activeReferenceID==nil || state.activeDraft != nil else {throw ConversationArtifactContinuationError.invalidReference}

@@ -94,7 +94,7 @@ public actor ConversationMemoryService {
     private var key:String {"conversation_memory_v1:"+reference.subjectID.uuidString.lowercased()+":"+reference.serverScopeID.uuidString.lowercased()}
     private func load() async throws -> (ConversationMemoryLocalState,StoredRecord?) {
         var record:StoredRecord
-        do {record=try await repository.record(stableID(key),scope:reference.scope)}catch CatpawError.missing {return (.init(reference:reference),nil)}
+        do {record=try await repository.record(stableID(key),scope:reference.scope)}catch catError.missing {return (.init(reference:reference),nil)}
         guard case .preference(let p)=record.payload,p.key==key,p.value.utf8.count<=2_000_000 else {throw ConversationMemoryError.invalidResponse}
         guard let plain=ConversationMemoryAtRest.open(p.value,subject:reference.subjectID) else {return (.init(reference:reference),record)}   // other key / shredded at sign-out: start empty
         let state=try JSONDecoder().decode(ConversationMemoryLocalState.self,from:plain)
@@ -120,7 +120,7 @@ public actor ConversationMemoryService {
 public extension ConversationMemoryBackend {func close() async {}}
 
 /// Codex PR91 #5: memory snapshots/drafts stored in the Repository (SwiftData JSON) are sealed with the subject's L2 key
-/// (AES-GCM) when a sealer is installed (app: `CatpawApp`). Sign-out shreds the key, so the rows become unreadable.
+/// (AES-GCM) when a sealer is installed (app: `catApp`). Sign-out shreds the key, so the rows become unreadable.
 /// No sealer (portable tests / previews) → plain JSON as before. Legacy plain rows are still read and re-sealed on save.
 enum ConversationMemoryAtRest {
     static let prefix = "l2:"
@@ -222,7 +222,7 @@ extension ConversationMemoryAtRest {
         let token = AccountEpoch.shared.capture()
         running[key] = Task { [weak self] in await self?.drive(repository, subject, partition, key, token) }
     }
-    /// Called when the L2 key for the signed-in user is installed (CatpawApp): restart partitions still waiting.
+    /// Called when the L2 key for the signed-in user is installed (catApp): restart partitions still waiting.
     func sealerMayBeReady() {
         for (_, w) in waiting { repositoryOpened(w.0, subject: w.1, partition: w.2) }
     }

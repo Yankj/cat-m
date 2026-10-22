@@ -57,18 +57,18 @@ extension View {
     }
 }
 
-private struct CatpawInlineSelectionKey: EnvironmentKey { static let defaultValue = true }
+private struct catInlineSelectionKey: EnvironmentKey { static let defaultValue = true }
 extension EnvironmentValues {
     /// False inside rows that attach `.messageLongPress`; documents and readers keep system text selection.
-    var catpawInlineSelection: Bool { get { self[CatpawInlineSelectionKey.self] } set { self[CatpawInlineSelectionKey.self] = newValue } }
+    var catpawInlineSelection: Bool { get { self[catInlineSelectionKey.self] } set { self[catInlineSelectionKey.self] = newValue } }
 }
-private struct CatpawTextSelectionModifier: ViewModifier {
+private struct catTextSelectionModifier: ViewModifier {
     @Environment(\.catpawInlineSelection) private var selectable
     func body(content: Content) -> some View {
         if selectable { content.textSelection(.enabled) } else { content.textSelection(.disabled) }
     }
 }
-extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSelectionModifier()) } }
+extension View { func catpawTextSelection() -> some View { modifier(catTextSelectionModifier()) } }
 
 @MainActor struct MessageLongPressModifier<Preview: View>: ViewModifier {
     let id: String
@@ -88,9 +88,9 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
             view
                 // Hold feedback: the bubble sinks while the finger rests. The sink waits ~90 ms
                 // so a scroll that starts on a bubble never flickers it.
-                .scaleEffect(pressing && enabled && !reduceMotion ? CatpawInteractionMotion.messagePressScale : 1,
+                .scaleEffect(pressing && enabled && !reduceMotion ? catInteractionMotion.messagePressScale : 1,
                              anchor: alignment == .trailing ? .trailing : .leading)
-                .animation(pressing ? .easeOut(duration: 0.25).delay(0.09) : CatpawInteractionMotion.pressOut, value: pressing)
+                .animation(pressing ? .easeOut(duration: 0.25).delay(0.09) : catInteractionMotion.pressOut, value: pressing)
                 // Acceptance #1 (scroll dead on message content): a `.simultaneousGesture(LongPressGesture().updating)`
                 // inside the transcript ScrollView claims the touch on iOS 18+, so vertical pans that START on a
                 // bubble never reach the scroll view (only empty space scrolled). `onLongPressGesture` with a small
@@ -105,8 +105,8 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
                 .accessibilityAction(named: Text(AppLanguage(locale: .current).ui("更多操作"))) { if enabled { setPresented(true) } }
             if let r = reactions.reaction(id) {
                 Button { reactions.toggle(r, for: id) } label: {
-                    Text(r).font(CatpawTypography.Role.body.font).padding(.horizontal, 8).padding(.vertical, 2)
-                        .background(CatpawColors.panel, in: Capsule()).overlay(Capsule().strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
+                    Text(r).font(catTypography.Role.body.font).padding(.horizontal, 8).padding(.vertical, 2)
+                        .background(catColors.panel, in: Capsule()).overlay(Capsule().strokeBorder(catColors.hairline, lineWidth: 0.5))
                 }.buttonStyle(.plain).accessibilityLabel(Text(r)).accessibilityIdentifier("chat.message.reaction." + id)
             }
         }
@@ -143,7 +143,7 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
 
     var body: some View {
         ZStack {
-            Rectangle().fill(.ultraThinMaterial).overlay(CatpawColors.background.opacity(0.45)).ignoresSafeArea()
+            Rectangle().fill(.ultraThinMaterial).overlay(catColors.background.opacity(0.45)).ignoresSafeArea()
                 .opacity(shown ? 1 : 0).onTapGesture { dismiss() }.accessibilityHidden(true)
             ScrollView {
                 VStack(alignment: alignment, spacing: 12) {
@@ -157,7 +157,7 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
                         .scaleEffect(shown ? 1.03 : 1, anchor: alignment == .trailing ? .trailing : .leading)
                         .shadow(color: .black.opacity(shown ? 0.28 : 0), radius: 18, y: 8)
                     menu
-                    if let toastKey { Text(ui(toastKey)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.ink).padding(.horizontal, 12).padding(.vertical, 6).background(.regularMaterial, in: Capsule()) }
+                    if let toastKey { Text(ui(toastKey)).font(catTypography.Role.secondary.font).foregroundStyle(catColors.ink).padding(.horizontal, 12).padding(.vertical, 6).background(.regularMaterial, in: Capsule()) }
                 }
                 .padding(.horizontal, 16).padding(.vertical, 48)
                 .frame(maxWidth: .infinity, alignment: frameAlignment)
@@ -178,13 +178,13 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
             ForEach(MessageReactionStore.palette, id: \.self) { e in
                 Button { reactions.toggle(e, for: id); UISelectionFeedbackGenerator().selectionChanged(); dismiss() } label: {
                     Text(e).font(.title2).frame(minWidth: 44, minHeight: 44)
-                        .background(reactions.reaction(id) == e ? CatpawColors.ink.opacity(0.12) : .clear, in: Circle())
-                }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(Text(e))
+                        .background(reactions.reaction(id) == e ? catColors.ink.opacity(0.12) : .clear, in: Circle())
+                }.buttonStyle(catPressButtonStyle()).accessibilityLabel(Text(e))
             }
         }
         .padding(.horizontal, 8).padding(.vertical, 4)
         .background(.regularMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
+        .overlay(Capsule().strokeBorder(catColors.hairline, lineWidth: 0.5))
         .scaleEffect(shown ? 1 : 0.85, anchor: .bottom).opacity(shown ? 1 : 0)
         .accessibilityIdentifier("chat.message.reactionBar")
     }
@@ -216,19 +216,19 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
         VStack(spacing: 0) {
             ForEach(items) { item in
                 Button(action: item.run) {
-                    Label { Text(ui(item.titleKey)).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink) } icon: {
-                        Image(systemName: item.symbol).foregroundStyle(CatpawColors.ink)
+                    Label { Text(ui(item.titleKey)).font(catTypography.Role.body.font).foregroundStyle(catColors.ink) } icon: {
+                        Image(systemName: item.symbol).foregroundStyle(catColors.ink)
                     }
                     .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading).padding(.horizontal, 18).contentShape(Rectangle())
                 }
-                .buttonStyle(CatpawPressButtonStyle()).accessibilityIdentifier("chat.message.menu." + item.id)
+                .buttonStyle(catPressButtonStyle()).accessibilityIdentifier("chat.message.menu." + item.id)
                 if item.id != items.last?.id { Divider().padding(.leading, 52) }
             }
         }
         .padding(.vertical, 6)
         .frame(maxWidth: 280)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(catColors.hairline, lineWidth: 0.5))
         .scaleEffect(shown ? 1 : 0.9, anchor: .top).opacity(shown ? 1 : 0)
         .accessibilityIdentifier("chat.message.menu")
     }
@@ -258,7 +258,7 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
     @Environment(\.locale) private var locale
     var body: some View {
         NavigationStack {
-            ScrollView { Text(text).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).textSelection(.enabled)
+            ScrollView { Text(text).font(catTypography.Role.body.font).foregroundStyle(catColors.ink).textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(20) }
                 .navigationTitle(AppLanguage(locale: locale).ui("选择文本")).navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button(AppLanguage(locale: locale).ui("完成")) { dismiss() } } }
@@ -286,7 +286,7 @@ struct MessageShareSheet: UIViewControllerRepresentable {
     static func canSend(_ text: String, original: String) -> Bool { MessageEditRules.canSend(text, original: original) }
     var body: some View {
         NavigationStack {
-            TextEditor(text: $text).focused($focused).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+            TextEditor(text: $text).focused($focused).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                 .padding(12).accessibilityLabel(ui("编辑消息")).accessibilityIdentifier("chat.edit.field")
                 .navigationTitle(ui("编辑消息")).navigationBarTitleDisplayMode(.inline)
                 .toolbar {

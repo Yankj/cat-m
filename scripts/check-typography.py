@@ -26,12 +26,12 @@ ICONS = {
     'action-chevron': (HOST+'Sources/DesignSystem/Components.swift', 'Image(systemName: "chevron.right").font(.caption.weight(.semibold))'),
     'input-details-symbol': (HOST+'Sources/Features/ConversationFirstView.swift', 'Image(systemName:"info.circle").font(.system(size:22))'),
     'connection-chevron': (HOST+'Sources/Features/ConversationFirstView.swift', 'Image(systemName: "chevron.right").font(.caption2)'),
-    'sidebar-menu-symbol': ('packages/ios-navigation/Sources/CatpawNavigation/SidebarTheme.swift', 'Image(systemName: "line.3.horizontal").font(.system(size:20))'),
-    'sidebar-close-symbol': ('packages/ios-navigation/Sources/CatpawNavigation/SidebarPanel.swift', 'Image(systemName: "xmark").font(.system(size:20))'),
+    'sidebar-menu-symbol': ('packages/ios-navigation/Sources/catNavigation/SidebarTheme.swift', 'Image(systemName: "line.3.horizontal").font(.system(size:20))'),
+    'sidebar-close-symbol': ('packages/ios-navigation/Sources/catNavigation/SidebarPanel.swift', 'Image(systemName: "xmark").font(.system(size:20))'),
 }
 QA_IDS = {
     HOST+'Sources/Features/ConversationFirstView.swift': {'qa.p0Fixture', 'qa.p0Probe', 'qa.p0Export', 'fixture.evidence'},
-    HOST+'Sources/App/CatpawApp.swift': {'fixture.identity'},
+    HOST+'Sources/App/catApp.swift': {'fixture.identity'},
 }
 
 def normalized(value):
@@ -93,7 +93,7 @@ def in_debug(text,position):
     return any(stack)
 
 def raw_caption(value):
-    value=re.sub(r'CatpawTypography\s*\.\s*Role\s*\.\s*caption\b','policy_caption',value)
+    value=re.sub(r'catTypography\s*\.\s*Role\s*\.\s*caption\b','policy_caption',value)
     return bool(re.search(r'\.\s*caption2?\b',value))
 
 def legacy_activations(code,names):
@@ -112,7 +112,7 @@ def violations(path,text):
         if raw_caption(code[match.start():end]):report(match.start(),'Host typography injection must use semantic roles, not raw caption/caption2')
     for match in re.finditer(r'\.font\s*\(',code):
         end=close_paren(code,code.index('(',match.start()));argument=code[code.index('(',match.start())+1:end-1]
-        argument=re.sub(r'CatpawTypography\s*\.\s*Role\s*\.\s*caption\b','policy_caption',argument)
+        argument=re.sub(r'catTypography\s*\.\s*Role\s*\.\s*caption\b','policy_caption',argument)
         forbidden=bool(re.search(r'\.\s*caption2?\b|\.\s*(system|custom)\s*\([^)]*\b(?:size|fixedSize)\s*:',argument))
         if not forbidden:continue
         icon=False
@@ -136,7 +136,7 @@ def violations(path,text):
     for match in re.finditer(r'\.dynamicTypeSize\s*\(',code):
         end=close_paren(code,code.index('(',match.start()))
         tail=normalized(text[match.start():end+250])
-        qa_tail=normalized('.dynamicTypeSize(.large).padding(4).background(CatpawColors.panel).opacity(sidebarPresented ? 0 : 1).allowsHitTesting(!sidebarPresented).accessibilityHidden(sidebarPresented)')
+        qa_tail=normalized('.dynamicTypeSize(.large).padding(4).background(catColors.panel).opacity(sidebarPresented ? 0 : 1).allowsHitTesting(!sidebarPresented).accessibilityHidden(sidebarPresented)')
         qa=(path==HOST+'Sources/Features/ConversationFirstView.swift' and in_debug(text,match.start()) and tail.startswith(qa_tail) and 'qa.p0Probe' in text[max(0,match.start()-2400):match.start()])
         if not qa:report(match.start(),'Whole-page Dynamic Type clamps are forbidden; inherit the system category')
     for match in re.finditer(r'\.environment\s*\(\s*\\\s*\.dynamicTypeSize\s*,\s*\.',code):
@@ -146,9 +146,9 @@ def violations(path,text):
         forwarded={
             HOST+'Sources/DesignSystem/AdaptiveTextLayout.swift':'.environment(\\.dynamicTypeSize,textSize)',
             HOST+'Sources/Features/ConversationFirstView.swift':'.environment(\\.dynamicTypeSize,textSize)',
-            'packages/ios-image-composer/Sources/CatpawImageComposer/ImageAttachmentPicker.swift':'.environment(\\.dynamicTypeSize,textSize)',
+            'packages/ios-image-composer/Sources/catImageComposer/ImageAttachmentPicker.swift':'.environment(\\.dynamicTypeSize,textSize)',
         }
-        fixture=(path==HOST+'Sources/App/CatpawApp.swift' and in_debug(text,match.start()) and expression=='.environment(\\.dynamicTypeSize,size)' and re.search(r'if\s+let\s+size\s*=\s*P0ExperienceFixture.textSizeOverride\s*\{',text[max(0,match.start()-250):match.start()]))
+        fixture=(path==HOST+'Sources/App/catApp.swift' and in_debug(text,match.start()) and expression=='.environment(\\.dynamicTypeSize,size)' and re.search(r'if\s+let\s+size\s*=\s*P0ExperienceFixture.textSizeOverride\s*\{',text[max(0,match.start()-250):match.start()]))
         if expression!=forwarded.get(path) and not fixture:report(match.start(),'Dynamic Type forwarding belongs to the shared modal bridge or explicit optional fixture axis')
     return sorted(set(issues))
 
@@ -156,13 +156,13 @@ def self_test():
     path=HOST+'Sources/Features/ConversationFirstView.swift'
     for source in ['Text("state").font(.caption)','Text("state").font(.system(size:13))','Text("state").minimumScaleFactor(0.5)','Text("state").dynamicTypeSize(.large)','Text("state").environment(\\.dynamicTypeSize,.large)','Text("state").environment(\\.dynamicTypeSize,arbitrary)','let font=UIFontMetrics.default.scaledFont(for:base)','let f=Font.system(size:13);Text("user").font(f)','let f=UIFont(name:"Face",size:13)','// comment\nText("user").font(.custom("Face",fixedSize:17))']:
         assert violations(path,source),source
-    for source in ['Text(".font(.caption)").font(CatpawTypography.Role.caption.font)','// .font(.caption)\nText("user").font(.body)','/* nested /* .font(.caption) */ comment */ Text("user").font(.footnote)','#if DEBUG\nText("P0 probe").font(.caption2).accessibilityIdentifier("qa.p0Probe")\n#endif']:
+    for source in ['Text(".font(.caption)").font(catTypography.Role.caption.font)','// .font(.caption)\nText("user").font(.body)','/* nested /* .font(.caption) */ comment */ Text("user").font(.footnote)','#if DEBUG\nText("P0 probe").font(.caption2).accessibilityIdentifier("qa.p0Probe")\n#endif']:
         assert not violations(path,source),source
     assert violations(path,'#if DEBUG\nText("Actual user state").font(.caption)\n#endif')
     assert violations(path,'Text("P0 probe").font(.caption2).accessibilityIdentifier("qa.p0Probe")')
     for source in ['let style: Font = .caption; Text("user state").font(style)','var style: SwiftUI.Font =\n .caption2.weight(.medium)\nText("user state").font(style)','SidebarTheme.catpaw.typography(title:.title2,heading:.headline,body:.body,secondary:.subheadline,caption:.caption)']:
         assert violations(path,source),source
-    assert not violations(path,'let style: Font = CatpawTypography.Role.caption.font; Text("user").font(style)')
+    assert not violations(path,'let style: Font = catTypography.Role.caption.font; Text("user").font(style)')
     qa='Text("P0 probe").font(.caption2).accessibilityIdentifier("qa.p0Probe")'
     for condition in ['! DEBUG','DEBUG || SOME_RELEASE_FLAG','!(DEBUG)','DEBUGGING','DEBUG && ! DEBUG']:
         assert violations(path,'#if '+condition+'\n'+qa+'\n#endif'),condition

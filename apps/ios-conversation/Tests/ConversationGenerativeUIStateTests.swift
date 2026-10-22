@@ -1,7 +1,7 @@
 import Foundation
 #if !CGUI_STATE_PORTABLE
 import XCTest
-@testable import CatpawM
+@testable import cat
 #endif
 
 private enum CGUIStateMatrix {
@@ -71,7 +71,7 @@ private final class CGUIStateFailingPersistence:SnapshotPersistence,@unchecked S
     init(url:URL) {base=FilePersistence(url:url)}
     func failNext() {lock.lock();failing=true;lock.unlock()}
     func load() throws -> StoreSnapshot {try base.load()}
-    func save(_ snapshot:StoreSnapshot) throws {lock.lock();let fail=failing;failing=false;lock.unlock();if fail {throw CatpawError.unavailable("Injected local persistence failure")};try base.save(snapshot)}
+    func save(_ snapshot:StoreSnapshot) throws {lock.lock();let fail=failing;failing=false;lock.unlock();if fail {throw catError.unavailable("Injected local persistence failure")};try base.save(snapshot)}
 }
 private final class CGUIStateBlockingPersistence:SnapshotPersistence,@unchecked Sendable {
     let base:FilePersistence
@@ -84,13 +84,13 @@ private final class CGUIStateBlockingPersistence:SnapshotPersistence,@unchecked 
     func release() {resume.signal()}
     func waitUntilBlocked() async throws {
         let result=await Task.detached {self.waitForBegin()}.value
-        guard result == .success else {throw CatpawError.unavailable("Test barrier did not start")}
+        guard result == .success else {throw catError.unavailable("Test barrier did not start")}
     }
     private func waitForBegin() -> DispatchTimeoutResult {began.wait(timeout:.now()+5)}
     func load() throws -> StoreSnapshot {try base.load()}
     func save(_ snapshot:StoreSnapshot) throws {
         lock.lock();let block=armed;armed=false;lock.unlock()
-        if block {began.signal();guard resume.wait(timeout:.now()+5) == .success else {throw CatpawError.unavailable("Test barrier timed out")}}
+        if block {began.signal();guard resume.wait(timeout:.now()+5) == .success else {throw catError.unavailable("Test barrier timed out")}}
         try base.save(snapshot)
     }
 }

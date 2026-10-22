@@ -9,7 +9,7 @@ import Darwin
 }
 #else
 import XCTest
-@testable import CatpawM
+@testable import cat
 final class ConversationArtifactEditTests:XCTestCase {
     @MainActor func testCanonicalReceiptAndWireBoundsMatchServer() async throws {try await ArtifactEditCases.canonical()}
     @MainActor func testDraftAndOriginalBaseSurviveRestartWithoutChangingChatDraft() async throws {try await ArtifactEditCases.durableDraft()}
@@ -110,7 +110,7 @@ enum ArtifactEditTestSupport {
         let initial=try await c.service.refresh(c.reference),draft=try ArtifactEditTestSupport.draft(initial,c.reference),base=initial.latest!
         try await c.service.saveDraft(c.reference,draft:draft)
         let external=try await c.backend.amendArtifact(c.reference,request:ArtifactEditTestSupport.request(base))
-        do {_ = try await c.service.submit(c.reference);throw ArtifactEditTestSupport.Failure(message:"Stale CAS overwrote new version")}catch CatpawError.conflict{}
+        do {_ = try await c.service.submit(c.reference);throw ArtifactEditTestSupport.Failure(message:"Stale CAS overwrote new version")}catch catError.conflict{}
         try ArtifactEditTestSupport.check(!(await c.service.isFresh(c.reference)),"Conflict retained fresh admission")
         let changed=try await c.service.refresh(c.reference)
         try ArtifactEditTestSupport.check(changed.draft(for:c.reference)==draft && changed.latest?.version==3,"Conflict refreshed over user draft")
@@ -165,12 +165,12 @@ enum ArtifactEditTestSupport {
         let initial=try await reopened.refresh(c.reference);try await reopened.saveDraft(c.reference,draft:ArtifactEditTestSupport.draft(initial,c.reference));await reopened.setAdmissionAllowed(false)
         do {_ = try await reopened.submit(c.reference);throw ArtifactEditTestSupport.Failure(message:"Closed admission dispatched")}catch ConversationArtifactEditError.busy{}
         let foreign=ConversationArtifactEditReference(scope:Profiles.demo,binding:c.reference.binding,subjectID:c.reference.subjectID,artifact:c.reference.artifact)
-        do {_ = try await reopened.localState(foreign);throw ArtifactEditTestSupport.Failure(message:"Cross-account draft read")}catch CatpawError.scopeMismatch{}
+        do {_ = try await reopened.localState(foreign);throw ArtifactEditTestSupport.Failure(message:"Cross-account draft read")}catch catError.scopeMismatch{}
         let deleted=ConversationArtifactEditService(repository:c.repository,scope:c.reference.scope,backend:held);_ = try await deleted.refresh(c.reference)
         await held.holdPost();let post=Task{try await deleted.submit(c.reference)};await held.waitForPost()
         let before=await c.repository.read(scope:c.reference.scope),record=try await c.repository.record(c.reference.binding.conversation_id,scope:c.reference.scope)
         try await c.repository.commit(scope:c.reference.scope,mutations:[.remove(record.id,record.header.revision)]);await held.releasePost()
-        do {_ = try await post.value;throw ArtifactEditTestSupport.Failure(message:"Deleted conversation accepted late mutation")}catch CatpawError.missing{}
+        do {_ = try await post.value;throw ArtifactEditTestSupport.Failure(message:"Deleted conversation accepted late mutation")}catch catError.missing{}
         let after=await c.repository.read(scope:c.reference.scope)
         for (id,r) in before.records where r.payload.kind=="preference" {try ArtifactEditTestSupport.check(after.records[id]?.header.revision==r.header.revision,"Late reply rewrote preference after deletion")}
     }

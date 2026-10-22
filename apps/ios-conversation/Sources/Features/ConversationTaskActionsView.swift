@@ -43,17 +43,17 @@ import SwiftUI
         NavigationStack {
             ScrollView {
                 VStack(alignment:.leading,spacing:24) {
-                    Text(model.reference.title).font(CatpawTypography.Role.title.font.weight(.semibold)).accessibilityAddTraits(.isHeader)
-                    Text(ui("批准仅记录这份精确事项的决定；设备执行结果会另行核对。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
-                    if let error=model.error {Text(ui(error)).foregroundStyle(CatpawColors.attention).textSelection(.enabled).accessibilityIdentifier("chat.actions.error")}
+                    Text(model.reference.title).font(catTypography.Role.title.font.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                    Text(ui("批准仅记录这份精确事项的决定；设备执行结果会另行核对。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
+                    if let error=model.error {Text(ui(error)).foregroundStyle(catColors.attention).textSelection(.enabled).accessibilityIdentifier("chat.actions.error")}
                     if model.loading {ProgressView(ui("正在读取审批事项"))}
-                    if !model.freshlyRead && !model.state.actions.isEmpty {Text(ui("显示已保存事项；当前性尚未核对。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.actions.saved")}
-                    if model.state.actions.isEmpty && !model.loading {Text(ui("当前没有可查看的审批事项。")).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.actions.empty")}
-                    if model.freshlyRead && !model.state.decisionAvailable {Text(ui("当前服务尚不支持提交决定，可继续查看事项。")).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.actions.unavailable")}
+                    if !model.freshlyRead && !model.state.actions.isEmpty {Text(ui("显示已保存事项；当前性尚未核对。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.actions.saved")}
+                    if model.state.actions.isEmpty && !model.loading {Text(ui("当前没有可查看的审批事项。")).foregroundStyle(catColors.secondary).accessibilityIdentifier("chat.actions.empty")}
+                    if model.freshlyRead && !model.state.decisionAvailable {Text(ui("当前服务尚不支持提交决定，可继续查看事项。")).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.actions.unavailable")}
                     ForEach(model.state.actions){action in actionCard(action)}
                     Button(model.state.hasUnresolvedDecision ? ui("核对原决定") : ui("读取最新事项")){Task{await model.load(admissionAllowed:admissionAllowed())}}.touchTarget().disabled(model.loading || model.submitting || !admissionAllowed()).accessibilityIdentifier("chat.actions.refresh")
                 }.padding(20).frame(maxWidth:.infinity,alignment:.leading)
-            }.background(CatpawColors.background)
+            }.background(catColors.background)
                 .navigationTitle(ui("待决定事项")).navigationBarTitleDisplayMode(.inline)
                 .toolbar{ToolbarItem(placement:.confirmationAction){Button(ui("完成")){model.close();dismiss()}.accessibilityIdentifier("chat.actions.close")}}
         }.presentationDetents([.large]).presentationDragIndicator(.visible)
@@ -63,21 +63,21 @@ import SwiftUI
     private func actionCard(_ action:ConversationTaskActionSnapshot)->some View {
         VStack(alignment:.leading,spacing:16) {
             if let parameters=action.calendarParameters,let target=action.calendarTarget {
-                Text(parameters.title).font(CatpawTypography.Role.heading.font).accessibilityIdentifier("chat.action.title."+action.id)
-                Text(ui("新建日历事件")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                Text(parameters.title).font(catTypography.Role.heading.font).accessibilityIdentifier("chat.action.title."+action.id)
+                Text(ui("新建日历事件")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                 detail(ui("日历"),target.calendar_display_name)
                 detail(ui("开始时间"),calendarTime(parameters.start_at,timeZone:parameters.time_zone)).accessibilityElement(children:.combine).accessibilityIdentifier("chat.action.start."+action.id)
                 detail(ui("结束时间"),calendarTime(parameters.end_at,timeZone:parameters.time_zone)).accessibilityElement(children:.combine).accessibilityIdentifier("chat.action.end."+action.id)
                 detail(ui("时区"),parameters.time_zone)
                 detail(ui("提醒"),reminder(parameters.reminder_offset_seconds)).accessibilityElement(children:.combine).accessibilityIdentifier("chat.action.reminder."+action.id)
-                DisclosureGroup(ui("设备与日历身份")) {VStack(alignment:.leading,spacing:8){detail(ui("设备编号"),target.device_id);detail(ui("环境编号"),target.environment_id);detail(ui("日历编号"),target.calendar_id);Text("SHA-256 "+target.calendar_snapshot_hash)}.font(CatpawTypography.Role.caption.font).textSelection(.enabled)}
+                DisclosureGroup(ui("设备与日历身份")) {VStack(alignment:.leading,spacing:8){detail(ui("设备编号"),target.device_id);detail(ui("环境编号"),target.environment_id);detail(ui("日历编号"),target.calendar_id);Text("SHA-256 "+target.calendar_snapshot_hash)}.font(catTypography.Role.caption.font).textSelection(.enabled)}
             } else {
-                Text(ui("此版本无法决定这类事项，保留原始内容供查看。")).foregroundStyle(CatpawColors.attention);Text(action.frozen.kind).font(CatpawTypography.Role.heading.font)
-                DisclosureGroup(ui("原始事项内容")){if let data=try? ConversationTaskActionJSON.encoded(action.frozen) {Text(String(decoding:data,as:UTF8.self)).font(CatpawTypography.Role.caption.font).textSelection(.enabled)}}
+                Text(ui("此版本无法决定这类事项，保留原始内容供查看。")).foregroundStyle(catColors.attention);Text(action.frozen.kind).font(catTypography.Role.heading.font)
+                DisclosureGroup(ui("原始事项内容")){if let data=try? ConversationTaskActionJSON.encoded(action.frozen) {Text(String(decoding:data,as:UTF8.self)).font(catTypography.Role.caption.font).textSelection(.enabled)}}
             }
-            Text(status(action)).font(CatpawTypography.Role.secondary.font.weight(.medium)).foregroundStyle(action.approval_status=="approved" ? CatpawColors.success : CatpawColors.secondary).accessibilityIdentifier("chat.action.status."+action.id)
-            Text(ui("决定期限")+" · "+calendarTime(action.frozen.expires_at,timeZone:action.calendarParameters?.time_zone ?? "UTC")).font(CatpawTypography.Role.caption.font).accessibilityIdentifier("chat.action.expiry."+action.id)
-            if let reason=action.invalidation_reason {Text(reasonText(reason)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.action.invalidated."+action.id)}
+            Text(status(action)).font(catTypography.Role.secondary.font.weight(.medium)).foregroundStyle(action.approval_status=="approved" ? catColors.success : catColors.secondary).accessibilityIdentifier("chat.action.status."+action.id)
+            Text(ui("决定期限")+" · "+calendarTime(action.frozen.expires_at,timeZone:action.calendarParameters?.time_zone ?? "UTC")).font(catTypography.Role.caption.font).accessibilityIdentifier("chat.action.expiry."+action.id)
+            if let reason=action.invalidation_reason {Text(reasonText(reason)).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.action.invalidated."+action.id)}
             if let submission=model.state.submissions[action.id] {submissionSummary(submission)}
             if action.isSupported && action.approval_status=="pending" {
                 if textSize.isAccessibilitySize {VStack(spacing:12){decisionButtons(action)}} else {HStack(spacing:12){decisionButtons(action)}}
@@ -111,11 +111,11 @@ import SwiftUI
                     if let submission=model.state.submissions[action.id] {
                         Text(ui("本次原决定编号")+" · "+submission.request.operationID.uuidString.lowercased()).accessibilityIdentifier("chat.action.localOperation."+action.id)
                     }
-                }.font(CatpawTypography.Role.caption.font).textSelection(.enabled)
+                }.font(catTypography.Role.caption.font).textSelection(.enabled)
             }.accessibilityElement(children:.contain).accessibilityIdentifier("chat.action.metadata."+action.id)
-        }.padding(16).background(CatpawColors.input,in:RoundedRectangle(cornerRadius:16)).accessibilityElement(children:.contain).accessibilityIdentifier("chat.action.card."+action.id)
+        }.padding(16).background(catColors.input,in:RoundedRectangle(cornerRadius:16)).accessibilityElement(children:.contain).accessibilityIdentifier("chat.action.card."+action.id)
     }
-    private func detail(_ title:String,_ value:String)->some View {VStack(alignment:.leading,spacing:4){Text(verbatim:title).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary);Text(value).textSelection(.enabled)}}
+    private func detail(_ title:String,_ value:String)->some View {VStack(alignment:.leading,spacing:4){Text(verbatim:title).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary);Text(value).textSelection(.enabled)}}
     @ViewBuilder private func decisionButtons(_ action:ConversationTaskActionSnapshot)->some View {
         Button(role:.destructive){Task{await model.decide(action,decision:.deny,admissionAllowed:admissionAllowed())}} label:{Text(ui("拒绝")).frame(maxWidth:.infinity,minHeight:44)}.touchTarget().buttonStyle(.bordered).buttonBorderShape(.roundedRectangle).disabled(!model.canDecide(action) || !admissionAllowed()).accessibilityIdentifier("chat.action.deny."+action.id)
         Button{Task{await model.decide(action,decision:.approve,admissionAllowed:admissionAllowed())}} label:{Text(ui("批准这份事项")).frame(maxWidth:.infinity,minHeight:44)}.touchTarget().buttonStyle(.borderedProminent).buttonBorderShape(.roundedRectangle).disabled(!model.canDecide(action) || !admissionAllowed()).accessibilityIdentifier("chat.action.approve."+action.id)
@@ -152,9 +152,9 @@ import SwiftUI
     }}
     @ViewBuilder private func submissionSummary(_ submission:ConversationTaskActionSubmission)->some View {
         switch submission.state {
-        case .unknown:Text(submission.issue == .originalNotFound ? ui("尚未找到原决定记录；结果仍未知，请继续核对或寻求帮助。") : ui("决定结果尚未确认；只核对原决定，请勿重复提交。")).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.action.unknown."+submission.actionID)
-        case .notSent:Text(ui("决定尚未发送；这份事项仍保留。")).foregroundStyle(CatpawColors.attention)
-        case .rejected:Text(ui("决定未获受理；请读取最新事项后核对。")).foregroundStyle(CatpawColors.attention)
+        case .unknown:Text(submission.issue == .originalNotFound ? ui("尚未找到原决定记录；结果仍未知，请继续核对或寻求帮助。") : ui("决定结果尚未确认；只核对原决定，请勿重复提交。")).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.action.unknown."+submission.actionID)
+        case .notSent:Text(ui("决定尚未发送；这份事项仍保留。")).foregroundStyle(catColors.attention)
+        case .rejected:Text(ui("决定未获受理；请读取最新事项后核对。")).foregroundStyle(catColors.attention)
         case .accepted:EmptyView()
         }
     }

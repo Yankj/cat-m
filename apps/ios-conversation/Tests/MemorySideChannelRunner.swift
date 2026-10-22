@@ -8,9 +8,9 @@ final class SideChannelLog: @unchecked Sendable {
 }
 @main struct MemorySideChannelRunner {
     static func main() throws {
-        func check(_ condition: Bool, _ text: String) throws { guard condition else { throw CatpawError.invalid(text) }; print("PASS: " + text) }
+        func check(_ condition: Bool, _ text: String) throws { guard condition else { throw catError.invalid(text) }; print("PASS: " + text) }
         let url = URL(fileURLWithPath: CommandLine.arguments[1])
-        guard let wire = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [[String: Any]] else { throw CatpawError.invalid("fixture") }
+        guard let wire = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [[String: Any]] else { throw catError.invalid("fixture") }
         ConversationSideChannelEvents.dispatch(type: "memory.used", turnID: UUID(), data: Data("{}".utf8), token: nil)
         try check(ConversationSideChannelEvents.handler == nil, "dispatch without an installed handler is a no-op")
         let log = SideChannelLog(), turn = UUID()

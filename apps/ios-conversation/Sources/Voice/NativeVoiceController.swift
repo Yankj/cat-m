@@ -115,7 +115,7 @@ final class DictationAudioSink: @unchecked Sendable {
             let audio = AVAudioSession.sharedInstance(); try audio.setCategory(.record, mode: .measurement, options: []); try audio.setActive(true)
             let req = SFSpeechAudioBufferRecognitionRequest(); req.requiresOnDeviceRecognition = true; req.shouldReportPartialResults = true; req.addsPunctuation = true; request = req
             let input = engine.inputNode; let format = input.outputFormat(forBus: 0)
-            guard format.sampleRate > 0, format.channelCount > 0 else { throw CatpawError.unavailable("麦克风音频格式不可用。") }
+            guard format.sampleRate > 0, format.channelCount > 0 else { throw catError.unavailable("麦克风音频格式不可用。") }
             speechTask = recognizer.recognitionTask(with: req) { [weak self] result, error in
                 let text = result?.bestTranscription.formattedString; let final = result?.isFinal ?? false; let failure = error?.localizedDescription
                 Task { @MainActor [weak self] in
@@ -437,7 +437,7 @@ final class DictationAudioSink: @unchecked Sendable {
         let input = engine.inputNode
         input.removeTap(onBus: 0)
         let format = input.outputFormat(forBus: 0)
-        guard format.sampleRate > 0, format.channelCount > 0 else { throw CatpawError.unavailable("麦克风音频格式不可用。") }
+        guard format.sampleRate > 0, format.channelCount > 0 else { throw catError.unavailable("麦克风音频格式不可用。") }
         let meter = DictationLevelMeter { [weak self] level in self?.receiveLevel(level, epoch: epoch) }
         let sink = dictationSink
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in sink.send(buffer); meter.ingest(buffer) }

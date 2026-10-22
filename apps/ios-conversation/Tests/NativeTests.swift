@@ -1,5 +1,5 @@
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 final class NativeTests: XCTestCase {
     @MainActor func testEnvironmentSaveFailureKeepsVisibleScopeAndDraft() async throws {
@@ -138,11 +138,11 @@ final class NativeTests: XCTestCase {
     }
 }
 
-// Integrate into CatpawMTests (iOS, Debug). Six cases passed on iOS Simulator 27.0.
+// Integrate into catTests (iOS, Debug). Six cases passed on iOS Simulator 27.0.
 // Uses native SwiftData and UUID-owned temporary files; never opens the app's store.
 #if os(iOS)
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 final class NativeAcceptanceTests: XCTestCase {
     override func setUpWithError() throws {
@@ -292,7 +292,7 @@ final class NativeAcceptanceTests: XCTestCase {
             XCTAssertFalse(assistant.blocks.textValue.isEmpty)
             if scenario == .unknown {
                 do { try await runtime.retry(scope: h.scope, taskID: task.id, scenario: .success); XCTFail("Unknown may not be retried blindly") }
-                catch { XCTAssertTrue(error is CatpawError) }
+                catch { XCTAssertTrue(error is catError) }
             }
         }
     }
@@ -311,9 +311,9 @@ final class NativeAcceptanceTests: XCTestCase {
         XCTAssertEqual(String(decoding: original.1, as: UTF8.self), "# 原版\n第一版正文")
         try Data("corrupt acceptance-only blob".utf8).write(to: h.blobs.root.appendingPathComponent(v2.contentHash), options: .atomic)
         do { _ = try await h.service.readDocument(scope: h.scope, id: v2.documentID, version: 2); XCTFail("Corrupt file must fail") }
-        catch { XCTAssertTrue(error is CatpawError) }
+        catch { XCTAssertTrue(error is catError) }
         do { try await h.service.markDocumentOpened(scope: h.scope, reference: v2); XCTFail("Corrupt file cannot be marked viewed") }
-        catch { XCTAssertTrue(error is CatpawError) }
+        catch { XCTAssertTrue(error is catError) }
         let after = await h.repository.read(scope: h.scope)
         XCTAssertFalse(after.isViewed(scope: h.scope, reference: v2))
         XCTAssertEqual(after.list("viewReceipt", scope: h.scope).count, 1)
@@ -340,7 +340,7 @@ final class NativeAcceptanceTests: XCTestCase {
         XCTAssertEqual(paused.delegation?.state, .paused)
         print("N06: reopened; checking paused run rejection")
         do { _ = try await service.runDelegation(scope: h.scope, id: d); XCTFail("Paused delegation may not run") }
-        catch { XCTAssertTrue(error is CatpawError) }
+        catch { XCTAssertTrue(error is catError) }
         try await service.changeDelegation(scope: h.scope, id: d, state: .active, expectedRevision: paused.header.revision)
         print("N06: resumed; replacing revoked source")
         try await service.replaceSource(scope: h.scope, id: source, url: "https://example.invalid/replaced")

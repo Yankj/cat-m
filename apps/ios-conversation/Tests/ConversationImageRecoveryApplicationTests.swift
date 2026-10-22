@@ -2,8 +2,8 @@ import Combine
 import Foundation
 import UIKit
 import XCTest
-import CatpawImageComposer
-@testable import CatpawM
+import catImageComposer
+@testable import cat
 
 /// Uses real local journals, image vault and recovery entry points; all backend replies are injected.
 @MainActor final class ConversationImageRecoveryApplicationTests: XCTestCase {

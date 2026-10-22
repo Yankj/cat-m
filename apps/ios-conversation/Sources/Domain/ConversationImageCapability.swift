@@ -99,7 +99,7 @@ public actor MemoryConversationImageByteStore:ConversationImageByteStore {
         values[key(conversationID,operationID)]=payload.bytes
     }
     public func read(reference:ConversationVisionReference,conversationID:UUID,operationID:UUID) throws -> Data {
-        guard let data=values[key(conversationID,operationID)],bytesHash(data)==reference.receipt.sha256,data.count==reference.receipt.size_bytes else {throw CatpawError.missing};return data
+        guard let data=values[key(conversationID,operationID)],bytesHash(data)==reference.receipt.sha256,data.count==reference.receipt.size_bytes else {throw catError.missing};return data
     }
     public func remove(conversationID:UUID,operationID:UUID){values.removeValue(forKey:key(conversationID,operationID))}
 }

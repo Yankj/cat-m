@@ -7,11 +7,11 @@ It is compiled only in DEBUG (`#if DEBUG`) and never ships in Release.
 
 Pick one:
 
-- **Launch argument:** Xcode → Scheme → Run → Arguments → add `-CatpawDemoBackend`.
-- **UserDefaults:** `defaults write <bundle id> CatpawDemoBackend -bool YES` (Simulator: `xcrun simctl spawn booted defaults write <bundle id> CatpawDemoBackend -bool YES`).
-  Turn it off with `defaults delete <bundle id> CatpawDemoBackend`.
+- **Launch argument:** Xcode → Scheme → Run → Arguments → add `-catDemoBackend`.
+- **UserDefaults:** `defaults write <bundle id> catDemoBackend -bool YES` (Simulator: `xcrun simctl spawn booted defaults write <bundle id> catDemoBackend -bool YES`).
+  Turn it off with `defaults delete <bundle id> catDemoBackend`.
 
-When it is on, `NativeAuthApplicationModel` hands `CatpawDemoConversationBackend.shared` to `ConversationSessionService` in place of the HTTP backend.
+When it is on, `NativeAuthApplicationModel` hands `catDemoConversationBackend.shared` to `ConversationSessionService` in place of the HTTP backend.
 Sign-in and local storage still work as usual. Only chat turns are scripted.
 
 ## Script (same domain path as the HTTP backend)

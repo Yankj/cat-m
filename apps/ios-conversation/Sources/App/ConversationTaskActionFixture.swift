@@ -24,16 +24,16 @@ actor ConversationTaskActionFixtureBackend:ConversationTaskActionBackend {
         let identity=key(reference),operation=request.operationID.uuidString.lowercased();var run=try ensure(reference)
         store.decisionPosts += 1
         if let original=run.decisions[operation] {
-            guard original.action.id==actionID,original.decision?.decision==request.decision,original.action.action_digest==request.action_digest,original.action.frozen.grant_epoch==request.expected_grant_epoch,original.action.revision>request.expected_revision,original.action.revision-1==request.expected_revision else {try persist();throw CatpawError.conflict}
+            guard original.action.id==actionID,original.decision?.decision==request.decision,original.action.action_digest==request.action_digest,original.action.frozen.grant_epoch==request.expected_grant_epoch,original.action.revision>request.expected_revision,original.action.revision-1==request.expected_revision else {try persist();throw catError.conflict}
             try persist();return original
         }
-        guard run.action.id==actionID,run.action.action_digest==request.action_digest,run.action.revision==request.expected_revision,request.expected_grant_epoch==reference.binding.grant_epoch,run.action.canDecide(at:Date()) else {try persist();throw CatpawError.conflict}
+        guard run.action.id==actionID,run.action.action_digest==request.action_digest,run.action.revision==request.expected_revision,request.expected_grant_epoch==reference.binding.grant_epoch,run.action.canDecide(at:Date()) else {try persist();throw catError.conflict}
         run.action.revision += 1;run.action.approval_status=request.decision == .approve ? "approved":"denied";run.action.decision_operation_id=operation;run.action.effect = .init(status:request.decision == .approve ? "waiting_device":"not_dispatched")
         let receipt=ConversationTaskActionDecisionReceipt(operation_id:operation,action_id:actionID,decision:request.decision,action_digest:request.action_digest,committed_at:Self.utc(Date()))
         let envelope=ConversationTaskActionEnvelope(action:run.action,decision:receipt);run.decisions[operation]=envelope;store.runs[identity]=run
         // Fake server commit precedes response loss, so cold restart can read this exact original UUID.
         try persist()
-        if mode == .unknown {throw CatpawError.unavailable("Explicit offline fixture lost the decision response after its fake server commit")}
+        if mode == .unknown {throw catError.unavailable("Explicit offline fixture lost the decision response after its fake server commit")}
         return envelope
     }
     func readDecision(_ reference:ConversationTaskActionReference,actionID:String,operationID:UUID) async throws -> ConversationTaskActionEnvelope {

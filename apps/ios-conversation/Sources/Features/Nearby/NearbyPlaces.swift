@@ -23,7 +23,7 @@ import CoreLocation
         if CLLocationManager().authorizationStatus == .notDetermined { _ = await ProactiveEngine.shared.requestLocationAccess() }   // When-In-Use prompt
         if let refused = gate() { return refused }
         guard let origin = await ProactiveEngine.requestCurrentCoordinate() else {
-            return fail("location_unavailable", "没有拿到你的当前位置（未授权定位或定位超时），所以没法查附近。请在 设置 › 隐私 › 定位 打开 Catpaw 的「使用期间」后再试。")
+            return fail("location_unavailable", "没有拿到你的当前位置（未授权定位或定位超时），所以没法查附近。请在 设置 › 隐私 › 定位 打开 cat 的「使用期间」后再试。")
         }
         // Radius widens once when fewer than NearbyRules.minResults came back.
         var found: [MKMapItem] = []

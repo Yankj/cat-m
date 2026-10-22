@@ -15,7 +15,7 @@ import SwiftUI
             Text(ui("说给助理听")).font(.largeTitle.bold())
             Text(ui("结束后先检查转写，再放入当前会话输入。你仍需主动点击发送。")).foregroundStyle(.secondary)
             StatusLabel(text: voice.stateText)
-            Button { Task { if voice.capturing { voice.finishInput() } else { await voice.startFromUserAction() } } } label: { Image(systemName: voice.capturing ? "stop.fill" : "mic.fill").font(.largeTitle).frame(width: 96, height: 96).background(CatpawColors.green.opacity(0.2), in: Circle()) }.accessibilityLabel(voice.capturing ? ui("结束本句") : ui("启用本地识别并开始说话"))
+            Button { Task { if voice.capturing { voice.finishInput() } else { await voice.startFromUserAction() } } } label: { Image(systemName: voice.capturing ? "stop.fill" : "mic.fill").font(.largeTitle).frame(width: 96, height: 96).background(catColors.green.opacity(0.2), in: Circle()) }.accessibilityLabel(voice.capturing ? ui("结束本句") : ui("启用本地识别并开始说话"))
             Text(ui("本地中文识别能力：{0}", arguments: [String(describing: (voice.onDeviceSupported ? ui("设备报告支持，尚需实际验收") : ui("不可用")))])).font(.footnote)
             Text(voice.permissionDescription).font(.caption).foregroundStyle(.secondary)
             if let message = voice.messageText { Text(message).foregroundStyle(.secondary) }

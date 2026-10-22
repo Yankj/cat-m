@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 /// Named synthetic inputs exercise real journal, file persistence and host selection.
 /// Maintained HTTP bytes and actual native interaction are tested separately.

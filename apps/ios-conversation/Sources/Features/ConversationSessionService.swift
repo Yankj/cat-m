@@ -89,7 +89,7 @@ public actor ConversationSessionService {
     }
     public func rememberSelection(scope: DataScope, conversationID: UUID) async throws {
         let record = try await repository.record(conversationID,scope:scope)
-        guard record.conversation != nil else { throw CatpawError.missing }
+        guard record.conversation != nil else { throw catError.missing }
         _ = try await read(scope:scope,conversationID:conversationID)
         try await repository.setPreference(scope:scope,key:Self.selectionKey,value:conversationID.uuidString)
     }
@@ -100,11 +100,11 @@ public actor ConversationSessionService {
     /// restore its prior selection without overwriting any later writer.
     func prepareNavigationSelection(scope:DataScope,conversationID:UUID) async throws -> NavigationSelectionReceipt {
         let conversation=try await repository.record(conversationID,scope:scope)
-        guard conversation.conversation != nil else {throw CatpawError.missing}
+        guard conversation.conversation != nil else {throw catError.missing}
         _=try await read(scope:scope,conversationID:conversationID)
         let id=stableID("preference-\(scope.workspaceID)-\(Self.selectionKey)")
         let old:StoredRecord?
-        do {old=try await repository.record(id,scope:scope)}catch CatpawError.missing {old=nil}
+        do {old=try await repository.record(id,scope:scope)}catch catError.missing {old=nil}
         let previous:Preference?
         if let old {guard case .preference(let value)=old.payload,value.key==Self.selectionKey else {throw ConversationSessionError.invalidEvent};previous=value}else{previous=nil}
         let payload=Payload.preference(.init(key:Self.selectionKey,value:conversationID.uuidString))
@@ -121,7 +121,7 @@ public actor ConversationSessionService {
         try await repository.commit(scope:scope,mutations:[mutation])
     }
     public func create(scope: DataScope, id: UUID = UUID()) async throws -> UUID {
-        guard Profiles.inEnvironment(.local, profile: scope) == scope else { throw CatpawError.scopeMismatch }
+        guard Profiles.inEnvironment(.local, profile: scope) == scope else { throw catError.scopeMismatch }
         let snapshot = await repository.read(scope: scope)
         let env = stableID("conversation-first-environment-\(scope.workspaceID)")
         var mutations: [Mutation] = []
@@ -169,22 +169,22 @@ public actor ConversationSessionService {
         updated.artifacts=goal.artifacts.map{$0.id==artifact.id ? artifact : $0}
         try Self.merge(updated,into:&saved)
         let conversation=try await repository.record(binding.conversation_id,scope:scope)
-        guard conversation.conversation != nil else {throw CatpawError.missing}
+        guard conversation.conversation != nil else {throw catError.missing}
         try await save(saved,expectedRevision:revision,additional:[.requireRevision(conversation.id,conversation.header.revision)])
     }
     private func readVersioned(scope: DataScope, conversationID: UUID) async throws -> (ConversationSession, Int) {
         _ = try await repository.record(conversationID, scope: scope)
         let record = try await repository.record(Self.journalID(conversationID), scope: scope)
-        guard case .preference(let stored) = record.payload, let data = stored.value.data(using: .utf8) else { throw CatpawError.corrupt("对话历史无法读取。") }
+        guard case .preference(let stored) = record.payload, let data = stored.value.data(using: .utf8) else { throw catError.corrupt("对话历史无法读取。") }
         let value = try JSONDecoder().decode(ConversationSession.self, from: data)
-        guard value.scope == scope, value.conversationID == conversationID else { throw CatpawError.scopeMismatch }
+        guard value.scope == scope, value.conversationID == conversationID else { throw catError.scopeMismatch }
         return (value, record.header.revision)
     }
     public func connection(scope: DataScope) async -> ConversationConnection { await backend.connection(scope: scope) }
     public func recordedReplyEvidence(scope:DataScope) async -> ConversationConnection? {await backend.recordedReplyEvidence(scope:scope)}
     public func saveDraft(scope: DataScope, conversationID: UUID, text: String) async throws {
         let record = try await repository.record(conversationID, scope: scope)
-        guard var value = record.conversation else { throw CatpawError.missing }
+        guard var value = record.conversation else { throw catError.missing }
         value.draftText = text
         try await repository.commit(scope: scope, mutations: [.update(record.id, record.header.revision, .core(.conversation(value)))])
     }
@@ -239,11 +239,11 @@ public actor ConversationSessionService {
         let offline = plainSend ? !(await resilience?.isPathSatisfied() ?? true) : false
         let connection = offline ? ConversationConnection(state: .providerUnverified, provider: "", detail: "") : await backend.connection(scope: scope)
         guard [.connected, .providerUnverified].contains(connection.state) else {
-            if connection.state == .unavailable { throw CatpawError.unavailable(connection.detail) }
+            if connection.state == .unavailable { throw catError.unavailable(connection.detail) }
             throw ConversationSessionError.notConfigured
         }
         try Task.checkCancellation()
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.utf16.count <= 8000 else { throw CatpawError.invalid("请输入不超过 8000 字符的内容。") }
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.utf16.count <= 8000 else { throw catError.invalid("请输入不超过 8000 字符的内容。") }
         if plainSend, !offline {
             do { try await syncServerTranscript(scope: scope, conversationID: conversationID) }
             catch { sendDiagnostic("catpaw.send transcript sync skipped: \(String(describing: error))") }
@@ -253,15 +253,15 @@ public actor ConversationSessionService {
         let epoch: Int
         if let index = session.turns.firstIndex(where: { $0.id == operationID }) {
             let prior = session.turns[index]
-            guard prior.request.image == image?.reference,prior.request.continuation==continuation,prior.request.acceptedWork?.selection==acceptedWork,prior.request.revisionWork?.selection==revisionWork else {sendDiagnostic("catpaw.send conflict site=resend.payload op=\(operationID.uuidString.prefix(8))");throw CatpawError.conflict}
-            guard prior.request.history.last?.content == text, try Self.encode(prior.request.context) == Self.encode(context) else { sendDiagnostic("catpaw.send conflict site=resend.text op=\(operationID.uuidString.prefix(8)) priorLen=\(prior.request.history.last?.content.utf16.count ?? -1) len=\(text.utf16.count)");throw CatpawError.conflict }
-            guard prior.state != .cancelledBeforeSend else { sendDiagnostic("catpaw.send conflict site=resend.cancelled op=\(operationID.uuidString.prefix(8))");throw CatpawError.conflict }
+            guard prior.request.image == image?.reference,prior.request.continuation==continuation,prior.request.acceptedWork?.selection==acceptedWork,prior.request.revisionWork?.selection==revisionWork else {sendDiagnostic("catpaw.send conflict site=resend.payload op=\(operationID.uuidString.prefix(8))");throw catError.conflict}
+            guard prior.request.history.last?.content == text, try Self.encode(prior.request.context) == Self.encode(context) else { sendDiagnostic("catpaw.send conflict site=resend.text op=\(operationID.uuidString.prefix(8)) priorLen=\(prior.request.history.last?.content.utf16.count ?? -1) len=\(text.utf16.count)");throw catError.conflict }
+            guard prior.state != .cancelledBeforeSend else { sendDiagnostic("catpaw.send conflict site=resend.cancelled op=\(operationID.uuidString.prefix(8))");throw catError.conflict }
             guard prior.state == .notSent else { return operationID }
             guard session.unresolved == nil else { throw ConversationSessionError.unresolvedOperation }
             if prior.request.acceptedWork == nil, prior.request.revisionWork == nil {
                 // Resend of a held message: rebuild history from what the server can have seen, with this
                 // message last. Other unsent messages never enter the wire history.
-                guard let own = prior.request.history.last, own.role == .user else { sendDiagnostic("catpaw.send conflict site=resend.own op=\(operationID.uuidString.prefix(8))");throw CatpawError.conflict }
+                guard let own = prior.request.history.last, own.role == .user else { sendDiagnostic("catpaw.send conflict site=resend.own op=\(operationID.uuidString.prefix(8))");throw catError.conflict }
                 let history = Self.dispatchHistory(session, current: operationID).filter { $0.id != own.id } + [own]
                 request = prior.request.withHistory(history).withImageBytes(image?.bytes); epoch = request.epoch
                 session.turns[index] = ConversationTurnRecord(id: operationID, request: request.withImageBytes(nil), state: .dispatched, lastSequence: 0, error: nil)
@@ -274,7 +274,7 @@ public actor ConversationSessionService {
             guard session.unresolved == nil else { throw ConversationSessionError.unresolvedOperation }
             guard session.pendingUnsent == nil else { throw ConversationSessionError.pendingUnsent }
             epoch = session.turns.count + 1
-            guard context.count <= 8, Set(context.map(\.id)).count == context.count, context.allSatisfy({ !$0.id.isEmpty && $0.id.utf16.count <= 80 && $0.text.utf16.count <= 8000 }) else { throw CatpawError.invalid("附加上下文超过服务范围。") }
+            guard context.count <= 8, Set(context.map(\.id)).count == context.count, context.allSatisfy({ !$0.id.isEmpty && $0.id.utf16.count <= 80 && $0.text.utf16.count <= 8000 }) else { throw catError.invalid("附加上下文超过服务范围。") }
             var originalBinding:ConversationTaskBinding?,continuationSubject:UUID?
             if let continuation {
                 try continuation.validate()
@@ -314,7 +314,7 @@ public actor ConversationSessionService {
         let observationToken = claimObservation(conversationID, source: sourceToken)
         defer { if active[conversationID] == observationToken { releaseActive(conversationID) } }
         let cr = try await repository.record(conversationID, scope: scope)
-        guard var conversation = cr.conversation else { throw CatpawError.missing }
+        guard var conversation = cr.conversation else { throw catError.missing }
         if !preserveDraft && request.continuation == nil { conversation.draftText = "" }; if conversation.title == "新对话" { conversation.title = String(text.prefix(40)) }
         try await save(session, expectedRevision: journalRevision, fence: request, observationToken: observationToken, additional: [.update(cr.id, cr.header.revision, .core(.conversation(conversation)))])
         do {
@@ -360,7 +360,7 @@ public actor ConversationSessionService {
                 break resumeLoop
             } catch let interrupted as ConversationStreamInterrupted {
                 await resilience?.waitForPath() // offline does not count an attempt
-                guard let delay = reconnectPolicy.delay(forAttempt: attempt) else { await resilience?.unreachable(); throw CatpawError.unavailable(interrupted.reason + "已显示的部分都保留了；继续获取会从断点接上，不会重新发送你的消息。") }
+                guard let delay = reconnectPolicy.delay(forAttempt: attempt) else { await resilience?.unreachable(); throw catError.unavailable(interrupted.reason + "已显示的部分都保留了；继续获取会从断点接上，不会重新发送你的消息。") }
                 attempt += 1; await resilience?.reconnecting(attempt: attempt, retryIn: delay)
                 try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 guard active[conversationID] == observationToken else { throw CancellationError() }
@@ -404,12 +404,12 @@ public actor ConversationSessionService {
         if saved.turns.last?.state == .completed { try? await outbox?.remove(operationID); await backend.recordCommittedReply(request);return operationID }
         // catpaw.approval.v1: a suspended turn is admitted and waiting for submitApproval (not an error).
         if let last = saved.turns.last, last.id == operationID, last.awaitingApproval { try? await outbox?.remove(operationID); return operationID }
-        if saved.turns.last?.state == .failed { throw CatpawError.unavailable(saved.turns.last?.error ?? "服务请求失败。") }
+        if saved.turns.last?.state == .failed { throw catError.unavailable(saved.turns.last?.error ?? "服务请求失败。") }
         throw ConversationSessionError.unresolvedOperation
     }
     private func save(_ value: ConversationSession, expectedRevision: Int, fence: ConversationTurnRequest? = nil, observationToken: UUID? = nil, additional: [Mutation] = []) async throws {
         let r = try await repository.record(Self.journalID(value.conversationID), scope: value.scope)
-        guard r.header.revision == expectedRevision else { sendDiagnostic("catpaw.send conflict site=journal.revision expected=\(expectedRevision) actual=\(r.header.revision)");throw CatpawError.conflict }
+        guard r.header.revision == expectedRevision else { sendDiagnostic("catpaw.send conflict site=journal.revision expected=\(expectedRevision) actual=\(r.header.revision)");throw catError.conflict }
         if fence != nil { guard let observationToken,active[value.conversationID] == observationToken else { throw CancellationError() } }
         try await repository.commit(scope: value.scope, mutations: [.update(r.id, r.header.revision, .preference(Preference(key: "conversation_session:\(value.conversationID)", value: try Self.encode(value))))] + additional)
     }
@@ -419,7 +419,7 @@ public actor ConversationSessionService {
         // Live-only text_preview: no journal write, no lastSequence change (its sequence is the last persisted event).
         if Self.isLivePreview(event.payload) { forwardLivePreview(event, request: request); return }
         var (session, journalRevision) = try await readVersioned(scope: request.scope, conversationID: request.conversationID)
-        guard let index = session.turns.firstIndex(where: { $0.id == request.operationID }) else { throw CatpawError.missing }
+        guard let index = session.turns.firstIndex(where: { $0.id == request.operationID }) else { throw catError.missing }
         var turn = session.turns[index]
         if event.sequence <= turn.lastSequence {
             // Repair a former client's uncommitted blank row only after the original server
@@ -611,7 +611,7 @@ public actor ConversationSessionService {
         var (saved, revision) = try await readVersioned(scope: request.scope, conversationID: request.conversationID)
         guard let i = saved.turns.firstIndex(where: { $0.id == request.operationID }), saved.turns[i].state == .dispatched, saved.turns[i].lastSequence == 0 else { throw ConversationSessionError.invalidEvent }
         let record = try await repository.record(request.conversationID, scope: request.scope)
-        guard var core = record.conversation else { throw CatpawError.missing }
+        guard var core = record.conversation else { throw catError.missing }
         if request.continuation == nil && core.draftText.isEmpty { core.draftText = request.history.last?.content ?? "" }
         saved.turns[i].state = .notSent; saved.turns[i].error = reason
         try await save(saved, expectedRevision: revision, fence: request, observationToken: observationToken, additional: [.update(record.id, record.header.revision, .core(.conversation(core)))])
@@ -1001,7 +1001,7 @@ public actor ConversationSessionService {
         let observation = try await backend.observe(target.request)
         guard active[conversationID] == token else { throw CancellationError() }
         guard try Self.encode(observation.request) == Self.encode(target.request) else { throw ConversationSessionError.invalidEvent }
-        guard let turn = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == target.id }) else { throw CatpawError.missing }
+        guard let turn = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == target.id }) else { throw catError.missing }
         guard turn.serverRequestHash == nil || observation.requestHash == turn.serverRequestHash, turn.serverGrantEpoch == nil || observation.grantEpoch == turn.serverGrantEpoch else { throw ConversationSessionError.invalidEvent }
         for event in observation.events { try await apply(event, request: target.request, observing: true, observationToken: token) }
         try await restoreApprovals(observation, turnID: target.id, observationToken: token)
@@ -1253,7 +1253,7 @@ public actor ConversationSessionService {
         let saved = try await read(scope: scope, conversationID: conversationID)
         guard let turn = saved.turns.first(where: { $0.id == turnID }) else { throw ConversationApprovalFailure.noPendingApproval }
         // P1-4: a call that is no longer pending (superseded by the next message, or past its TTL) is still reported —
-        // the server records it (200 + X-Catpaw-Device-Late) so the card and the next turn know it really happened.
+        // the server records it (200 + X-cat-Device-Late) so the card and the next turn know it really happened.
         let pendingCall = turn.pendingDeviceCalls?.first(where: { $0.callID == callID })
         guard let call = pendingCall ?? turn.deviceCallLog?.first(where: { $0.callID == callID }) else { throw ConversationApprovalFailure.noPendingApproval }
         let operationID = stableID("device-result-\(turnID)-\(callID)")

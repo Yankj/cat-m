@@ -1,7 +1,7 @@
 import Foundation
 #if !CGUI_PORTABLE
 import XCTest
-@testable import CatpawM
+@testable import cat
 #endif
 
 /// Artificial CGUI-1 truth fixtures. No provider, transport, task, account, or system effects are composed here.

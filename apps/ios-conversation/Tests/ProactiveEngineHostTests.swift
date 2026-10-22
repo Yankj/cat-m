@@ -1,11 +1,11 @@
 import XCTest
 import UserNotifications
-@testable import CatpawM
+@testable import cat
 
 /// Codex PR90c: regressions on the real host call chain (ProactiveEngine / ProactiveLocalBackend / ProactiveSuggestionStore /
 /// the real `ProactiveSuggestion` decoder). Only UNUserNotificationCenter is replaced (by `delivery.poster`), so every
 /// add/remove counted here is a call the shipping code would make. Run on a simulator (any, not BE5C):
-///   xcodebuild test -scheme CatpawM -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:CatpawMTests/ProactiveEngineHostTests
+///   xcodebuild test -scheme cat -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:catTests/ProactiveEngineHostTests
 @MainActor final class ProactiveEngineHostTests: XCTestCase {
     final class Poster: ProactiveNotificationPoster {
         var adds: [ProactiveNotificationRequest] = [], removed: [String] = []
@@ -758,7 +758,7 @@ import UserNotifications
         // Precondition, not a skip: simctl cannot pre-grant notifications, so the UI test grants it once on this install.
         let status = await center.notificationSettings().authorizationStatus
         guard status == .authorized || status == .provisional || status == .ephemeral else {
-            XCTFail("Notifications not authorized on this simulator (status \(status.rawValue): \(status == .denied ? "denied" : status == .notDetermined ? "notDetermined" : "other")). Run CatpawMUITests/ProactiveNotificationAuthUITests/testGrantNotificationAuthorizationForHostTests first (same simulator, do not uninstall), then this test.")
+            XCTFail("Notifications not authorized on this simulator (status \(status.rawValue): \(status == .denied ? "denied" : status == .notDetermined ? "notDetermined" : "other")). Run catUITests/ProactiveNotificationAuthUITests/testGrantNotificationAuthorizationForHostTests first (same simulator, do not uninstall), then this test.")
             return
         }
         func request(_ id: String, _ account: String) -> UNNotificationRequest {
@@ -790,7 +790,7 @@ import UserNotifications
         let center = UNUserNotificationCenter.current(), b = UUID(), tag = UUID().uuidString
         let status = await center.notificationSettings().authorizationStatus
         guard status == .authorized || status == .provisional || status == .ephemeral else {
-            XCTFail("Notifications not authorized on this simulator (status \(status.rawValue)). Run CatpawMUITests/ProactiveNotificationAuthUITests/testGrantNotificationAuthorizationForHostTests first (same simulator, do not uninstall), then this test.")
+            XCTFail("Notifications not authorized on this simulator (status \(status.rawValue)). Run catUITests/ProactiveNotificationAuthUITests/testGrantNotificationAuthorizationForHostTests first (same simulator, do not uninstall), then this test.")
             return
         }
         func soon(_ id: String, _ info: [String: Any]) -> UNNotificationRequest {

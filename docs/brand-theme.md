@@ -1,4 +1,4 @@
-# Catpaw-m brand & theme
+# cat brand & theme
 
 Single source of truth for palette and logo. Brand sheet refs live in `docs/refs/brand/`.
 
@@ -6,15 +6,15 @@ Single source of truth for palette and logo. Brand sheet refs live in `docs/refs
 
 | Layer | Where | Role |
 | --- | --- | --- |
-| Hex tokens | `Sources/DesignSystem/CatpawBrandTokens.swift` | Raw brand sheet values (`primary`, `deep`, `background`, `ink`, `grey`, derived) |
-| Semantic colors | `CatpawColors` in `Components.swift` | `ink`, `secondary`, `fill`/`action`/`primary`, `attention`, calm/orb roles — **use these at call sites** |
-| Identity alias | `CatpawBrand` in `CatpawMotion.swift` | `paw` → `CatpawColors.fill`; clay roles for presence animation |
+| Hex tokens | `Sources/DesignSystem/catBrandTokens.swift` | Raw brand sheet values (`primary`, `deep`, `background`, `ink`, `grey`, derived) |
+| Semantic colors | `catColors` in `Components.swift` | `ink`, `secondary`, `fill`/`action`/`primary`, `attention`, calm/orb roles — **use these at call sites** |
+| Identity alias | `catBrand` in `catMotion.swift` | `paw` → `catColors.fill`; clay roles for presence animation |
 | Mark view | `BrandMark` | Cat-head asset wrapper (template / fill / onOrange) |
-| Assets | `Resources/Assets.xcassets/CatpawBrand/` | `BrandMark*`, `LaunchFirstFrame` (orange orb + white mark) |
+| Assets | `Resources/Assets.xcassets/catBrand/` | `BrandMark*`, `LaunchFirstFrame` (orange orb + white mark) |
 | App icon | `Assets.xcassets/AppIcon.appiconset` | Soft 3D white-on-orange hero (stays at catalog root) |
 | Launch canvas | `LaunchCanvas.colorset` + storyboard | Warm background `#FFFCF8` |
 
-Composer send/stop morph and voice-capsule chrome are owned by the Mac worker — do not reshape them here. They may keep reading `CatpawBrand.paw` (now an alias of `fill`).
+Composer send/stop morph and voice-capsule chrome are owned by the Mac worker — do not reshape them here. They may keep reading `catBrand.paw` (now an alias of `fill`).
 
 ## Brand sheet (2026-10)
 
@@ -33,14 +33,14 @@ Composer send/stop morph and voice-capsule chrome are owned by the Mac worker �
 | Sheet swatch | Semantic role (light) | Why |
 | --- | --- | --- |
 | Primary `#FF702A` | App Icon, `BrandMarkFill`, `orbDeep` / glow | Exact brand mark |
-| Deep `#C64A0B` | `CatpawColors.fill` / `action` (`fillLight`) | ≥3:1 (non-text) on Background |
-| Grey `#929298` | `CatpawColors.tertiary` (muted) | Placeholders / chrome |
-| Grey → `#6E6A66` | `CatpawColors.secondary` (`secondaryLight`) | ≥4.5:1 secondary text on Background/panel |
-| Ink `#292622` | `CatpawColors.ink` | Primary text |
+| Deep `#C64A0B` | `catColors.fill` / `action` (`fillLight`) | ≥3:1 (non-text) on Background |
+| Grey `#929298` | `catColors.tertiary` (muted) | Placeholders / chrome |
+| Grey → `#6E6A66` | `catColors.secondary` (`secondaryLight`) | ≥4.5:1 secondary text on Background/panel |
+| Ink `#292622` | `catColors.ink` | Primary text |
 
 ## Header cat
 
-- Soft-3D clay head beside the chat title: `CatpawPresence` (`docs/refs/header-cat/six-states.png`).
+- Soft-3D clay head beside the chat title: `catPresence` (`docs/refs/header-cat/six-states.png`).
 - Do **not** use flat `BrandMark` in the header capsule.
 - Connection: offline → ears-down; error → wobble; thinking/working → orbit-load; streaming → spin; done → happy; else idle.
 
@@ -53,21 +53,21 @@ Composer send/stop morph and voice-capsule chrome are owned by the Mac worker �
 
 ## How to swap the palette later
 
-1. Edit hex constants in `CatpawBrandTokens` only.
-2. Rebuild. `CatpawColors` / `CatpawBrand` pick up the new values automatically.
+1. Edit hex constants in `catBrandTokens` only.
+2. Rebuild. `catColors` / `catBrand` pick up the new values automatically.
 3. If contrast fails WCAG for `actionText`, adjust `deep` / `deepDark` — do not recolor body copy to orange.
 4. Run `Scripts/check-native-design.py` (and typography / localization / repository checks).
 
 ## How to swap the logo later
 
 1. Drop new masters into `docs/refs/brand/` (3D hero, flat-on-black, brand sheet).
-2. Regenerate PNGs into `Assets.xcassets/CatpawBrand/` and `AppIcon.appiconset` (see script notes in that folder or re-run the brand asset generator used for this PR).
+2. Regenerate PNGs into `Assets.xcassets/catBrand/` and `AppIcon.appiconset` (see script notes in that folder or re-run the brand asset generator used for this PR).
 3. Keep asset **names** (`BrandMark`, `BrandMarkFill`, `BrandMarkOnOrange`) so `BrandMark` view stays unchanged.
 4. Prefer `BrandMark` over `PawMark` for identity surfaces. `PawMark` remains for pastel category markers only.
 
 ## Do / don’t
 
-- Do: `CatpawColors.ink`, `.secondary`, `.fill`, `.attention`, `BrandMark(...)`.
+- Do: `catColors.ink`, `.secondary`, `.fill`, `.attention`, `BrandMark(...)`.
 - Don’t: raw `Color(UIColor(rgb: 0x…))` / magic oranges at feature call sites.
 - Don’t: orange body text; orange is fill/icon only.
 
@@ -95,5 +95,5 @@ Do **not** restore these imagesets or design SVGs:
 - `design/symbols/catpaw.paw*.svg`
 - `LaunchPaw` / `LaunchPawMark` / `LaunchGlow`
 
-In-app identity: `BrandMark` / `LaunchFirstFrame` / soft-3D `CatpawPresence` only. `PawMark` / `CategoryPaw` remain as **pastel category markers** (not the App Icon).
+In-app identity: `BrandMark` / `LaunchFirstFrame` / soft-3D `catPresence` only. `PawMark` / `CategoryPaw` remain as **pastel category markers** (not the App Icon).
 
