@@ -17,6 +17,7 @@
 
 | 内容 | 入口 |
 |---|---|
+| 家庭成长助理总交接 | [2026-10-23本地与云端总handoff](acceptance/family-companion/handoff-2026-10-23.md)、[工作树与运行库存](acceptance/family-companion/handoff-inventory-2026-10-23.json)；历史报告按其日期与候选解释，实时状态见主计划 |
 | 长任务开发与对话交互 | [启动合同](planning/AF-1/development-start-contract.md)、[可复制prompt](planning/AF-1/long-task-development-prompt.md)、[CGUI-1](design/conversation-generative-ui-spec.md)、[10项验收](acceptance/conversation-generative-ui-acceptance.md) |
 | 家庭成长助理执行准备 | [M0契约](design/family-companion/m0-contract.md)、[初始验收矩阵](acceptance/family-companion/acceptance-matrix-v1.json)、[准备证据](acceptance/family-companion/preparation-2026-10-23.md)、[dot验证本机复跑回执](acceptance/family-companion/cloud-recheck-2026-10-23.md)、[新增家庭契约接收与映射](acceptance/family-companion/product-contract-alignment-2026-10-23.md)、[dot原始统一入口](../qa/family-cloud-verification/README.md)、[初始化恢复提案](design/family-companion/bootstrap-recovery-plan.md)；实时进展见主计划 |
 | 终版产品、视觉与技术设计 | [FINAL-1综合规格](product/catpaw-final-product-spec.md)、[日用质量／竞争优势验收](acceptance/catpaw-final-product-acceptance.md)、[可点按状态提案](design/prototypes/catpaw-final/index.html) |
