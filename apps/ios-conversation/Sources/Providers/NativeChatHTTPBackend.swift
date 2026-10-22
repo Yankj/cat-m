@@ -15,7 +15,7 @@ public struct NativeChatConfiguration: Sendable {
         try NativeAPIBase.validate(origin,allowLoopback:true)
         let c = URLComponents(url:origin,resolvingAgainstBaseURL:false)!
         guard publishableKey == nil || publishableKey?.range(of:"^sb_publishable_[A-Za-z0-9_-]{10,2000}$",options:.regularExpression) != nil else { throw NativeAuthError.invalidConfiguration }
-        guard !useFrozenFixtureMetadata || (allowInjectedTestProvider && c.scheme == "http" && c.host == "127.0.0.1") else { throw CatpawError.invalid("冻结 fixture metadata 仅允许明确 loopback 测试。") }
+        guard !useFrozenFixtureMetadata || (allowInjectedTestProvider && c.scheme == "http" && c.host == "127.0.0.1") else { throw catError.invalid("冻结 fixture metadata 仅允许明确 loopback 测试。") }
         guard ["injected_synthetic_fixture","provider_unverified"].contains(fixtureExpectedReality) else { throw ConversationSessionError.invalidEvent }
         if let edgeRegion { guard edgeRegion.utf8.count <= 40,edgeRegion.range(of:"^[a-z]{2}(?:-[a-z]+){1,3}-[0-9]+$",options:.regularExpression) != nil else { throw NativeAuthError.invalidConfiguration } }
         // Pin only this application's confirmed Edge API. Auth and other origins
@@ -215,7 +215,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         AccountModelConsentMemory(subjectID: configuration.expectedSubjectID, serverScopeID: configuration.serverScopeID).remember(consent.routeHash)
     }
     public func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {
-        guard scope==configuration.localScope else {throw CatpawError.scopeMismatch}
+        guard scope==configuration.localScope else {throw catError.scopeMismatch}
         guard let subject=configuration.expectedSubjectID else {return .init()}
         try Task.checkCancellation();let auth=try await authorization(scope);try Task.checkCancellation()
         let ready=try await json("/readyz",auth:auth,strict:true);try Task.checkCancellation()
@@ -224,7 +224,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         return try ConversationAcceptedWorkCodec.capability(readiness:Self.jsonData(ready),modelRoute:Self.jsonData(route),subjectID:subject,serverScopeID:configuration.serverScopeID)
     }
     public func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {
-        guard scope==configuration.localScope else {throw CatpawError.scopeMismatch}
+        guard scope==configuration.localScope else {throw catError.scopeMismatch}
         guard let subject=configuration.expectedSubjectID else {return .init()}
         let auth=try await authorization(scope);try Task.checkCancellation()
         let ready=try await json("/readyz",auth:auth,strict:true)
@@ -288,7 +288,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     /// Returns the local message ids treated as local-only.
     @discardableResult static func checkServerHistory(_ remote:[[String:Any]],request:ConversationTurnRequest,strict:Bool,site:String="prepare") throws -> [UUID] {
         let previous=Array(request.history.dropLast().filter{$0.role == .user || ($0.role == .assistant && $0.toolName==nil && $0.complete)})
-        func fail(_ reason:String) -> CatpawError { logHistoryConflict(site:site,reason:reason,remote:remote,request:request,strict:strict);return CatpawError.conflict }
+        func fail(_ reason:String) -> catError { logHistoryConflict(site:site,reason:reason,remote:remote,request:request,strict:strict);return catError.conflict }
         func same(_ wire:[String:Any],_ local:ConversationTranscriptMessage) -> Bool {
             guard UUID(uuidString:wire["id"] as? String ?? "")==local.id,wire["role"] as? String==local.role.rawValue,let content=wire["content"] as? String else {return false}
             return strict ? content.utf16.elementsEqual(local.content.utf16) : content == local.content
@@ -398,7 +398,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                     let resumable = postInitiated && error is URLError && Self.supportsResume(request)
                     let failure: Error = resumable ? ConversationStreamInterrupted(reason: Self.friendlyTransportMessage(error))
                         : error is URLError
-                        ? CatpawError.unavailable(Self.friendlyTransportMessage(error) + (postInitiated ? "本轮发送结果尚未确认；请读取原请求状态，不要重新发送。" : ""))
+                        ? catError.unavailable(Self.friendlyTransportMessage(error) + (postInitiated ? "本轮发送结果尚未确认；请读取原请求状态，不要重新发送。" : ""))
                         : error
                     continuation.finish(throwing: postInitiated ? failure : ConversationDispatchFailure.notSent(reason: failure.localizedDescription))
                 }
@@ -494,7 +494,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     static let approvalToolNames: Set<String> = ["render_ui", "list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write",
         // catpaw.device.v1 (executed on this phone; services/edge/supabase/functions/_shared/core/src/device-call.mjs)
         "calendar_list", "calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "contacts_search", "maps_open", "shop_open", "alarm_set", "shortcut_run",
-        // Acceptance #3: places_search (附近咖啡馆 starter) was advertised in X-Catpaw-Device-Tools but missing here, so its
+        // Acceptance #3: places_search (附近咖啡馆 starter) was advertised in X-cat-Device-Tools but missing here, so its
         // `tool_call` failed ConversationSessionService.apply → invalidEvent (「服务返回了不匹配的对话或工具结果」).
         // Must stay a superset of DeviceToolContract.clientTools (DeviceToolNamesContractTests).
         "places_search",
@@ -626,7 +626,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
                         if status == 401 { await self.credentials.rejected(scope: request.scope) }
                         // A definite refusal (409/429) means the original failed turn was not restarted.
-                        if busyRestart, [404, 409, 429].contains(status) { throw CatpawError.unavailable("这条消息暂时无法重试。") }
+                        if busyRestart, [404, 409, 429].contains(status) { throw catError.unavailable("这条消息暂时无法重试。") }
                         throw ConversationStreamInterrupted(reason: "暂时无法读取原回复。")
                     }
                     var line = Data(), afterCR = false
@@ -701,7 +701,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         guard let message = request.history.last, message.role == .user else { throw ConversationSessionError.invalidEvent }
         var body: [String: Any] = ["turn_id": request.operationID.uuidString.lowercased(), "expected_revision": revision, "expected_grant_epoch": grant,
                                  "message": ["id": message.id.uuidString.lowercased(), "text": message.content], "context": request.context.map { ["id": $0.id, "text": $0.text] }]
-        guard try Self.jsonData(body).count <= 40000 else {throw CatpawError.invalid("本轮上下文超过后台请求上限。")}
+        guard try Self.jsonData(body).count <= 40000 else {throw catError.invalid("本轮上下文超过后台请求上限。")}
         if let image=request.image {
             guard configuration.publishableKey != nil,let imageBytes=request.imageBytes else {throw ConversationSessionError.notConfigured}
             let capability=try await imageCapabilities(scope:request.scope,conversationID:request.conversationID)
@@ -717,7 +717,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                   !message.content.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else {throw ConversationSessionError.invalidEvent}
             body["schema_version"]=2;body["message"]=ChatAttachmentUploader.turnMessage(id:message.id,text:message.content,ids:ids)
         }
-        let bytes=try Self.jsonData(body);guard bytes.count <= (request.image==nil ? 40000 : 7_100_000) else {throw CatpawError.invalid("本轮上下文超过后台请求上限。")}
+        let bytes=try Self.jsonData(body);guard bytes.count <= (request.image==nil ? 40000 : 7_100_000) else {throw catError.invalid("本轮上下文超过后台请求上限。")}
 
         let encoded:Data
         if let target=request.continuation {guard request.image==nil,request.imageBytes==nil else {throw ConversationSessionError.invalidEvent};encoded=try Self.jsonData(["turn":body,"target":target.canonicalValue]);guard encoded.count<=48000 else {throw ConversationSessionError.invalidEvent}}
@@ -887,7 +887,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             let ui = try ConversationUIEvent.decode(type: raw, sequence: sequence, payload: try Self.jsonData(data))
             payload = ui.type == .block ? .uiBlock(ui) : ui.type == .update ? .uiBlockUpdate(ui) : .uiBlockResolve(ui)
         case "model_route":
-            // Reported once per turn (opt-in X-Catpaw-Route-Events: 1); no transcript effect.
+            // Reported once per turn (opt-in X-cat-Route-Events: 1); no transcript effect.
             let body = try Self.jsonData(data)
             if let event = try? JSONDecoder().decode(ModelRouteEvent.self, from: body) { ModelRouteNotifications.report(event) }
             payload = .sideChannel(type: "model_route", data: body)
@@ -996,7 +996,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         return .init(id:id,version:version,contentHash:hash,body:body,title:title,summary:summary,content:content)
     }
     private func validateInboxPartition(_ reference:ConversationInboxReference) throws {
-        guard reference.scope==configuration.localScope,reference.serverScopeID==configuration.serverScopeID,reference.subjectID==configuration.expectedSubjectID else {throw CatpawError.scopeMismatch}
+        guard reference.scope==configuration.localScope,reference.serverScopeID==configuration.serverScopeID,reference.subjectID==configuration.expectedSubjectID else {throw catError.scopeMismatch}
     }
     public func readInbox(reference:ConversationInboxReference,cursor:String?,limit:Int) async throws -> ConversationInboxPage {
         try validateInboxPartition(reference)
@@ -1142,7 +1142,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     private var scopePath: String { "/catpaw/chat/v1/scopes/" + configuration.serverScopeID.uuidString.lowercased() }
     private func path(_ r: ConversationTurnRequest) -> String { scopePath + "/conversations/" + r.conversationID.uuidString.lowercased() }
     private func authorization(_ scope: DataScope) async throws -> String {
-        guard scope == configuration.localScope else { throw CatpawError.scopeMismatch }
+        guard scope == configuration.localScope else { throw catError.scopeMismatch }
         let value = try await credentials.authorization(scope: scope)
         guard value.hasPrefix("Bearer "), value.count > 7, value.utf8.count < 8192, !value.utf8.contains(10), !value.utf8.contains(13) else { throw ConversationSessionError.notConfigured }
         return value
@@ -1223,7 +1223,7 @@ extension NativeChatHTTPBackend: ConversationTaskPlanBackend {
         if http.statusCode == 401 { await credentials.rejected(scope: reference.scope) }
         guard (200..<300).contains(http.statusCode) else {
             if body != nil, let error = try? JSONDecoder().decode(NativeTaskPlanErrorEnvelope.self, from: bytes), error.schemaVersion == 1, !error.error.reconciliationRequired {
-                if http.statusCode == 409 { sendDiagnostic("catpaw.send conflict site=plan409 path=\(wire.url?.path ?? "?")");throw CatpawError.conflict }
+                if http.statusCode == 409 { sendDiagnostic("catpaw.send conflict site=plan409 path=\(wire.url?.path ?? "?")");throw catError.conflict }
                 if [400,401,403,404,405,413,422,429].contains(http.statusCode) {
                     throw ConversationDispatchFailure.notSent(reason: "计划修改未被受理（HTTP \(http.statusCode)）。草稿已保留。")
                 }
@@ -1243,7 +1243,7 @@ extension NativeChatHTTPBackend:ConversationTaskControlBackend {
     }
     private func taskControlPath(_ reference:ConversationTaskControlReference) throws -> String {
         try reference.validate()
-        guard reference.scope==configuration.localScope,reference.binding.scope_id==configuration.serverScopeID else {throw CatpawError.scopeMismatch}
+        guard reference.scope==configuration.localScope,reference.binding.scope_id==configuration.serverScopeID else {throw catError.scopeMismatch}
         guard configuration.expectedSubjectID?.uuidString.lowercased()==reference.subjectID else {throw ConversationTaskControlError.notConfigured}
         return "/catpaw/controls/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/runs/"+reference.binding.run_id.uuidString.lowercased()+"/control"
     }
@@ -1281,7 +1281,7 @@ extension NativeChatHTTPBackend:ConversationTaskControlBackend {
 
 extension NativeChatHTTPBackend:ConversationTaskActionBackend {
     private func taskActionPath(_ reference:ConversationTaskActionReference) throws -> String {
-        guard reference.scope==configuration.localScope,reference.binding.scope_id==configuration.serverScopeID else {throw CatpawError.scopeMismatch}
+        guard reference.scope==configuration.localScope,reference.binding.scope_id==configuration.serverScopeID else {throw catError.scopeMismatch}
         return "/catpaw/actions/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/runs/"+reference.binding.run_id.uuidString.lowercased()+"/actions"
     }
     public func decisionAvailability(_ reference:ConversationTaskActionReference) async throws -> Bool {
@@ -1361,7 +1361,7 @@ extension NativeChatHTTPBackend:ConversationTaskActionBackend {
         if http.statusCode==401 {await credentials.rejected(scope:scope)}
         let type=(http.value(forHTTPHeaderField:"Content-Type") ?? "").split(separator:";").first?.trimmingCharacters(in:.whitespaces).lowercased()
         guard (200..<300).contains(http.statusCode) else {
-            if http.statusCode==409,type=="application/json",(try? ConversationStrictJSON.object(data,maxBytes:limit)) != nil,let error=try? JSONDecoder().decode(NativeTaskReviewErrorEnvelope.self,from:data),error.schemaVersion==1,!error.error.reconciliationRequired,!error.error.retryable {throw CatpawError.conflict}
+            if http.statusCode==409,type=="application/json",(try? ConversationStrictJSON.object(data,maxBytes:limit)) != nil,let error=try? JSONDecoder().decode(NativeTaskReviewErrorEnvelope.self,from:data),error.schemaVersion==1,!error.error.reconciliationRequired,!error.error.retryable {throw catError.conflict}
             throw NativeChatHTTPFailure.status(http.statusCode)
         }
         guard type=="application/json" else {throw ConversationSessionError.invalidEvent}
@@ -1370,7 +1370,7 @@ extension NativeChatHTTPBackend:ConversationTaskActionBackend {
 }
 extension NativeChatHTTPBackend:ConversationArtifactEditBackend {
     private func artifactEditPath(_ reference:ConversationArtifactEditReference) throws -> String {
-        guard reference.scope==configuration.localScope,reference.binding.scope_id==configuration.serverScopeID else {throw CatpawError.scopeMismatch}
+        guard reference.scope==configuration.localScope,reference.binding.scope_id==configuration.serverScopeID else {throw catError.scopeMismatch}
         guard ConversationArtifactEditCodec.isHash(reference.artifact.id),reference.artifact.version>0,textHash(reference.artifact.body)==reference.artifact.contentHash else {throw ConversationArtifactEditError.invalidResponse}
         return "/catpaw/artifacts/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/runs/"+reference.binding.run_id.uuidString.lowercased()+"/artifacts/"+reference.artifact.id
     }
@@ -1591,7 +1591,7 @@ public actor ChatAttachmentUploader {
 #if DEBUG
 // MARK: - Demo / fixture backend (DEBUG only; see docs/demo-fixture-backend.md)
 /// Enable with launch argument `-CatpawDemoBackend` or `UserDefaults` key `CatpawDemoBackend` = true. Never compiled into Release.
-public enum CatpawDemoBackendSwitch {
+public enum catDemoBackendSwitch {
     public static let argument = "-CatpawDemoBackend"
     public static let defaultsKey = "CatpawDemoBackend"
     public static func isEnabled(arguments: [String] = ProcessInfo.processInfo.arguments, defaults: UserDefaults = .standard) -> Bool {
@@ -1600,36 +1600,36 @@ public enum CatpawDemoBackendSwitch {
     }
     /// Returns the demo backend when enabled, else `fallback` unchanged.
     public static func select(_ fallback: any ConversationBackend, arguments: [String] = ProcessInfo.processInfo.arguments, defaults: UserDefaults = .standard) -> any ConversationBackend {
-        isEnabled(arguments: arguments, defaults: defaults) ? CatpawDemoConversationBackend.shared : fallback
+        isEnabled(arguments: arguments, defaults: defaults) ? catDemoConversationBackend.shared : fallback
     }
 }
 
 /// One catpaw.ui.v1 wire event (`ui.block`, `ui.block.update`, `ui.block.resolve`, `turn_suspended`, `turn_completed`).
 /// `json` is the event's `data` object exactly as the Edge server sends it (docs/fixtures/catpaw-ui-demo.jsonl).
-public struct CatpawDemoUIEvent: Sendable, Equatable {
+public struct catDemoUIEvent: Sendable, Equatable {
     public let sequence: Int
     public let type: String
     public let json: String
 }
-public enum CatpawDemoUIDecision: String, Sendable { case submit, dismiss, reportError = "report_error" }
-public enum CatpawDemoUIFailure: Error, Sendable, Equatable { case notFound, consumed, conflict, invalidResponse }
+public enum catDemoUIDecision: String, Sendable { case submit, dismiss, reportError = "report_error" }
+public enum catDemoUIFailure: Error, Sendable, Equatable { case notFound, consumed, conflict, invalidResponse }
 
 /// Scripted catpaw.ui.v1 session mirroring the recorded server run:
 /// round 1 = card, list, progress (display) + choices (waits); round 2 = progress update + form, confirm, sheet (wait);
 /// after the last answer the turn completes. Decisions are idempotent per `operationID` (same body replays, other body = conflict).
-public actor CatpawDemoUIScript {
+public actor catDemoUIScript {
     public static let interactive = ["demo-choices", "demo-form", "demo-confirm", "demo-sheet"]
     private static let expiresAt = "2026-10-16T00:20:00.000Z"
     private var sequence = 0
     private var round = 0
-    private var resolved: [String: (operation: UUID, body: String, events: [CatpawDemoUIEvent])] = [:]
+    private var resolved: [String: (operation: UUID, body: String, events: [catDemoUIEvent])] = [:]
     private var completed = false
     public init() {}
-    private func next(_ type: String, _ json: String) -> CatpawDemoUIEvent { sequence += 1; return CatpawDemoUIEvent(sequence: sequence, type: type, json: json) }
+    private func next(_ type: String, _ json: String) -> catDemoUIEvent { sequence += 1; return catDemoUIEvent(sequence: sequence, type: type, json: json) }
     public static func interruptID(_ blockID: String) -> String { stableID("catpaw-demo-interrupt-\(blockID)").uuidString.lowercased() }
     private static func interrupt(_ id: String) -> String { "\"interruptId\":\"\(interruptID(id))\",\"argsHash\":\"\(String(repeating: "0", count: 64))\",\"expiresAt\":\"\(expiresAt)\"" }
     /// Round 1. Calling again returns nothing (the script runs once per instance).
-    public func start() -> [CatpawDemoUIEvent] {
+    public func start() -> [catDemoUIEvent] {
         guard round == 0 else { return [] }
         round = 1
         return [
@@ -1640,7 +1640,7 @@ public actor CatpawDemoUIScript {
             next("turn_suspended", "{\"interrupt_ids\":[\"\(Self.interruptID("demo-choices"))\"],\"expires_at\":\"\(Self.expiresAt)\"}"),
         ]
     }
-    private func round2() -> [CatpawDemoUIEvent] {
+    private func round2() -> [catDemoUIEvent] {
         round = 2
         return [
             next("ui.block.update", #"{"id":"demo-progress","steps":[{"id":"read","label":"读取日程","state":"done"},{"id":"plan","label":"排优先级","state":"running"}]}"#),
@@ -1652,24 +1652,24 @@ public actor CatpawDemoUIScript {
     }
     /// `POST …/interrupts/{interruptId}/decision` with `{operation_id, decision, args_hash, response?}`.
     /// `responseJSON` is the `ui.response` (submit) or `ui.error` (report_error) object; nil for dismiss.
-    public func respond(blockID: String, decision: CatpawDemoUIDecision, responseJSON: String?, operationID: UUID) throws -> [CatpawDemoUIEvent] {
+    public func respond(blockID: String, decision: catDemoUIDecision, responseJSON: String?, operationID: UUID) throws -> [catDemoUIEvent] {
         let open = round == 1 ? ["demo-choices"] : round == 2 ? ["demo-form", "demo-confirm", "demo-sheet"] : []
         let body = decision.rawValue + "|" + (responseJSON ?? "")
         if let prior = resolved[blockID] {
-            guard prior.operation == operationID else { throw CatpawDemoUIFailure.consumed }
-            guard prior.body == body else { throw CatpawDemoUIFailure.conflict }
+            guard prior.operation == operationID else { throw catDemoUIFailure.consumed }
+            guard prior.body == body else { throw catDemoUIFailure.conflict }
             return prior.events
         }
-        guard open.contains(blockID) else { throw CatpawDemoUIFailure.notFound }
+        guard open.contains(blockID) else { throw catDemoUIFailure.notFound }
         switch decision {
         case .submit, .reportError:
             guard let responseJSON, let data = responseJSON.data(using: .utf8),
                   let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   object["blockId"] as? String == blockID,
-                  object["type"] as? String == (decision == .submit ? "ui.response" : "ui.error") else { throw CatpawDemoUIFailure.invalidResponse }
-            if blockID == "demo-confirm", decision == .submit { guard object["actionId"] is String else { throw CatpawDemoUIFailure.invalidResponse } }
+                  object["type"] as? String == (decision == .submit ? "ui.response" : "ui.error") else { throw catDemoUIFailure.invalidResponse }
+            if blockID == "demo-confirm", decision == .submit { guard object["actionId"] is String else { throw catDemoUIFailure.invalidResponse } }
         case .dismiss:
-            guard responseJSON == nil else { throw CatpawDemoUIFailure.invalidResponse }
+            guard responseJSON == nil else { throw catDemoUIFailure.invalidResponse }
         }
         let status = decision == .submit ? "submitted" : decision == .dismiss ? "dismissed" : "error"
         var events = [
@@ -1692,10 +1692,10 @@ public actor CatpawDemoUIScript {
 ///   (ui.block card/list/progress/choices) → turn_suspended
 /// - submitUIDecision (choices): approval_resolved(kind ui) → ui.block.resolve → round 2 (ui.block.update progress,
 ///   ui.block form/confirm/sheet) → turn_suspended; after the last of form/confirm/sheet: text_delta → turn_completed.
-public actor CatpawDemoConversationBackend: ConversationBackend {
-    public static let shared = CatpawDemoConversationBackend()
+public actor catDemoConversationBackend: ConversationBackend {
+    public static let shared = catDemoConversationBackend()
     public static let demoTaskCallID = "call-demo-create-task"
-    private struct Turn { var sequence: Int; var messageID: UUID; var text: String; var interruptID: String; var decided: (UUID, ConversationApprovalDecision)?; var resolvedEvents: [ConversationTurnEvent]; var ui: CatpawDemoUIScript; var uiReplies: [String: (UUID, [ConversationTurnEvent])] }
+    private struct Turn { var sequence: Int; var messageID: UUID; var text: String; var interruptID: String; var decided: (UUID, ConversationApprovalDecision)?; var resolvedEvents: [ConversationTurnEvent]; var ui: catDemoUIScript; var uiReplies: [String: (UUID, [ConversationTurnEvent])] }
     private var turns: [UUID: Turn] = [:]
     public init() {}
     public func connection(scope: DataScope) async -> ConversationConnection {
@@ -1711,7 +1711,7 @@ public actor CatpawDemoConversationBackend: ConversationBackend {
         AsyncThrowingStream { continuation in for event in events { continuation.yield(event) }; continuation.finish() }
     }
     /// Script wire events → domain events with this turn's continuous sequence (same `ConversationUIEvent.decode` as HTTP).
-    private func domain(_ request: ConversationTurnRequest, _ script: [CatpawDemoUIEvent]) throws -> [ConversationTurnEvent] {
+    private func domain(_ request: ConversationTurnRequest, _ script: [catDemoUIEvent]) throws -> [ConversationTurnEvent] {
         var out: [ConversationTurnEvent] = []
         for wire in script {
             let data = Data(wire.json.utf8)
@@ -1737,7 +1737,7 @@ public actor CatpawDemoConversationBackend: ConversationBackend {
     public func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         guard turns[request.operationID] == nil else { throw ConversationSessionError.unresolvedOperation }
         let interruptID = UUID().uuidString.lowercased(), messageID = UUID(), opening = "好的，我先帮你建一个任务。"
-        turns[request.operationID] = Turn(sequence: 0, messageID: messageID, text: opening, interruptID: interruptID, decided: nil, resolvedEvents: [], ui: CatpawDemoUIScript(), uiReplies: [:])
+        turns[request.operationID] = Turn(sequence: 0, messageID: messageID, text: opening, interruptID: interruptID, decided: nil, resolvedEvents: [], ui: catDemoUIScript(), uiReplies: [:])
         let arguments = #"{"due":"2026-10-16","title":"跑步 5 公里"}"#
         let expires = ISO8601DateFormatter().string(from: Date().addingTimeInterval(600))
         let approval = ConversationApprovalRequest(interruptID: interruptID, callID: Self.demoTaskCallID, tool: "create_task", summary: "创建任务「跑步 5 公里」（2026-10-16）", arguments: arguments, argsHash: String(repeating: "a", count: 64), expiresAt: expires, risk: "local_write", rememberAllowed: true)
@@ -1771,15 +1771,15 @@ public actor CatpawDemoConversationBackend: ConversationBackend {
     }
     public func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         let key = interruptID.lowercased()
-        guard let turn = turns[request.operationID], let blockID = CatpawDemoUIScript.interactive.first(where: { CatpawDemoUIScript.interruptID($0) == key }) else { throw ConversationApprovalFailure.notFound }
+        guard let turn = turns[request.operationID], let blockID = catDemoUIScript.interactive.first(where: { catDemoUIScript.interruptID($0) == key }) else { throw ConversationApprovalFailure.notFound }
         guard argsHash == String(repeating: "0", count: 64) else { throw ConversationApprovalFailure.stale }
-        let script: [CatpawDemoUIEvent]
+        let script: [catDemoUIEvent]
         let responseText = response.map { String(decoding: $0, as: UTF8.self) }
-        do { script = try await turn.ui.respond(blockID: blockID, decision: CatpawDemoUIDecision(rawValue: decision.rawValue) ?? .dismiss, responseJSON: responseText, operationID: operationID) }
-        catch CatpawDemoUIFailure.notFound { throw ConversationApprovalFailure.notFound }
-        catch CatpawDemoUIFailure.consumed { throw ConversationApprovalFailure.consumed }
-        catch CatpawDemoUIFailure.conflict { throw ConversationApprovalFailure.rejected(status: 409, code: "approval_operation_conflict") }
-        catch CatpawDemoUIFailure.invalidResponse { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") }
+        do { script = try await turn.ui.respond(blockID: blockID, decision: catDemoUIDecision(rawValue: decision.rawValue) ?? .dismiss, responseJSON: responseText, operationID: operationID) }
+        catch catDemoUIFailure.notFound { throw ConversationApprovalFailure.notFound }
+        catch catDemoUIFailure.consumed { throw ConversationApprovalFailure.consumed }
+        catch catDemoUIFailure.conflict { throw ConversationApprovalFailure.rejected(status: 409, code: "approval_operation_conflict") }
+        catch catDemoUIFailure.invalidResponse { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") }
         // Same operation and body: replay what was already streamed after `afterSequence`.
         if let prior = turns[request.operationID]!.uiReplies[key] { return Self.stream(prior.1.filter { $0.sequence > afterSequence }) }
         let events = try domain(request, script)

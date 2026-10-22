@@ -1,5 +1,5 @@
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 /// Add this file and P0ConversationScenarios.swift to the owner's native test target.
 /// Uses isolated temporary stores and a scripted backend; zero real identities/models.

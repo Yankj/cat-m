@@ -12,28 +12,28 @@ import SwiftUI
             ScrollView {
                 VStack(alignment:.leading,spacing:24) {
                     if let value=model.state.latest {
-                        CatpawVersionedTitle(title:model.reference.title,version:ui("计划版本")+" · v\(value.plan_reference.revision)",layout:.reading,titleAccessibilityIdentifier:"chat.control.title",versionAccessibilityIdentifier:"chat.control.planVersion")
-                        Text(status(value.task_status)).font(CatpawTypography.Role.heading.font).accessibilityIdentifier("chat.control.status")
-                        if !model.freshlyRead {Text(ui("显示已保存状态；当前性尚未核对。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.control.saved")}
-                        if let reason=value.blocked_reason {Text(reasonText(reason)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.control.reason")}
-                        if !value.source_authorization_current {Text(ui("原来源许可已变化，不能恢复这份工作。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.control.sourceUnavailable")}
-                        if !value.unresolved_operations.isEmpty {Text(ui("已有发出但未确认的操作；恢复前必须核对原结果，不重复执行。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.control.unknownOperations")}
+                        catVersionedTitle(title:model.reference.title,version:ui("计划版本")+" · v\(value.plan_reference.revision)",layout:.reading,titleAccessibilityIdentifier:"chat.control.title",versionAccessibilityIdentifier:"chat.control.planVersion")
+                        Text(status(value.task_status)).font(catTypography.Role.heading.font).accessibilityIdentifier("chat.control.status")
+                        if !model.freshlyRead {Text(ui("显示已保存状态；当前性尚未核对。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.control.saved")}
+                        if let reason=value.blocked_reason {Text(reasonText(reason)).font(catTypography.Role.secondary.font).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.control.reason")}
+                        if !value.source_authorization_current {Text(ui("原来源许可已变化，不能恢复这份工作。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.control.sourceUnavailable")}
+                        if !value.unresolved_operations.isEmpty {Text(ui("已有发出但未确认的操作；恢复前必须核对原结果，不重复执行。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.control.unknownOperations")}
                         controls(value)
                         unresolved(value)
                         metadata(value)
                     } else {
                         Text(model.reference.title).font(.title2.weight(.semibold)).accessibilityAddTraits(.isHeader)
-                        if !model.loading {Text(ui("当前没有已核对的工作状态。")).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.control.empty")}
+                        if !model.loading {Text(ui("当前没有已核对的工作状态。")).foregroundStyle(catColors.secondary).accessibilityIdentifier("chat.control.empty")}
                     }
                     if model.loading {ProgressView(ui("正在读取工作状态"))}
                     if model.submitting {ProgressView(ui("正在申请控制，尚未确认结果")).accessibilityIdentifier("chat.control.submitting")}
-                    if let error=model.error {Text(ui(error)).foregroundStyle(CatpawColors.attention).textSelection(.enabled).accessibilityIdentifier("chat.control.error")}
-                    if let issue=model.deliveryIssue {Text(ui(issue)).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.control.delivery")}
-                    if model.freshlyRead && !model.state.controlAvailable {Text(ui("当前服务尚不支持控制工作，可继续查看状态。")).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.control.unavailable")}
+                    if let error=model.error {Text(ui(error)).foregroundStyle(catColors.attention).textSelection(.enabled).accessibilityIdentifier("chat.control.error")}
+                    if let issue=model.deliveryIssue {Text(ui(issue)).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.control.delivery")}
+                    if model.freshlyRead && !model.state.controlAvailable {Text(ui("当前服务尚不支持控制工作，可继续查看状态。")).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.control.unavailable")}
                     submissions
                     Button(model.state.hasUnresolvedSubmission ? ui("核对原控制") : ui("读取最新状态")){Task{await model.load(admissionAllowed:admissionAllowed())}}.touchTarget().disabled(model.loading || model.submitting || !admissionAllowed()).accessibilityIdentifier("chat.control.refresh")
                 }.padding(20).frame(maxWidth:.infinity,alignment:.leading)
-            }.background(CatpawColors.background)
+            }.background(catColors.background)
                 .navigationTitle(ui("工作控制")).navigationBarTitleDisplayMode(.inline)
                 .toolbar{ToolbarItem(placement:.confirmationAction){Button(ui("完成")){model.close();dismiss()}.accessibilityIdentifier("chat.control.close")}}
         }.presentationDetents([.large]).presentationDragIndicator(.visible)
@@ -42,7 +42,7 @@ import SwiftUI
     }
     private func controls(_ value:ConversationTaskControlSnapshot)->some View {
         VStack(alignment:.leading,spacing:16) {
-            Text(ui("暂停保留原许可；撤回授权会停止后续步骤。已发出的操作仍须核对，不能借此回滚。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+            Text(ui("暂停保留原许可；撤回授权会停止后续步骤。已发出的操作仍须核对，不能借此回滚。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
             if !value.terminal {
                 controlButton(.pause,ui("暂停工作"),identifier:"chat.control.pause")
                 controlButton(.resume,ui("恢复已暂停工作"),identifier:"chat.control.resume")
@@ -59,7 +59,7 @@ import SwiftUI
             DisclosureGroup {
                 VStack(alignment:.leading,spacing:12) {
                     ForEach(value.unresolved_operations){operation in
-                        VStack(alignment:.leading,spacing:4){Text(operationKind(operation.kind)).font(CatpawTypography.Role.heading.font);Text(ui("原操作编号")+" · "+operation.operation_id).font(CatpawTypography.Role.caption.font).textSelection(.enabled);Text(ui("状态")+" · "+operationState(operation.state)).font(CatpawTypography.Role.caption.font)}.accessibilityElement(children:.combine).accessibilityIdentifier("chat.control.unknown."+operation.id)
+                        VStack(alignment:.leading,spacing:4){Text(operationKind(operation.kind)).font(catTypography.Role.heading.font);Text(ui("原操作编号")+" · "+operation.operation_id).font(catTypography.Role.caption.font).textSelection(.enabled);Text(ui("状态")+" · "+operationState(operation.state)).font(catTypography.Role.caption.font)}.accessibilityElement(children:.combine).accessibilityIdentifier("chat.control.unknown."+operation.id)
                     }
                 }
             } label: {
@@ -71,9 +71,9 @@ import SwiftUI
         VStack(alignment:.leading,spacing:16) {
             ForEach(model.state.orderedSubmissions){submission in
                 VStack(alignment:.leading,spacing:8) {
-                    Text(submissionStatus(submission)).font(CatpawTypography.Role.secondary.font).foregroundStyle(submission.state == .applied ? CatpawColors.secondary : CatpawColors.attention).accessibilityIdentifier("chat.control.submission."+submission.id)
-                    Text(ui("本次原控制编号")+" · "+submission.id).font(CatpawTypography.Role.caption.font).textSelection(.enabled).accessibilityIdentifier("chat.control.operation."+submission.id)
-                    if let receipt=submission.receipt {Text(ui("控制版本")+" · v\(receipt.accepted_execution_revision)").font(CatpawTypography.Role.caption.font);Text(ui("回执核对时间")+" · "+receipt.applied_at).font(CatpawTypography.Role.caption.font)}
+                    Text(submissionStatus(submission)).font(catTypography.Role.secondary.font).foregroundStyle(submission.state == .applied ? catColors.secondary : catColors.attention).accessibilityIdentifier("chat.control.submission."+submission.id)
+                    Text(ui("本次原控制编号")+" · "+submission.id).font(catTypography.Role.caption.font).textSelection(.enabled).accessibilityIdentifier("chat.control.operation."+submission.id)
+                    if let receipt=submission.receipt {Text(ui("控制版本")+" · v\(receipt.accepted_execution_revision)").font(catTypography.Role.caption.font);Text(ui("回执核对时间")+" · "+receipt.applied_at).font(catTypography.Role.caption.font)}
                 }
             }
         }
@@ -93,7 +93,7 @@ import SwiftUI
                 Text(ui("许可版本")+" · v\(value.grant_epoch)")
                 Text(ui("当前许可版本")+" · v\(value.authority_reference.grant_epoch)")
                 Text("SHA-256 "+value.snapshot_hash)
-            }.font(CatpawTypography.Role.caption.font).textSelection(.enabled)
+            }.font(catTypography.Role.caption.font).textSelection(.enabled)
         }.accessibilityIdentifier("chat.control.metadata")
     }
     private func status(_ raw:String)->String {switch raw {case "paused":return ui("工作已暂停");case "cancelled":return ui("工作已取消");case "scheduled","queued":return ui("工作已排队");case "running":return ui("工作进行中");case "waiting_input":return ui("工作等待输入");case "outcome_unknown":return ui("结果尚未确认");case "succeeded":return ui("工作已完成");case "failed":return ui("工作失败");default:return ui("工作状态尚未确认")}}

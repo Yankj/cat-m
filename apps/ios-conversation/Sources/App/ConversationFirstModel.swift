@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 import os
 import Combine
-import CatpawImageComposer
+import catImageComposer
 
 struct OutgoingMessageIntent: Identifiable, Equatable {
     enum State: String { case savingLocal, queued, awaitingPermission, sending, unknown, failed }
@@ -562,7 +562,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         do {try ensureSelection()} catch {
             let original=error
             do {try await service.rollbackNavigationSelection(scope:scope,receipt:selectionReceipt)}
-            catch {throw CatpawError.unavailable("原对话未切换，但本机恢复点未能还原。当前草稿仍保留。")}
+            catch {throw catError.unavailable("原对话未切换，但本机恢复点未能还原。当前草稿仍保留。")}
             throw original
         }
         // Commit all presentation state together after target reads and the last
@@ -600,7 +600,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             guard current() else {return false}
             try await select(item.binding.conversation_id,admission:current)
             return loaded && foreground && networkAdmissionAllowed && sceneGeneration==generation && conversationID==item.binding.conversation_id
-        } catch CatpawError.missing {
+        } catch catError.missing {
             if current(){error="原对话尚未保存在本机，可继续查阅这份成果。"}
             return false
         } catch {if current(){self.error=error.localizedDescription};return false}
@@ -812,7 +812,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                         if let reference=message.image {let bytes=try await imageStore.read(reference:reference,conversationID:id,operationID:message.id);image = .init(reference:reference,bytes:bytes)} else {image=nil}
                         guard !Task.isCancelled,await self?.canDispatchFollowup == true else {return .heldBeforeAdmission}
                         sendLog.info("catpaw.send dispatch");let t0=Date();defer { sendLog.info("catpaw.send dispatch end \(Date().timeIntervalSince(t0), privacy: .public)s") }
-                        await CatpawTaskTitles.note(message.text,operationID:message.id)   // v1.1 Live Activity title
+                        await catTaskTitles.note(message.text,operationID:message.id)   // v1.1 Live Activity title
                         _=try await service.send(scope:scope,conversationID:id,text:message.text,operationID:message.id,preserveDraft:true,image:image,continuation:message.continuation,acceptedWork:message.acceptedWork,revisionWork:message.revisionWork);return .sent
                     }
                     catch {
@@ -875,7 +875,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     func pauseQueueForEditing(_ message:ConversationFollowup) async throws {
         guard loaded,foreground,!editingFollowup,let queue,let id=conversationID else {throw ConversationSessionError.busy}
         try await queue.pause();await refresh()
-        guard conversationID == id,followups.pending.contains(message) else {throw CatpawError.conflict}
+        guard conversationID == id,followups.pending.contains(message) else {throw catError.conflict}
     }
     func editFollowup(_ message:ConversationFollowup,text:String) async throws {
         guard loaded,foreground,!editingFollowup,let queue,let id=conversationID else {throw ConversationSessionError.busy}

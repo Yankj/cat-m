@@ -6,11 +6,11 @@ import SwiftUI
     @Environment(\.locale) private var uiLocale
     var body: some View {
         Label(AppLanguage(locale: uiLocale).ui(notice.text), systemImage: notice.isError ? "exclamationmark.circle" : "info.circle")
-            .font(CatpawTypography.Role.caption.font)
-            .foregroundStyle(CatpawColors.ink)
+            .font(catTypography.Role.caption.font)
+            .foregroundStyle(catColors.ink)
             .padding(.horizontal, 12).padding(.vertical, 6)
-            .background(Capsule().fill(CatpawColors.calmSurface.opacity(0.9)))
-            .overlay(Capsule().stroke(CatpawColors.secondary.opacity(0.25)))
+            .background(Capsule().fill(catColors.calmSurface.opacity(0.9)))
+            .overlay(Capsule().stroke(catColors.secondary.opacity(0.25)))
             .accessibilityIdentifier("oauth.notice")
     }
 }
@@ -25,15 +25,15 @@ import SwiftUI
             ForEach(NativeOAuthProvider.allCases, id: \.self) { p in
                 Button { Task { await oauth.continueWith(p, intent: intent) } } label: {
                     HStack(spacing: 8) {
-                        if oauth.busy == p { ProgressView().tint(CatpawColors.ink) }
+                        if oauth.busy == p { ProgressView().tint(catColors.ink) }
                         else { Image(systemName: p == .github ? "chevron.left.forwardslash.chevron.right" : "g.circle") }
                         Text(p == .github ? ui("使用 GitHub 继续") : ui("使用 Google 继续"))
                     }
-                    .font(CatpawTypography.Role.body.font)
-                    .foregroundStyle(CatpawColors.ink)
+                    .font(catTypography.Role.body.font)
+                    .foregroundStyle(catColors.ink)
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(Capsule().fill(CatpawColors.calmSurface))
-                    .overlay(Capsule().stroke(CatpawColors.secondary.opacity(0.3)))
+                    .background(Capsule().fill(catColors.calmSurface))
+                    .overlay(Capsule().stroke(catColors.secondary.opacity(0.3)))
                 }
                 .buttonStyle(.plain)
                 .disabled(oauth.busy != nil)
@@ -69,8 +69,8 @@ private struct NativeOAuthSwitchModifier: ViewModifier {
     var body: some View {
         if let oauth, oauth.isAvailable {
             Button(AppLanguage(locale: uiLocale).ui("已有账号？使用 GitHub / Google 登录")) { presented = true }
-                .font(CatpawTypography.Role.caption.font)
-                .foregroundStyle(CatpawColors.ink)
+                .font(catTypography.Role.caption.font)
+                .foregroundStyle(catColors.ink)
                 .accessibilityIdentifier("oauth.landingEntry")
                 .sheet(isPresented: $presented) { NativeOAuthSignInSheet(oauth: oauth).presentationDetents([.height(300)]) }
         }
@@ -82,10 +82,10 @@ private struct NativeOAuthSwitchModifier: ViewModifier {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         VStack(spacing: 16) {
-            Text(AppLanguage(locale: uiLocale).ui("登录 Catpaw")).font(CatpawTypography.Role.title.font).foregroundStyle(CatpawColors.ink)
+            Text(AppLanguage(locale: uiLocale).ui("登录 cat")).font(catTypography.Role.title.font).foregroundStyle(catColors.ink)
             NativeOAuthProviderButtons(oauth: oauth)
             if let n = oauth.notice { NativeOAuthNoticeCapsule(notice: n) }
-            Text(AppLanguage(locale: uiLocale).ui("登录凭据只保存在本机钥匙串，可随时退出。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            Text(AppLanguage(locale: uiLocale).ui("登录凭据只保存在本机钥匙串，可随时退出。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
         }
         .padding(24)
         .onChange(of: oauth.identities) { _, ids in if !ids.isEmpty { dismiss() } }
@@ -119,12 +119,12 @@ private struct NativeOAuthSwitchModifier: ViewModifier {
         private func ui(_ key: String) -> String { AppLanguage(locale: uiLocale).ui(key) }
         var body: some View {
             VStack(alignment: .leading, spacing: 10) {
-                Text(ui("登录方式")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                Text(ui("登录方式")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                 let providers = oauth.identities.filter { $0.provider != "anonymous" }
-                if providers.isEmpty { Text(ui("体验账号 · 绑定后可在其他设备登录，对话不丢失")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink) }
+                if providers.isEmpty { Text(ui("体验账号 · 绑定后可在其他设备登录，对话不丢失")).font(catTypography.Role.caption.font).foregroundStyle(catColors.ink) }
                 ForEach(providers, id: \.self) { i in
                     Label((i.provider == "github" ? "GitHub" : i.provider == "google" ? "Google" : i.provider) + (i.label.map { " · " + $0 } ?? ""), systemImage: "checkmark.seal")
-                        .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink)
+                        .font(catTypography.Role.caption.font).foregroundStyle(catColors.ink)
                 }
                 NativeOAuthProviderButtons(oauth: oauth, intent: .attach)
                 if let n = oauth.notice { NativeOAuthNoticeCapsule(notice: n) }

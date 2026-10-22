@@ -11,7 +11,7 @@ import Darwin
 }
 #else
 import XCTest
-@testable import CatpawM
+@testable import cat
 final class ConversationArtifactSourcesTests:XCTestCase {
     func testReceiptMetadataAndLiteralReport() throws {try ArtifactSourceScenarios.validReceipt();try ArtifactSourceScenarios.optionalExcerpt()}
     func testLegacyUnsupportedAndMalformedMetadataFallBack() throws {try ArtifactSourceScenarios.legacy();try ArtifactSourceScenarios.unsupported();try ArtifactSourceScenarios.malformed();try ArtifactSourceScenarios.extraReceiptKeys()}

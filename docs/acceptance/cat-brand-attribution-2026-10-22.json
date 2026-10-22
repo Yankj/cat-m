@@ -1,0 +1,316 @@
+{
+  "baseline_commit": "cb3bc90a6f35d93e9ad57a6c01c7dc83291d06ee",
+  "environment": {
+    "device": "isolated fresh iPhone 17 simulator",
+    "runtime": "iOS 27.0",
+    "configuration": "Debug",
+    "signing": "CODE_SIGNING_ALLOWED=NO",
+    "permission_grants_added": false,
+    "tests_modified_to_relax_assertions": false
+  },
+  "summary": {
+    "original_full_suite": {
+      "passed": 531,
+      "skipped": 3,
+      "failed": 25
+    },
+    "first_cat_full_suite": {
+      "passed": 529,
+      "skipped": 4,
+      "failed": 26
+    },
+    "final_cat_full_suite": {
+      "passed": 528,
+      "failed": 27,
+      "skipped": 4
+    },
+    "confirmed_brand_introduced_test_failures": 0,
+    "unattributed_failed_tests": 1,
+    "full_suite_wait_exclusion": 1,
+    "full_suite_is_not_green": true
+  },
+  "rows": [
+    {
+      "test": "ConversationConsentHandoffApplicationTests/testImagePresentationClearCannotBecomeImplicitDenialOrSend",
+      "first_cat": "passed",
+      "original_baseline": "passed",
+      "final_cat": "failed",
+      "original_repeated": {
+        "passed": 5
+      },
+      "cat_repeated": {
+        "passed": 5
+      },
+      "classification": "unattributed-suite-context"
+    },
+    {
+      "test": "ConversationConsentHandoffApplicationTests/testUnknownImageGrantOutcomeKeepsInputAndNeverAutomaticallyRetries",
+      "first_cat": "passed",
+      "original_baseline": "passed",
+      "final_cat": "failed",
+      "original_repeated": {
+        "failed": 2,
+        "passed": 3
+      },
+      "cat_repeated": {
+        "failed": 1,
+        "passed": 4
+      },
+      "classification": "reproduced-in-original-repeated-tests"
+    },
+    {
+      "test": "ConversationImageRecoveryApplicationTests/testLateImageVaultReadCannotRestoreOldConversationIntoNewDraft",
+      "first_cat": "failed",
+      "original_baseline": "passed",
+      "final_cat": "failed",
+      "original_repeated": {
+        "failed": 5
+      },
+      "cat_repeated": {
+        "failed": 5
+      },
+      "classification": "reproduced-in-original-repeated-tests"
+    },
+    {
+      "test": "ConversationInboxApplicationTests/testEverySelectionReadGateCanCancelWithoutHalfSwitchingBPresentation",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "ConversationInboxApplicationTests/testNewConversationStillCreatesAndSelectsItsOwnQueueAfterAtomicSelectionChange",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceCallSharedEpochWiringTests/testAuthServiceGateRouterLedgerOnSharedEpoch",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testCalendarCreateDedupesByCallID",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testCalendarDedupeHitRechecksRevoke",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testColdRestoreNeverTrustsAMarkerMatchAlone",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testCredentialBoundToToolAndFinalArgs",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testLocalCancelRevokesOnRealStore",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testQueryRuleAndUserDecisionForUnprovableUndo",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testRealEventKitLedgerAdapterKeepsUnknownWhenAbsenceUnproven",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testRealEventKitLedgerAdapterRefusesAmbiguousOrMismatchedMarker",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testReminderCreateDedupesByCallID",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testReminderDedupeHitRechecksRevoke",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testReminderUndoQueryOutsideLockAndLogoutDuringQuery",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testRouterRefusesWithoutLiveGrant",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testRouterRestoreDedupeLedgerRefuseMultiMatchCalendar",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testRouterRestoreDedupeLedgerRefuseMultiMatchReminder",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testSignOutAfterTapOnRealStore",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceToolRouterEventKitTests/testWriteWithoutTapIsRefusedByRealRouter",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceTrialNativeTests/testImageContextChangeRejectsLateSelectionAndDoesNotLeakCaption",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "passed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceTrialNativeTests/testP0ConversationSelectionCannotMoveMarkedDraftToAnotherConversation",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "DeviceTrialNativeTests/testP0ExistingLocalConversationAppearsWhileAuthValidationIsHeld",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "NativeAuthApplicationLifecycleTests/testPR91ProductionHostOpenSchedulesAtRestMigration",
+      "first_cat": "excluded",
+      "original_baseline": "excluded",
+      "final_cat": "excluded",
+      "original_repeated": {
+        "passed": 5
+      },
+      "cat_repeated": {
+        "passed": 5
+      },
+      "classification": "full-suite-wait-unresolved-isolated-pass"
+    },
+    {
+      "test": "NativeAuthNativeTests/testNativeKeychainRoundTripAccessibilityAndExactDeletion",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "ProactiveEngineHostTests/testRealNotificationCenterDeliveredAndAPNsCleanup",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    },
+    {
+      "test": "ProactiveEngineHostTests/testRealNotificationCenterOwnerCleanup",
+      "first_cat": "failed",
+      "original_baseline": "failed",
+      "final_cat": "failed",
+      "original_repeated": {},
+      "cat_repeated": {},
+      "classification": "reproduced-in-original-full-suite"
+    }
+  ],
+  "collector_limit": "Some completed runs stalled after selected-tests summary with IDESchemeActionSDKRecord invalidDigitCount(94403); preserved case events and terminated only task-owned collectors. No success exit claimed.",
+  "data_compatibility": "Exact declared SwiftData schema probe: original module writes synthetic SQLite, cat reads/writes, original reads again: PASS. Not a real installed-data/device upgrade.",
+  "library": "DENIED before upload; no Library attachment IDs; no retry without new human authorization."
+}

@@ -2,7 +2,9 @@
 
 <div align="center">
 
-# CatPaw Mobile（catpaw-m）
+# cat
+
+本地品牌迁移与保留身份见 [兼容说明](docs/development/cat-brand-migration.md)，验证范围见 [本地记录](docs/acceptance/cat-brand-2026-10-22.md)。
 
 **先你一步，把事办妥。** · *A step ahead. Things handled.*
 
@@ -18,7 +20,7 @@
 [![下载](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Releases-2EA44F?logo=github&logoColor=white)](https://github.com/Yankj/catpaw-m/releases/latest)
 ![License](https://img.shields.io/badge/license-TBD-lightgrey)
 
-<img src="docs/assets/slides/slide-01.png" alt="CatPaw Mobile 介绍图" width="720">
+<img src="docs/assets/slides/slide-01.png" alt="cat 介绍图" width="720">
 
 <sub>设计示意（演示幻灯片封面），非 App 实拍。</sub>
 
@@ -52,7 +54,7 @@
 
 ## 背景
 
-传统助理 App 要么是“问一句答一句”的聊天框，要么是需要用户自己拆步骤的工具集合。CatPaw Mobile 想做一个**先你一步**的助理：
+传统助理 App 要么是“问一句答一句”的聊天框，要么是需要用户自己拆步骤的工具集合。cat 想做一个**先你一步**的助理：
 
 - **从对话到行动**：用一句话说目标，助理产出计划、报告，或直接调用系统能力（日历、提醒事项、通讯录、地图），而不是只给文字建议。
 - **主动但不打扰**：端上根据日历、提醒等信号判断时机，给出带“为什么找你”解释、可撤销的建议卡片。
@@ -71,17 +73,17 @@
 |---|---|---|---|
 | 原生 Google / GitHub 登录 | Supabase OAuth（PKCE），回调 `catpawm://auth-callback`；侧栏顶部账号下拉：当前账号、切换/添加账户、退出登录；匿名试用可原地绑定 | v1.1.0 | `Domain/NativeOAuth.swift`、`Providers/NativeOAuthWebSession.swift`、`Features/NativeOAuthViews.swift` |
 | 流式回复 | URLSession SSE，断线按原 turn 恢复；服务端按 512 字符 / 250 ms 批量落库 | main | `Features/ConversationSessionService.swift`、`Providers/NativeChatHTTPBackend.swift` |
-| 实时逐字预览（live text） | 服务端 `text_preview` 帧约每 100 ms 一次，客户端带 `X-Catpaw-Live-Text: 1` 才启用，旧版 App 不受影响 | 服务端 main（线上 v53）；iOS 端 v1.1.0 | `_shared/core/src/live-text.mjs`、`Features/Answer/AnswerPhaseModel.swift` |
+| 实时逐字预览（live text） | 服务端 `text_preview` 帧约每 100 ms 一次，客户端带 `X-cat-Live-Text: 1` 才启用，旧版 App 不受影响 | 服务端 main（线上 v53）；iOS 端 v1.1.0 | `_shared/core/src/live-text.mjs`、`Features/Answer/AnswerPhaseModel.swift` |
 | 上下文窗口管理 | 最近 40 条 / 80 kB 窗口按完整 turn 截断；超预算先省略旧工具结果、再缩窗口，最后返回 `413 conversation_too_long`；完整历史保留 | main（线上 v53） | `_shared/core/src/context-window.mjs` |
 | 图片理解 | 相机 / 相册输入；视觉路由链 Gemini Flash-Lite → OpenRouter Gemma，`CATPAW_VISION_ROUTE=chain\|legacy` | main | `packages/ios-image-composer`、`_shared/core/src/vision-route-chain.mjs` |
 | 语音输入 | 听写：iOS 26 用 SpeechAnalyzer，旧系统回退 SFSpeechRecognizer | main | `Voice/`、`Domain/DictationPolicy.swift` |
 | 语音对话 | 免手动循环：听 → 发送 → 思考 → 朗读 → 继续听，支持插话打断、遇到审批卡片暂停；语音朗读回复默认开启 | v1.1.0 | `Domain/VoiceSession.swift`、`Features/Composer/ComposerDictation.swift` |
-| 主动任务 | 端上规则 + 配额 + 「为什么找你」说明 + 撤销；Edge `catpaw-proactive` 负责决策与推送；含 Live Activity / Widget | main | `Features/Proactive/`、`catpaw-proactive/`、`App/CatpawLiveActivityCoordinator.swift` |
+| 主动任务 | 端上规则 + 配额 + 「为什么找你」说明 + 撤销；Edge `catpaw-proactive` 负责决策与推送；含 Live Activity / Widget | main | `Features/Proactive/`、`catpaw-proactive/`、`App/catLiveActivityCoordinator.swift` |
 | 设备集成 | EventKit（日历查询 / 创建、提醒事项）、Contacts（联系人搜索）、MapKit（附近地点 + 路程 ETA、打开地图），以及短信 / 邮件 / 电话 / 快捷指令跳转 | main | `Features/DeviceCalls/DeviceToolRouter.swift`、`Features/Nearby/NearbyPlaces.swift` |
 | 人在回路 UI 卡片 | 审批卡片、任务计划、设备结果卡、Generative UI 内嵌组件（选择、确认、表单、列表、进度、地点、日程） | main | `Features/ConversationApprovalCardView.swift`、`Features/DeviceCards/`、`Features/GenerativeBlocks/` |
 | 记忆 | 服务端 agent-memory：功能开关 + allowlist 准入，用户可关闭；`memory_forget` 需审批 | main（服务端） | `_shared/agent-memory/` |
 | 记忆工具调用（iOS） | iOS 端审批工具白名单接纳 `memory_search/save/update`（自动）与 `memory_forget`（审批） | v1.1.0 | `Providers/NativeChatHTTPBackend.swift` |
-| 吉祥物动画 | 毛绒猫姿态随对话状态切换（等待 / 思考 / 写作 / 执行 / 完成 / 出错） | main | `DesignSystem/CatpawPlushMascot.swift` |
+| 吉祥物动画 | 毛绒猫姿态随对话状态切换（等待 / 思考 / 写作 / 执行 / 完成 / 出错） | main | `DesignSystem/catPlushMascot.swift` |
 | 版本管理 | 设置 › 关于显示「版本 1.1.0 (build N) · 发布于 日期 时间」，轻点显示提交号、长按复制；构建号 = git 提交数，构建时自动写入；版本号只用 `Scripts/bump-version.sh` 修改，见 [CHANGELOG](CHANGELOG.md) 与 [iOS 版本规范](docs/development/ios-versioning.md) | v1.1.0 | `Domain/AppBuildInfo.swift`、`Features/ConversationFirstView.swift`（`AppVersionRow`） |
 | 任务、成果、收件箱 | 计划生成 / 暂停 / 取消、报告阅读与编辑、待办汇总 | main | `Features/ConversationTaskPlan*`、`Features/ConversationArtifact*`、`Features/ConversationInbox*` |
 
@@ -111,12 +113,12 @@
 **步骤**
 
 ```sh
-git clone https://github.com/Yankj/catpaw-m.git
-cd catpaw-m
-open apps/ios-conversation/CatpawM.xcodeproj
+git clone https://github.com/Yankj/catpaw-m.git cat
+cd cat
+open apps/ios-conversation/cat.xcodeproj
 ```
 
-1. 选择 scheme **`CatpawM`**（Debug，使用人工 fixture），任选一个 iOS 17+ 模拟器。
+1. 选择 scheme **`cat`**（Debug，使用人工 fixture），任选一个 iOS 17+ 模拟器。
 2. `⌘R` 运行。未配置 Supabase / 模型时 App 走离线合成路径：可以浏览界面和组件，但**不会产生真实模型回答**。
 3. 真实产品构建用 scheme **`DeviceTrial`**，需在本地提供公开配置与签名（见[配置参考](#配置参考)），仓库里这些值是空的。
 
@@ -129,7 +131,7 @@ open apps/ios-conversation/CatpawM.xcodeproj
 > **操作指南（How-to）**：安装已打包的构建。所有构建都在 [Releases](https://github.com/Yankj/catpaw-m/releases/latest) 页面；仓库目前是私有的，需要有仓库访问权限才能下载。
 
 > [!TIP]
-> 最新版本：[Catpaw 1.2.0](https://github.com/Yankj/catpaw-m/releases/tag/v1.2.0)（2026-10-18），文件为 `Catpaw-1.2.0-simulator.zip` 和 `Catpaw-1.2.0.ipa`。
+> 最新版本：[cat 1.2.0](https://github.com/Yankj/catpaw-m/releases/tag/v1.2.0)（2026-10-18），文件为 `Catpaw-1.2.0-simulator.zip` 和 `Catpaw-1.2.0.ipa`（历史发行物，保留原名）。
 
 | 方式 | 文件 | 适合 | 限制 |
 |---|---|---|---|
@@ -283,7 +285,7 @@ sequenceDiagram
   participant App as iOS App
   participant API as catpaw-api
   participant DB as PostgreSQL
-  App->>API: POST 消息（X-Catpaw-Live-Text: 1）
+  App->>API: POST 消息（X-cat-Live-Text: 1）
   API-->>App: 每步第一个 delta 立即发出
   loop 约每 100 ms
     API-->>App: text_preview（未落库尾部，不入库）
@@ -305,9 +307,9 @@ sequenceDiagram
 ## 目录结构
 
 ```text
-catpaw-m/
+cat/
 ├── apps/
-│   ├── ios-conversation/        # ★ 当前唯一维护的 iOS App（CatpawM.xcodeproj）
+│   ├── ios-conversation/        # ★ 当前唯一维护的 iOS App（cat.xcodeproj）
 │   │   ├── Sources/             #   App · Domain · Features · Persistence · Providers · Voice · DesignSystem · Shared
 │   │   ├── Tests/               #   XCTest / UITest 与可移植 runner
 │   │   ├── Scripts/             #   可移植测试、源码检查、版本、模拟器评审脚本
@@ -409,7 +411,7 @@ zsh apps/ios-conversation/Scripts/check-source.sh
 python3 apps/ios-conversation/Scripts/check-localization.py
 
 # iOS：XCTest / UITest
-xcodebuild test -project apps/ios-conversation/CatpawM.xcodeproj -scheme CatpawM \
+xcodebuild test -project apps/ios-conversation/cat.xcodeproj -scheme cat \
   -destination 'platform=iOS Simulator,name=<你的模拟器>'
 
 # Edge：离线测试（禁网络，只读已有依赖缓存）

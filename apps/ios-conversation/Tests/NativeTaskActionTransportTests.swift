@@ -1,7 +1,7 @@
 import Foundation
 #if !TASK_ACTION_TRANSPORT_PORTABLE
 import XCTest
-@testable import CatpawM
+@testable import cat
 #endif
 
 private final class ActionWireProtocol:URLProtocol,@unchecked Sendable {
@@ -81,7 +81,7 @@ private enum TaskActionTransportMatrix {
             let (backend,reference,_)=fixture(),value=try action(reference);defer{ActionWireProtocol.handler=nil}
             for (retryable,reconcile,conflict) in [(false,false,true),(true,false,false),(false,true,false),(true,true,false)] {
                 ActionWireProtocol.handler={_ in .init(status:409,data:try JSONSerialization.data(withJSONObject:["schema_version":1,"error":["code":"fixture_conflict","retryable":retryable,"reconciliation_required":reconcile]]))}
-                let failure=try await rejected{_ = try await backend.decideAction(reference,actionID:value.id,request:request(value))};let isConflict:Bool;if case .conflict?=failure as? CatpawError {isConflict=true}else{isConflict=false};try check(isConflict==conflict && !(failure is ConversationTaskActionDispatchFailure),"Do not infer final rejection from retryable409")
+                let failure=try await rejected{_ = try await backend.decideAction(reference,actionID:value.id,request:request(value))};let isConflict:Bool;if case .conflict?=failure as? catError {isConflict=true}else{isConflict=false};try check(isConflict==conflict && !(failure is ConversationTaskActionDispatchFailure),"Do not infer final rejection from retryable409")
             };await backend.close()
         },
         Case(name:"URLSession redirect response is rejected without following or exposing a decision to another origin") {

@@ -2,7 +2,7 @@
 import Foundation
 import SwiftData
 
-enum CatpawSchemaV1: VersionedSchema {
+enum catSchemaV1: VersionedSchema {
     static var versionIdentifier: Schema.Version { .init(1, 0, 0) }
     static var models: [any PersistentModel.Type] { [EntityRow.self, StoreMeta.self] }
     @Model final class EntityRow {
@@ -26,8 +26,8 @@ enum CatpawSchemaV1: VersionedSchema {
         init(key: String, data: Data) { self.key = key; self.data = data }
     }
 }
-enum CatpawMigration: SchemaMigrationPlan {
-    static var schemas: [any VersionedSchema.Type] { [CatpawSchemaV1.self] }
+enum catMigration: SchemaMigrationPlan {
+    static var schemas: [any VersionedSchema.Type] { [catSchemaV1.self] }
     static var stages: [MigrationStage] { [] }
 }
 // SwiftData models and ModelContext remain confined to the generated ModelActor executor.
@@ -54,7 +54,7 @@ private func waitForPersistence<Value: Sendable>(_ body: @escaping @Sendable () 
 }
 /// Canonical key for one on-disk store, so `/private/var/...` and `/var/...` spellings share an entry.
 func canonicalStorePath(_ url: URL) -> String { url.standardizedFileURL.resolvingSymlinksInPath().path }
-/// Crash fix (CatpawM 0.3.0 (41), 2026-10-17 20:36, `_PFFaultHandlerLookupRow` under `saveOnQueue`):
+/// Crash fix (cat 0.3.0 (41), 2026-10-17 20:36, `_PFFaultHandlerLookupRow` under `saveOnQueue`):
 /// every `SwiftDataPersistence(url:)` used to build its own `ModelContainer`. Two containers on one SQLite file have
 /// two coordinators that never see each other's deletes, and each save rewrites the full snapshot (deleting rows the
 /// other writer just added), so a setter on a row the other coordinator deleted throws `NSObjectInaccessibleException`.
@@ -74,9 +74,9 @@ private final class SnapshotStoreRegistry: @unchecked Sendable {
         // The opener runs on a detached task that never takes this lock, so it cannot deadlock.
         let opened = try waitForPersistence {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let schema = Schema(CatpawSchemaV1.models)
+            let schema = Schema(catSchemaV1.models)
             let config = ModelConfiguration("CatpawLocal", schema: schema, url: url, cloudKitDatabase: .none)
-            let container = try ModelContainer(for: schema, migrationPlan: CatpawMigration.self, configurations: [config])
+            let container = try ModelContainer(for: schema, migrationPlan: catMigration.self, configurations: [config])
             return SnapshotModelActor(modelContainer: container)
         }
         entries[key] = Entry(opened)
@@ -130,11 +130,11 @@ final class SwiftDataPersistence: SnapshotPersistence {
     }
     private func loadOnQueue() throws -> StoreSnapshot {
         var state = StoreSnapshot()
-        let meta = try modelContext.fetch(FetchDescriptor<CatpawSchemaV1.StoreMeta>())
+        let meta = try modelContext.fetch(FetchDescriptor<catSchemaV1.StoreMeta>())
         if let data = meta.first(where: { $0.key == "metadata" })?.data { state = try JSONDecoder().decode(StoreSnapshot.self, from: data) }
-        for row in try modelContext.fetch(FetchDescriptor<CatpawSchemaV1.EntityRow>()) {
+        for row in try modelContext.fetch(FetchDescriptor<catSchemaV1.EntityRow>()) {
             let r = try JSONDecoder().decode(StoredRecord.self, from: row.recordData)
-            guard r.id == row.id, r.header.scope.profileID == row.profileID, r.payload.kind == row.kind else { throw CatpawError.corrupt("存储索引与内容不一致。") }
+            guard r.id == row.id, r.header.scope.profileID == row.profileID, r.payload.kind == row.kind else { throw catError.corrupt("存储索引与内容不一致。") }
             state.records[r.id] = r
         }
         return state
@@ -145,29 +145,29 @@ final class SwiftDataPersistence: SnapshotPersistence {
         let saveStart=ProcessInfo.processInfo.systemUptime
         defer {P0PerformanceLog.shared.record("swiftdata_save",start:saveStart,end:ProcessInfo.processInfo.systemUptime,main:Thread.isMainThread,count:snapshot.records.count)}
         #endif
-        if let durable = durableSequence, snapshot.sequence <= durable { throw CatpawError.conflict }
+        if let durable = durableSequence, snapshot.sequence <= durable { throw catError.conflict }
         do {
             // Rows are re-fetched on this context for every save; models never outlive the save or leave the actor.
             // A row already deleted (or detached from this context) is never written through: its setter would fire a
             // fault on a missing row. It is skipped, so the record is inserted as a fresh row (the unique id upserts).
-            let rows = try modelContext.fetch(FetchDescriptor<CatpawSchemaV1.EntityRow>())
-            var existing: [UUID: CatpawSchemaV1.EntityRow] = [:]
+            let rows = try modelContext.fetch(FetchDescriptor<catSchemaV1.EntityRow>())
+            var existing: [UUID: catSchemaV1.EntityRow] = [:]
             for row in rows where !row.isDeleted && row.modelContext != nil { existing[row.id] = row }
             for r in snapshot.records.values {
                 if let row = existing.removeValue(forKey: r.id) {
                     row.profileID = r.header.scope.profileID; row.workspaceID = r.header.scope.workspaceID
                     row.kind = r.payload.kind; row.parentID = r.payload.parentID; row.revision = r.header.revision
                     row.updatedAt = r.header.updatedAt; row.recordData = try JSONEncoder().encode(r)
-                } else { modelContext.insert(try CatpawSchemaV1.EntityRow(r)) }
+                } else { modelContext.insert(try catSchemaV1.EntityRow(r)) }
             }
             for row in existing.values { modelContext.delete(row) }
             var metadata = snapshot; metadata.records = [:]
             let data = try JSONEncoder().encode(metadata)
-            let metas = try modelContext.fetch(FetchDescriptor<CatpawSchemaV1.StoreMeta>())
+            let metas = try modelContext.fetch(FetchDescriptor<catSchemaV1.StoreMeta>())
             if let old = metas.first(where: { $0.key == "metadata" && !$0.isDeleted && $0.modelContext != nil }) { old.data = data }
-            else { modelContext.insert(CatpawSchemaV1.StoreMeta(key: "metadata", data: data)) }
+            else { modelContext.insert(catSchemaV1.StoreMeta(key: "metadata", data: data)) }
             #if DEBUG
-            if failNextCommit { failNextCommit = false; throw CatpawError.unavailable("injected_swiftdata_save_failure") }
+            if failNextCommit { failNextCommit = false; throw catError.unavailable("injected_swiftdata_save_failure") }
             #endif
             try modelContext.save()
             durableSequence = snapshot.sequence

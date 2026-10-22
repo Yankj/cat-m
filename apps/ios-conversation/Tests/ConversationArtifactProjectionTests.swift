@@ -9,7 +9,7 @@ import Darwin
 }
 #else
 import XCTest
-@testable import CatpawM
+@testable import cat
 final class ConversationArtifactProjectionTests:XCTestCase {
     func testRevisionAndLateReadPreserveDraftAndHistory() async throws {try await ArtifactProjectionScenarios.revisionAndRecovery()}
     func testConfirmedSourceInvalidationCannotBeUndoneByLateOrHigherHeads() async throws {try await ArtifactProjectionScenarios.revocationAndFreshVersion()}
@@ -97,10 +97,10 @@ private enum ArtifactProjectionScenarios {
     static func scopeAndDeletion() async throws {
         let f=try await fixture();defer{try? FileManager.default.removeItem(at:f.root)}
         let foreign=DataScope(profileID:UUID(),workspaceID:UUID())
-        do {try await f.service.recordArtifactRevision(scope:foreign,binding:f.binding,artifact:try artifact(2));throw Failure(message:"Foreign local scope accepted")} catch is CatpawError {}
+        do {try await f.service.recordArtifactRevision(scope:foreign,binding:f.binding,artifact:try artifact(2));throw Failure(message:"Foreign local scope accepted")} catch is catError {}
         let record=try await f.repository.record(f.conversationID,scope:Profiles.user)
         try await f.repository.commit(scope:Profiles.user,mutations:[.remove(record.id,record.header.revision)])
-        do {try await f.service.recordArtifactRevision(scope:Profiles.user,binding:f.binding,artifact:try artifact(2));throw Failure(message:"Deleted conversation resurrected")} catch is CatpawError {}
+        do {try await f.service.recordArtifactRevision(scope:Profiles.user,binding:f.binding,artifact:try artifact(2));throw Failure(message:"Deleted conversation resurrected")} catch is catError {}
     }
     static func confirmedCancellationAndLateHeads() async throws {
         let f=try await fixture();defer{try? FileManager.default.removeItem(at:f.root)}

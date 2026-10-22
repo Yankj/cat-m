@@ -42,7 +42,7 @@ actor PublicationReplayHTTP: GatewayTransport {
                 var artifact = envelope["artifact"] as! [String: Any]; artifact["body"] = "tampered artifact bytes"; envelope["artifact"] = artifact
                 data = try JSONSerialization.data(withJSONObject: envelope)
             } else { data = files["artifact"]! }
-        } else { throw CatpawError.invalid("Unexpected replay route " + path) }
+        } else { throw catError.invalid("Unexpected replay route " + path) }
         return GatewayResponse(statusCode: method == "POST" ? 201 : 200, chunks: AsyncThrowingStream { $0.yield(data); $0.finish() })
     }
 }
@@ -63,7 +63,7 @@ actor PublicationReplayHTTP: GatewayTransport {
                 OpenMuseTaskService(repository: try Repository(persistence: FilePersistence(url: root.appendingPathComponent(name + ".json"))),
                     transport: OpenMuseFacadeHTTPTransport(configuration: try OpenMuseFacadeConfiguration(), http: peer))
             }
-            func check(_ value: Bool, _ message: String) throws { guard value else { throw CatpawError.invalid("FAIL: " + message) }; print("PASS: " + message) }
+            func check(_ value: Bool, _ message: String) throws { guard value else { throw catError.invalid("FAIL: " + message) }; print("PASS: " + message) }
             let racing = try PublicationReplayHTTP(directory: fixtures, changingReads: 1), race = try service("completion", racing)
             _ = try await race.prepare(input); _ = try await race.admit(operationID: input.operationID, scope: input.scope)
             let completed = try await race.refreshUntilStable(operationID: input.operationID, scope: input.scope, maxReads: 3)
@@ -93,7 +93,7 @@ actor PublicationReplayHTTP: GatewayTransport {
                 } else { _ = try await guarded.admit(operationID: input.operationID, scope: input.scope) }
                 var failure = false
                 do { _ = try await guarded.refreshUntilStable(operationID: input.operationID, scope: input.scope) }
-                catch is OpenMuseReadBudgetExhausted { throw CatpawError.invalid("Hash/scope mismatch was incorrectly retried") }
+                catch is OpenMuseReadBudgetExhausted { throw catError.invalid("Hash/scope mismatch was incorrectly retried") }
                 catch { failure = true }
                 let counts = await bad.counts()
                 try check(failure && counts.gets == (scenario == "hash" ? 1 : 0) && counts.posts == 1,

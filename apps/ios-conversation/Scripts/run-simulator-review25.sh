@@ -13,7 +13,7 @@ case "$text_size" in
   extra-small|small|medium|large|extra-large|extra-extra-large|extra-extra-extra-large|accessibility-medium|accessibility-large|accessibility-extra-large|accessibility-extra-extra-large|accessibility-extra-extra-extra-large) ;;
   *) print -u2 'CATPAW_REVIEW_TEXT_SIZE must be a supported simctl content_size value.'; exit 2 ;;
 esac
-app=build/native-memory-20261015/DerivedData/Build/Products/Debug-iphonesimulator/CatpawM.app
+app=build/native-memory-20261015/DerivedData/Build/Products/Debug-iphonesimulator/cat.app
 # Unset every inherited Simulator child override before any simctl command.
 clean=(/usr/bin/env)
 for key in ${(k)parameters}; do
@@ -43,7 +43,7 @@ def unique(pairs):
 def decode(data):return json.loads(data,object_pairs_hook=unique)
 require((package/'Info.plist').is_file(),'Fixed build25 package is absent; nothing was installed.')
 info=plistlib.loads((package/'Info.plist').read_bytes())
-require(info.get('CFBundleVersion')=='25' and info.get('CFBundleIdentifier')=='com.example.CatpawM.ConversationFirst.Auth' and info.get('DTPlatformName')=='iphonesimulator','Expected the fixed build25 Simulator identity.')
+require(info.get('CFBundleVersion')=='25' and info.get('CFBundleIdentifier')=='com.example.cat.ConversationFirst.Auth' and info.get('DTPlatformName')=='iphonesimulator','Expected the fixed build25 Simulator identity.')
 require(not any(key in info for key in ('CatpawSupabaseProjectURL','CatpawSupabasePublishableKey','CatpawBackendOrigin','CatpawServerScopeID','CatpawEdgeRegion')),'A cloud-configured package cannot be used for this review.')
 require(not any(p.is_symlink() for p in package.rglob('*')),'Package symlinks are not part of the fixed review.')
 rows=[{'path':str(p.relative_to(package)),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(package.rglob('*')) if p.is_file()]
@@ -106,7 +106,7 @@ device_state="$("${clean[@]}" /usr/bin/xcrun simctl list devices available -j | 
 if [[ "$device_state" != Booted ]]; then "${clean[@]}" /usr/bin/xcrun simctl boot "$device"; fi
 "${clean[@]}" /usr/bin/xcrun simctl bootstatus "$device" -b
 "${clean[@]}" /usr/bin/xcrun simctl ui "$device" content_size "$text_size"
-installed="$("${clean[@]}" /usr/bin/xcrun simctl get_app_container "$device" com.example.CatpawM.ConversationFirst.Auth app 2>/dev/null)" || installed=''
+installed="$("${clean[@]}" /usr/bin/xcrun simctl get_app_container "$device" com.example.cat.ConversationFirst.Auth app 2>/dev/null)" || installed=''
 if [[ -n "$installed" ]] && /usr/bin/python3 - "$installed" <<'PYVERIFY'
 import hashlib,json,sys
 from pathlib import Path
@@ -119,7 +119,7 @@ then
 else
   "${clean[@]}" /usr/bin/xcrun simctl install "$device" "$app"
 fi
-"${clean[@]}" SIMCTL_CHILD_CF_UI_TEST_STORE="$store" SIMCTL_CHILD_CF_UI_TEST_SCENARIO=p0-ui-accepted-work SIMCTL_CHILD_CATPAW_ACCEPTED_WORK_PORT=8769 /usr/bin/xcrun simctl launch --terminate-running-process "$device" com.example.CatpawM.ConversationFirst.Auth
+"${clean[@]}" SIMCTL_CHILD_CF_UI_TEST_STORE="$store" SIMCTL_CHILD_CF_UI_TEST_SCENARIO=p0-ui-accepted-work SIMCTL_CHILD_CATPAW_ACCEPTED_WORK_PORT=8769 /usr/bin/xcrun simctl launch --terminate-running-process "$device" com.example.cat.ConversationFirst.Auth
 /usr/bin/open -b com.apple.dt.Devices
 print "build25 — $mode; real system text size: $text_size; local client: $store"
 print '1. In the App, open the menu, then Memory / 记忆. This fixed binary has no automatic memory deep-link.'

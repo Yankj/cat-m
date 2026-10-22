@@ -1,6 +1,6 @@
 import XCTest
 import Security
-@testable import CatpawM
+@testable import cat
 
 final class NativeAuthNativeTests: XCTestCase {
     private func awaitGate(_ predicate:@escaping () async -> Bool) async throws {

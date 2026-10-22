@@ -45,27 +45,27 @@ import SwiftUI
         NavigationStack {
             VStack(spacing:0) {
                 ScrollView {
-                    VStack(alignment:.leading,spacing:CatpawLayout.sectionGap) {
-                        Text(ui("尚未发送；确认后才提交原请求。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.acceptedWork.notSent")
+                    VStack(alignment:.leading,spacing:catLayout.sectionGap) {
+                        Text(ui("尚未发送；确认后才提交原请求。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.acceptedWork.notSent")
                         if let revisionTargetTitle {
                             VStack(alignment:.leading,spacing:12) {
                                 SectionHeading(title:ui("本次修改的成果"))
-                                Text(verbatim:revisionTargetTitle).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.revisionWork.target")
-                                Text(ui("本次修改沿用原任务和所选版本，需要新的期限、预算与执行范围；不会沿用原工作的额度。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.revisionWork.newAuthority")
+                                Text(verbatim:revisionTargetTitle).font(catTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.revisionWork.target")
+                                Text(ui("本次修改沿用原任务和所选版本，需要新的期限、预算与执行范围；不会沿用原工作的额度。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.revisionWork.newAuthority")
                             }
                         }
                         VStack(alignment:.leading,spacing:12) {
                             SectionHeading(title:ui("原请求"))
-                            Text(verbatim:originalText).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).textSelection(.enabled).accessibilityIdentifier("chat.acceptedWork.originalText")
+                            Text(verbatim:originalText).font(catTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).textSelection(.enabled).accessibilityIdentifier("chat.acceptedWork.originalText")
                         }
                         scopeSelection
                         VStack(alignment:.leading,spacing:12) {
                             SectionHeading(title:ui("截至时间"))
                             // Do not clamp an expired draft to a new date. The host
                             // validates the actual clock again before admission.
-                            CatpawAdaptiveActions {
-                                DatePicker(ui("截至日期"),selection:$options.notAfter,displayedComponents:[.date]).labelsHidden().datePickerStyle(.compact).font(CatpawTypography.Role.body.font).touchTarget().accessibilityLabel(ui("截至日期")).accessibilityIdentifier("chat.acceptedWork.deadlineDate").disabled(saving)
-                                DatePicker(ui("截至时刻"),selection:$options.notAfter,displayedComponents:[.hourAndMinute]).labelsHidden().datePickerStyle(.compact).font(CatpawTypography.Role.body.font).touchTarget().accessibilityLabel(ui("截至时刻")).accessibilityIdentifier("chat.acceptedWork.deadlineTime").disabled(saving)
+                            catAdaptiveActions {
+                                DatePicker(ui("截至日期"),selection:$options.notAfter,displayedComponents:[.date]).labelsHidden().datePickerStyle(.compact).font(catTypography.Role.body.font).touchTarget().accessibilityLabel(ui("截至日期")).accessibilityIdentifier("chat.acceptedWork.deadlineDate").disabled(saving)
+                                DatePicker(ui("截至时刻"),selection:$options.notAfter,displayedComponents:[.hourAndMinute]).labelsHidden().datePickerStyle(.compact).font(catTypography.Role.body.font).touchTarget().accessibilityLabel(ui("截至时刻")).accessibilityIdentifier("chat.acceptedWork.deadlineTime").disabled(saving)
                             }
                         }
                         numberChoice(title:ui("最多模型次数"),value:count(options.modelLimit),identifier:"modelLimit") {
@@ -81,28 +81,28 @@ import SwiftUI
                                         Stepper(ui("最多来源次数"),value:$options.sourceLimit,in:min(sourceLimitFloor,max(0,capability.maxSource))...max(0,capability.maxSource)).labelsHidden().touchTarget().accessibilityLabel(ui("最多来源次数")).accessibilityValue(count(options.sourceLimit)).accessibilityIdentifier("chat.acceptedWork.sourceLimit").disabled(saving)
                                     }
                                 }
-                                Text(ui("执行预算是本次工作的累计上限，暂停与恢复不会延长期限或补回额度。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true)
-                                Text(ui("模型次数只约束已受理的这份工作；理解原请求的本次对话调用另受现有许可约束。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true)
+                                Text(ui("执行预算是本次工作的累计上限，暂停与恢复不会延长期限或补回额度。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).fixedSize(horizontal:false,vertical:true)
+                                Text(ui("模型次数只约束已受理的这份工作；理解原请求的本次对话调用另受现有许可约束。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).fixedSize(horizontal:false,vertical:true)
                             }.padding(.top,12)
-                        } label:{Text(ui("更多工作约定")).font(CatpawTypography.Role.heading.font).fixedSize(horizontal:false,vertical:true).frame(minHeight:44,alignment:.leading).accessibilityIdentifier("chat.acceptedWork.details")}
+                        } label:{Text(ui("更多工作约定")).font(catTypography.Role.heading.font).fixedSize(horizontal:false,vertical:true).frame(minHeight:44,alignment:.leading).accessibilityIdentifier("chat.acceptedWork.details")}
                             .accessibilityElement(children:.contain)
                         completeSummary
-                        if let validationMessage {Text(verbatim:validationMessage).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.attention).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.acceptedWork.validation")}
-                        if let error {Text(ui(error)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.attention).fixedSize(horizontal:false,vertical:true).textSelection(.enabled).accessibilityIdentifier("chat.acceptedWork.error")}
-                    }.padding(CatpawLayout.pageInset).frame(maxWidth:CatpawLayout.readableWidth,alignment:.leading).frame(maxWidth:.infinity,alignment:.center)
-                }.background(CatpawColors.background).accessibilityIdentifier("chat.acceptedWork.viewport")
-                CatpawBottomActionArea {
+                        if let validationMessage {Text(verbatim:validationMessage).font(catTypography.Role.secondary.font).foregroundStyle(catColors.attention).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.acceptedWork.validation")}
+                        if let error {Text(ui(error)).font(catTypography.Role.secondary.font).foregroundStyle(catColors.attention).fixedSize(horizontal:false,vertical:true).textSelection(.enabled).accessibilityIdentifier("chat.acceptedWork.error")}
+                    }.padding(catLayout.pageInset).frame(maxWidth:catLayout.readableWidth,alignment:.leading).frame(maxWidth:.infinity,alignment:.center)
+                }.background(catColors.background).accessibilityIdentifier("chat.acceptedWork.viewport")
+                catBottomActionArea {
                     Button {
                         guard !saving,validationMessage == nil,!originalText.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else {return}
                         confirm()
                     } label:{
                         HStack(spacing:8) {
-                            if saving {ProgressView().tint(CatpawColors.onInk).accessibilityHidden(true)}
-                            CatpawAdaptiveActionTitle(fullTitle:saving ? ui("正在确认工作约定") : ui("确认并提交原请求"),compactTitle:saving ? ui("正在提交") : ui("确认")).frame(maxWidth:.infinity)
+                            if saving {ProgressView().tint(catColors.onInk).accessibilityHidden(true)}
+                            catAdaptiveActionTitle(fullTitle:saving ? ui("正在确认工作约定") : ui("确认并提交原请求"),compactTitle:saving ? ui("正在提交") : ui("确认")).frame(maxWidth:.infinity)
                         }.frame(maxWidth:.infinity,minHeight:44)
-                    }.buttonStyle(CatpawPrimaryButtonStyle()).disabled(saving || validationMessage != nil || originalText.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty).accessibilityLabel(saving ? ui("正在确认工作约定") : ui("确认并提交原请求")).accessibilityIdentifier("chat.acceptedWork.confirm")
+                    }.buttonStyle(catPrimaryButtonStyle()).disabled(saving || validationMessage != nil || originalText.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty).accessibilityLabel(saving ? ui("正在确认工作约定") : ui("确认并提交原请求")).accessibilityIdentifier("chat.acceptedWork.confirm")
                 }
-            }.font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+            }.font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                 .navigationTitle(ui("确认工作约定")).navigationBarTitleDisplayMode(.inline)
                 .toolbar {ToolbarItem(placement:.confirmationAction){Button(ui("关闭"),action:close).touchTarget().accessibilityLabel(ui("关闭并保留草稿")).accessibilityIdentifier("chat.acceptedWork.close")}}
         }.presentationDetents([.large]).presentationDragIndicator(.visible)
@@ -113,9 +113,9 @@ import SwiftUI
             if lockedToolPolicy==nil || lockedToolPolicy == .localOutput {policyChoice(.localOutput,title:ui("仅整理已提供文字"),identifier:"localOutput")}
             if capability.publicSourcesAvailable && (lockedToolPolicy==nil || lockedToolPolicy == .publicSources) {
                 policyChoice(.publicSources,title:ui("读取我给的公开链接"),identifier:"publicSources")
-            } else if options.toolPolicy == .publicSources {Text(verbatim:scopeTitle).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.acceptedWork.scope")}
-            if options.toolPolicy == .publicSources {Text(ui("只读取原请求中明确提供的公开链接，不自主搜索。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true)}
-            Text(ui("只生成本地文本成果，不执行外部写入。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true)
+            } else if options.toolPolicy == .publicSources {Text(verbatim:scopeTitle).font(catTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.acceptedWork.scope")}
+            if options.toolPolicy == .publicSources {Text(ui("只读取原请求中明确提供的公开链接，不自主搜索。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).fixedSize(horizontal:false,vertical:true)}
+            Text(ui("只生成本地文本成果，不执行外部写入。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).fixedSize(horizontal:false,vertical:true)
         }
     }
     private func policyChoice(_ policy:ConversationAcceptedWorkToolPolicy,title:String,identifier:String)->some View {
@@ -125,16 +125,16 @@ import SwiftUI
             if policy == .localOutput {options.sourceLimit=0}
         } label:{
             HStack(alignment:.firstTextBaseline,spacing:12) {
-                Image(systemName:options.toolPolicy == policy ? "checkmark.circle.fill" : "circle").foregroundStyle(options.toolPolicy == policy ? CatpawColors.accent : CatpawColors.secondary).accessibilityHidden(true)
-                Text(verbatim:title).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading)
-            }.padding(12).frame(maxWidth:.infinity,minHeight:44,alignment:.leading).background(options.toolPolicy == policy ? CatpawColors.input : CatpawColors.background,in:RoundedRectangle(cornerRadius:CatpawLayout.controlRadius))
-        }.buttonStyle(CatpawPressButtonStyle()).disabled(saving).accessibilityAddTraits(options.toolPolicy == policy ? .isSelected : []).accessibilityIdentifier("chat.acceptedWork.scope."+identifier)
+                Image(systemName:options.toolPolicy == policy ? "checkmark.circle.fill" : "circle").foregroundStyle(options.toolPolicy == policy ? catColors.accent : catColors.secondary).accessibilityHidden(true)
+                Text(verbatim:title).font(catTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading)
+            }.padding(12).frame(maxWidth:.infinity,minHeight:44,alignment:.leading).background(options.toolPolicy == policy ? catColors.input : catColors.background,in:RoundedRectangle(cornerRadius:catLayout.controlRadius))
+        }.buttonStyle(catPressButtonStyle()).disabled(saving).accessibilityAddTraits(options.toolPolicy == policy ? .isSelected : []).accessibilityIdentifier("chat.acceptedWork.scope."+identifier)
     }
     private func numberChoice<Control:View>(title:String,value:String,identifier:String,@ViewBuilder control:()->Control)->some View {
         VStack(alignment:.leading,spacing:8) {
-            Text(verbatim:title).font(CatpawTypography.Role.heading.font).fixedSize(horizontal:false,vertical:true)
-            CatpawAdaptiveActions {
-                Text(verbatim:value).font(CatpawTypography.Role.body.font).monospacedDigit().fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier("chat.acceptedWork."+identifier+"Value")
+            Text(verbatim:title).font(catTypography.Role.heading.font).fixedSize(horizontal:false,vertical:true)
+            catAdaptiveActions {
+                Text(verbatim:value).font(catTypography.Role.body.font).monospacedDigit().fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier("chat.acceptedWork."+identifier+"Value")
                 control()
             }
         }.accessibilityElement(children:.contain)
@@ -151,8 +151,8 @@ import SwiftUI
     }
     private func summary(_ title:String,_ value:String,id:String)->some View {
         VStack(alignment:.leading,spacing:4) {
-            Text(verbatim:title).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
-            Text(verbatim:value).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true)
+            Text(verbatim:title).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
+            Text(verbatim:value).font(catTypography.Role.body.font).fixedSize(horizontal:false,vertical:true)
         }.accessibilityElement(children:.combine).accessibilityIdentifier("chat.acceptedWork.summary."+id)
     }
 }

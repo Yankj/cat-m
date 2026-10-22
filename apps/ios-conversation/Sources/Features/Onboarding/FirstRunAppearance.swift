@@ -5,12 +5,12 @@ import Foundation
 /// against the real tokens (contrast in light AND dark) without SwiftUI.
 ///
 /// Appearance strategy: the splash follows the system color scheme exactly like chat does (chat has no forced scheme and
-/// paints `CatpawColors.background`), so the page background is the same token in both — no light→dark jump. 792587e
+/// paints `catColors.background`), so the page background is the same token in both — no light→dark jump. 792587e
 /// painted the splash on `calmPage` (light in both schemes) while its text used adaptive ink → light-gray-on-cream in
 /// dark mode (1.1:1).
 enum FirstRunAppearance {
     enum Scheme: CaseIterable { case light, dark }
-    /// `color` = adaptive `CatpawColors.<name>`; `brand` = fixed `CatpawBrandTokens.<name>`.
+    /// `color` = adaptive `catColors.<name>`; `brand` = fixed `catBrandTokens.<name>`.
     enum Token: Equatable { case color(String), brand(String), hex(UInt32) }
     struct Text {
         let id: String; let fg: Token; var fgAlpha: Double = 1; let bg: Token
@@ -26,7 +26,7 @@ enum FirstRunAppearance {
     static let ctaSheenPeak = 0.0
     private static let wash: (Token, Double) = (.color("orbLight"), washTailAtCopy)
     static let texts: [Text] = [
-        .init(id: "brand Catpaw-m", fg: .color("ink"), bg: pageBackground, overlay: wash),
+        .init(id: "brand cat", fg: .color("ink"), bg: pageBackground, overlay: wash),
         .init(id: "brand subtitle 先你一步，把事办妥", fg: .color("calmSecondary"), bg: pageBackground, overlay: wash),
         .init(id: "headline 解放双手…", fg: .color("ink"), bg: pageBackground, overlay: wash, large: true),
         .init(id: "subcopy 从一句话开始…", fg: .color("calmSecondary"), bg: pageBackground, overlay: wash),

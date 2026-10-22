@@ -1,7 +1,7 @@
 import Foundation
 #if !ACCEPTED_WORK_APPLICATION_PORTABLE
 import XCTest
-@testable import CatpawM
+@testable import cat
 #endif
 
 private actor AcceptedWorkJournalBackend:ConversationBackend {

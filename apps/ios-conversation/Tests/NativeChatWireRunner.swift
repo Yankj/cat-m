@@ -4,7 +4,7 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
     static func main() async throws {
         let origin = URL(string: CommandLine.arguments[1])!, root = URL(fileURLWithPath: CommandLine.arguments[2])
         func backend(_ allow: Bool = true) throws -> NativeChatHTTPBackend { NativeChatHTTPBackend(configuration: try NativeChatConfiguration(origin: origin, localScope: Profiles.user, serverScopeID: Profiles.user.workspaceID, allowInjectedTestProvider: allow), credentials: WireTestSession()) }
-        func check(_ condition: Bool, _ text: String) throws { guard condition else { throw CatpawError.invalid(text) }; print("PASS: " + text) }
+        func check(_ condition: Bool, _ text: String) throws { guard condition else { throw catError.invalid(text) }; print("PASS: " + text) }
         let headerConfiguration=try NativeChatConfiguration(origin:origin,localScope:Profiles.user,serverScopeID:Profiles.user.workspaceID)
         for (label,value) in [("CR","Bearer synthetic\rinjected"),("LF","Bearer synthetic\ninjected"),("CRLF","Bearer synthetic\r\ninjected"),("byte budget","Bearer "+String(repeating:"a",count:8185))] {
             var rejected=false
@@ -21,7 +21,7 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
         let explicitAuthorization = try await userSession.authorization(scope: Profiles.user)
         try check(explicitAuthorization == "Bearer testheader.testpayload.testsignature", "transport receives only explicitly supplied user access JWT, never metadata-derived identity")
         var wrongScope = false
-        do { _ = try await userSession.authorization(scope: Profiles.demo) } catch CatpawError.scopeMismatch { wrongScope = true }
+        do { _ = try await userSession.authorization(scope: Profiles.demo) } catch catError.scopeMismatch { wrongScope = true }
         try check(wrongScope, "session transport refuses another local scope")
         try await userSession.updateFromAuth(accessToken: "testheader.testpayload.testsignature", expiresAt: expired)
         unavailable = false
@@ -63,7 +63,7 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
             try check(saved.goals.isEmpty && saved.turns.count==1 && saved.turns.last?.id==operation,"\(mode) actual SSE never creates task Goal authority")
             let cold=ConversationSessionService(repository:try Repository(persistence:FilePersistence(url:storage)),backend:try backend())
             if mode=="wire-memory-proposal" {
-                guard let message=saved.messages.first(where:{$0.role == .tool && $0.toolName=="propose_memory_v1"}) else{throw CatpawError.invalid("Actual HTTP proposal result was not persisted")}
+                guard let message=saved.messages.first(where:{$0.role == .tool && $0.toolName=="propose_memory_v1"}) else{throw catError.invalid("Actual HTTP proposal result was not persisted")}
                 let receipt=try ConversationMemoryProposalReceipt.transcript(message,session:saved,serverScopeID:Profiles.user.workspaceID)
                 try check(!rejected && saved.turns.last?.state == .completed && receipt.candidates.count==1 && !receipt.confirmed && receipt.source_id==saved.turns.last?.request.history.last?.id && receipt.source_hash==textHash(mode) && saved.messages.contains(where:{$0.role == .assistant && $0.toolName==nil && $0.complete && $0.content=="Memory candidates need your confirmation."}),"valid propose_memory_v1 crosses actual HTTP/SSE typed decode, exact original source, pending receipt and nonempty terminal text")
                 try await cold.observe(scope:Profiles.user,conversationID:conversation)
@@ -72,7 +72,7 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
             }else{
                 try check(rejected && saved.turns.last?.state == .unknown && saved.messages.contains(where:{$0.role == .assistant && $0.toolName=="propose_memory_v1"}) && !saved.messages.contains(where:{$0.role == .tool}),"tampered proposal source hash rejects actual SSE result after started and preserves unknown without saved candidates")
                 var originalRejected=false;do{try await cold.observe(scope:Profiles.user,conversationID:conversation)}catch{originalRejected=true}
-                do{_=try await cold.send(scope:Profiles.user,conversationID:conversation,text:"must not retry proposal",operationID:UUID());throw CatpawError.invalid("Unknown proposal permitted a second POST")}catch ConversationSessionError.unresolvedOperation{}
+                do{_=try await cold.send(scope:Profiles.user,conversationID:conversation,text:"must not retry proposal",operationID:UUID());throw catError.invalid("Unknown proposal permitted a second POST")}catch ConversationSessionError.unresolvedOperation{}
                 let stillUnknown=try await cold.read(scope:Profiles.user,conversationID:conversation)
                 try check(originalRejected && stillUnknown.turns.count==1 && stillUnknown.turns.last?.id==operation && stillUnknown.turns.last?.state == .unknown && stillUnknown.goals.isEmpty,"tampered proposal cold GET fails closed on the same ID and cannot silently resend")
             }
@@ -96,7 +96,7 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
                 let prompt = "wire-delegation-\(toolName)-\(label)" + (toolName == "delegate_sources_v1" ? " https://docs.example.org/docs/one" : "")
                 _ = try await matrix.send(scope: Profiles.user, conversationID: conversation, text: prompt, operationID: operation)
                 let received = try await matrix.read(scope: Profiles.user, conversationID: conversation)
-                guard let goal = received.goals.values.first, let binding = goal.binding else { throw CatpawError.invalid("Expected original \(toolName) binding") }
+                guard let goal = received.goals.values.first, let binding = goal.binding else { throw catError.invalid("Expected original \(toolName) binding") }
                 let prose = received.messages.filter { $0.role == .assistant && $0.toolName == nil }.map(\.content)
                 try check(received.turns.count == 1 && received.turns.last?.state == .completed && received.turns.last?.id == operation && goal.state == .queued && goal.title == "Wire-only \(toolName) \(label)" && prose == (persisted ? [text] : []), "\(toolName) \(label) HTTP/SSE preserves exact transcript and separates completed chat from queued task")
                 let restarted = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: matrixStore)), backend: try backend())
@@ -145,7 +145,7 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
             let cid = try await service.create(scope: Profiles.user), tid = UUID()
             _ = try await service.send(scope: Profiles.user, conversationID: cid, text: mode, operationID: tid)
             let saved = try await service.read(scope: Profiles.user, conversationID: cid)
-            guard let goal = saved.goals.values.first, let binding = goal.binding else { throw CatpawError.invalid("Expected verified task binding") }
+            guard let goal = saved.goals.values.first, let binding = goal.binding else { throw catError.invalid("Expected verified task binding") }
             try check(goal.state == expected && saved.turns.last?.state == .completed && goal.id == binding.task_id && binding.turn_id == tid, "\(mode) preserves separate completed chat and authoritative task status")
             try check(mode == "wire-revoked-scheduled" ? goal.artifacts.isEmpty : goal.artifacts.first.map { textHash($0.body) == $0.contentHash } == true, "\(mode) exposes hash-verified artifact only under current authority")
             try check(goal.sourceAuthorizationCurrent == (mode != "wire-revoked-scheduled"),"\(mode) records source authority separately from unknown task outcome")
@@ -175,7 +175,7 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
         do { _ = try await service.send(scope:Profiles.user,conversationID:failedHTTP,text:"wire-http-500",operationID:failedOperation) } catch { }
         let uncertain = try await service.read(scope:Profiles.user,conversationID:failedHTTP)
         try check(uncertain.turns.last?.state == .unknown && uncertain.turns.last?.error?.contains("HTTP 500") == true && uncertain.messages.allSatisfy { $0.role != .assistant }, "HTTP 500 after POST remains unknown with a specific recovery path and no fake reply")
-        do { _ = try await service.send(scope:Profiles.user,conversationID:failedHTTP,text:"must not resend",operationID:UUID()); throw CatpawError.invalid("unknown redispatched") } catch ConversationSessionError.unresolvedOperation { }
+        do { _ = try await service.send(scope:Profiles.user,conversationID:failedHTTP,text:"must not resend",operationID:UUID()); throw catError.invalid("unknown redispatched") } catch ConversationSessionError.unresolvedOperation { }
         try await service.observe(scope:Profiles.user,conversationID:failedHTTP)
         let confirmed = try await service.read(scope:Profiles.user,conversationID:failedHTTP)
         try check(confirmed.turns.count == 1 && confirmed.turns.last?.id == failedOperation && confirmed.turns.last?.state == .completed, "HTTP 500 recovers the committed original through GET only")

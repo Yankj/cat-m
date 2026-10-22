@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 final class ConversationTimelineProjectionTests:XCTestCase {
     private func turn(_ id:UUID=UUID(),state:ConversationTurnRecord.State = .running,assistant:UUID?=nil)->ConversationTurnRecord {

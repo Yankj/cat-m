@@ -71,17 +71,17 @@ enum AppRoute: Hashable, Codable {
     func cancelOperation(_ id: UUID) async throws { try await runtime.cancel(operationID: id); try await gatewayRuntime.cancel(operationID: id) }
     func retryTask(_ id: UUID) async throws {
         let task = try await repository.record(id, scope: scope)
-        guard let work = task.task else { throw CatpawError.missing }
+        guard let work = task.task else { throw catError.missing }
         let saved = try await repository.record(stableID("reply-request-\(work.operationID)"), scope: scope)
-        guard case .preference(let value) = saved.payload, let data = value.value.data(using: .utf8) else { throw CatpawError.missing }
+        guard case .preference(let value) = saved.payload, let data = value.value.data(using: .utf8) else { throw catError.missing }
         let request = try JSONDecoder().decode(ChatRequest.self, from: data)
         if request.context.providerID == "catpaw.gateway.v1" {
-            guard scope == Profiles.demo else { throw CatpawError.scopeMismatch }
+            guard scope == Profiles.demo else { throw catError.scopeMismatch }
             try await gatewayRuntime.retry(scope: scope, taskID: id, scenario: .success)
         } else { try await runtime.retry(scope: scope, taskID: id, scenario: .success) }
     }
     func newGatewayConversation(modelID: String) async throws {
-        guard scope == Profiles.demo, LocalGatewayService.modelIDs.contains(modelID) else { throw CatpawError.scopeMismatch }
+        guard scope == Profiles.demo, LocalGatewayService.modelIDs.contains(modelID) else { throw catError.scopeMismatch }
         let configuration = ConversationConfiguration(model: modelID, safety: true, subagents: false, providerID: "catpaw.gateway.v1")
         let id = try await service.createConversation(scope: scope, environment: environmentID, project: projects.first?.id, configuration: configuration)
         await refresh(); drafts[id] = ""; path.append(.conversation(id))
@@ -199,7 +199,7 @@ enum AppRoute: Hashable, Codable {
         perform {
             defer { self.sending.remove(id) }
             let usesGateway = self.usesLocalGateway(id)
-            guard !usesGateway || self.scope == Profiles.demo else { throw CatpawError.scopeMismatch }
+            guard !usesGateway || self.scope == Profiles.demo else { throw catError.scopeMismatch }
             let selectedRuntime = usesGateway ? self.gatewayRuntime : self.runtime
             _ = try await selectedRuntime.send(scope: self.scope, conversationID: id, text: text, clientMessageID: client, scenario: scenario)
             if self.drafts[id] == text { self.drafts[id] = "" }
@@ -241,7 +241,7 @@ enum AppRoute: Hashable, Codable {
             case .conversation(let id): path = [.conversation(id)]
             case .task(let id): path = [.task(id)]
             case .document(let id, let version): path = [.document(id, version)]
-            default: throw CatpawError.invalid("链接不可用。")
+            default: throw catError.invalid("链接不可用。")
             }
         } catch { self.error = error.localizedDescription }
     }
