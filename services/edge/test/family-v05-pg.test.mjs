@@ -44,3 +44,68 @@ test('v0.5 home.children lists children only; adults listed under home.adults', 
     assert.deepEqual(home.adults.map(k => [k.display_name, k.member_kind]), [['外婆', 'adult']]);
   } finally { await sql.end(); }
 });
+
+test('v0.5 memory model: disputed kept disputed, inference only proposed, confirm, source retract, settings sequence, share, restore', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 4, prepare: false, onnotice: () => {} });
+  try {
+    const { call } = rig(sql); const A = U(); await sql`insert into auth.users(id) values(${A})`;
+    const hh = (await ensure(call, A)).body.objects[0].id;
+    const kid = (await cmd(call, A, hh, { type: 'child.upsert', payload: { display_name: '小米' } })).body.objects[0].id;
+    const SRC = { source_kind: 'user_text', source_ref: 'turn:1' };
+    const mem = async p => (await cmd(call, A, hh, { type: 'memory.upsert', payload: { member_id: kid, source: SRC, ...p } })).body;
+    const d = (await mem({ text: '小米喜欢游泳', status: 'disputed' })).objects[0];
+    const inf = (await mem({ text: '小米可能怕水', kind: 'inference', status: 'active' })).objects[0];
+    const rec = async (q, x = '') => (await call(A, 'GET', `/households/${hh}/memories/recall?q=${encodeURIComponent(q)}${x}`)).body;
+    let r = await rec('小米喜欢游泳吗');
+    assert.deepEqual(r.results.map(x => [x.memory_id, x.status]), [[d.id, 'disputed']], 'disputed recalled as disputed; proposed inference never recalled');
+    assert.equal(r.answer.assertions[0].status, 'disputed');
+    const list = (await call(A, 'GET', `/households/${hh}/memories`)).body.memories;
+    assert.equal(list.find(m => m.memory_id === inf.id).status, 'proposed');
+    assert.equal((await cmd(call, A, hh, { type: 'memory.confirm', target_id: inf.id, expected_revision: 1 })).body.status, 'applied');
+    assert.ok((await rec('小米怕水')).results.some(x => x.memory_id === inf.id && x.status === 'active'));
+    // source retract -> dependent memory retracted, never recalled again
+    const sid = (await cmd(call, A, hh, { type: 'source.register', payload: { kind: 'image_notice', trust: 'external', raw_media_available: true } })).body.objects[0].id;
+    const sm = (await mem({ text: '周六九点集合', source_ids: [sid] })).objects[0];
+    assert.ok((await rec('周六几点集合')).results.some(x => x.memory_id === sm.id));
+    const rr = (await cmd(call, A, hh, { type: 'source.retract', target_id: sid, expected_revision: 1 })).body;
+    assert.equal(rr.status, 'applied'); assert.ok(rr.objects.some(o => o.id === sm.id));
+    assert.ok(!(await rec('周六几点集合')).results.some(x => x.memory_id === sm.id));
+    assert.equal((await mem({ text: '又一条', source_ids: [sid] })).error.code, 'source_inactive');
+    // settings: monotonic choice sequence
+    assert.equal((await cmd(call, A, hh, { type: 'memory.settings', payload: { use_memory: false, choice_sequence: 12 } })).body.status, 'applied');
+    assert.equal((await cmd(call, A, hh, { type: 'memory.settings', payload: { use_memory: true, choice_sequence: 11 } })).body.error.code, 'stale_sequence');
+    assert.deepEqual((await rec('小米喜欢游泳吗')).results, []);
+    assert.equal((await cmd(call, A, hh, { type: 'memory.settings', payload: { use_memory: true, choice_sequence: 13 } })).body.status, 'applied');
+    // share private needs explicit visibility confirmation; restore of a forgotten fact is undo_expired
+    const pv = (await mem({ text: '我的阅读目标', visibility: 'private', member_id: null })).objects[0];
+    assert.equal((await cmd(call, A, hh, { type: 'memory.share', target_id: pv.id, expected_revision: 1, payload: {} })).body.error.code, 'visibility_confirmation_required');
+    assert.equal((await cmd(call, A, hh, { type: 'memory.delete', target_id: d.id, expected_revision: 1 })).body.status, 'applied');
+    assert.equal((await cmd(call, A, hh, { type: 'memory.restore', target_id: d.id })).body.error.code, 'undo_expired');
+  } finally { await sql.end(); }
+});
+
+test('v0.5 grants: viewer reads household-visible memories in scope; writes forbidden; out-of-scope 403; revoke 404; resolve fences', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 4, prepare: false, onnotice: () => {} });
+  try {
+    const { call } = rig(sql); const A = U(), V = U(); await sql`insert into auth.users(id) values(${A}),(${V})`;
+    const hh = (await ensure(call, A)).body.objects[0].id;
+    const k1 = (await cmd(call, A, hh, { type: 'child.upsert', payload: { display_name: '小米' } })).body.objects[0].id;
+    const k2 = (await cmd(call, A, hh, { type: 'child.upsert', payload: { display_name: '小豆' } })).body.objects[0].id;
+    const SRC = { source_kind: 'user_text', source_ref: 'turn:1' };
+    const m1 = (await cmd(call, A, hh, { type: 'memory.upsert', payload: { member_id: k1, text: '小米喜欢画画', source: SRC } })).body.objects[0];
+    await cmd(call, A, hh, { type: 'memory.upsert', payload: { member_id: k1, text: '小米画画私密备注', visibility: 'private', source: SRC } });
+    assert.equal((await call(V, 'GET', `/households/${hh}/memories/recall?q=画画`)).status, 404, 'no grant -> invisible');
+    assert.equal((await cmd(call, A, hh, { type: 'grant.upsert', payload: { user_id: V, member_scope: [k1] } })).body.status, 'applied');
+    const r = (await call(V, 'GET', `/households/${hh}/memories/recall?q=${encodeURIComponent('小米画画')}&member_id=${k1}`)).body;
+    assert.deepEqual(r.results.map(x => x.memory_id), [m1.id], 'viewer: household-visible only');
+    assert.equal((await call(V, 'GET', `/households/${hh}/memories/recall?q=x&member_id=${k2}`)).status, 403);
+    const w = (await cmd(call, V, hh, { type: 'memory.upsert', payload: { member_id: k1, text: '写入', source: SRC } })).body;
+    assert.equal(w.status, 'rejected'); assert.equal(w.error.code, 'forbidden');
+    const snap = r.snapshot.refs;
+    assert.equal((await cmd(call, A, hh, { type: 'grant.revoke', payload: { user_id: V } })).body.status, 'applied');
+    assert.equal((await call(V, 'POST', `/households/${hh}/memories/resolve`, { refs: snap })).status, 404, 'revoked viewer cannot resolve a frozen snapshot');
+    assert.equal((await cmd(call, A, hh, { type: 'memory.delete', target_id: m1.id, expected_revision: 1 })).body.status, 'applied');
+    const res = (await call(A, 'POST', `/households/${hh}/memories/resolve`, { refs: snap })).body;
+    assert.deepEqual([res.allowed.length, res.fenced.length, res.dispatch], [0, 1, 'BLOCKED']);
+  } finally { await sql.end(); }
+});
