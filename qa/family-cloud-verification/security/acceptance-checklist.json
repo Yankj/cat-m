@@ -1,0 +1,49 @@
+{
+  "version": "family-security-acceptance-proposal-v1",
+  "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "contract_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+  "frozen": false,
+  "scope": "Proposed gates for M0 review. Nothing here authorizes implementation, infrastructure or shared-family launch.",
+  "permission_matrix": {
+    "case_source": "permission-fixtures.mjs",
+    "ids": "FP-01 through FP-32",
+    "case_count": 32,
+    "actors": "Two synthetic adults, two synthetic households, child member without Auth identity, no real family data",
+    "product_execution_status": "NOT_RUN",
+    "required_layers": ["real implementation service", "authorized isolated PG with actual application role", "authenticated Data API/RLS where applicable", "viewer and worker revocation interleavings"],
+    "proposed_gate": "0 unauthorized reads/writes/exports/dispatches, 0 private-title leaks, deny by default; no skip counted as pass",
+    "required_evidence": "Pinned migration/grants/runtime-role/protocol manifest, exact fixture IDs and all denominators, minimal authorized response bodies, transaction/audit receipts, independent reviewer"
+  },
+  "command_unknown_cases": [
+    {"id":"CU-01","name":"同key同hash重放返回原receipt","status":"NOT_RUN","expect":"One command identity, one aggregate revision, one outbox event; return same result after timeout/restart","layer":"isolated PG + service"},
+    {"id":"CU-02","name":"同key异hash冲突","status":"NOT_RUN","expect":"409, no mutation, do not reveal unauthorized prior result","layer":"service + isolated PG"},
+    {"id":"CU-03","name":"旧expected_revision不覆盖新事实","status":"NOT_RUN","expect":"409 plus only authorized minimal diff; preserve client draft","layer":"service + client"},
+    {"id":"CU-04","name":"超时先查原command","status":"NOT_RUN","expect":"GET original receipt distinguishes processing/applied/rejected/not_found; 202 is not applied","layer":"service + client"},
+    {"id":"CU-05","name":"not_found后合同允许才重发同identity","status":"NOT_RUN","expect":"No blind retry/new command ID after outcome_unknown; prove original nonexecution first","layer":"service + client fault injection"},
+    {"id":"CU-06","name":"撤权后receipt投影最小化","status":"NOT_RUN","expect":"403/invisible according to frozen contract; do not leak object title or payload in error/diff","layer":"real authority + isolated PG"},
+    {"id":"CU-07","name":"并发首次同key提交","status":"NOT_RUN","expect":"Independent instances submit simultaneously; one durable result and no duplicate effect","layer":"isolated PG concurrency"},
+    {"id":"CU-08","name":"领域revision receipt outbox原子性","status":"NOT_RUN","expect":"Inject failure at every write boundary; all commit or none, stable retry identity","layer":"isolated PG transactions"},
+    {"id":"CU-09","name":"外部unknown不可重发","status":"NOT_RUN","expect":"Keep original dispatch ID and target digest; reconcile observation without new side effect","layer":"device/external substitute then authorized real receipt"},
+    {"id":"CU-10","name":"worker冻结快照后撤权","status":"NOT_RUN","expect":"Revalidate membership/visibility/generation after model return and before write/dispatch","layer":"service + PG interleaving"},
+    {"id":"CU-11","name":"跨家庭复合父子引用","status":"NOT_RUN","expect":"Reject link in actual database constraints and service, not only JSON validation","layer":"isolated PG + actual application role"},
+    {"id":"CU-12","name":"旧客户端未知卡与错误兼容","status":"NOT_RUN","expect":"Readable summary and no unknown action; 401 differs from Auth 503; capability/version declared","layer":"contract compatibility + client"}
+  ],
+  "memory_cases": [
+    {"id":"MC-01","name":"纠正版本记录新来源链","status":"NOT_RUN","expect":"Subject/visibility/source kind/ref/revision/time retained; correction links previous version and new current-user source","offline_gap":"SP-07","layer":"unified service + PG"},
+    {"id":"MC-02","name":"迟到正文CAS冲突","status":"NOT_RUN","expect":"Old revision returns 409, latest correction wins without losing draft","offline_gap":"SP-02","layer":"unified service + PG concurrency"},
+    {"id":"MC-03","name":"删除后同operation不可复活","status":"NOT_RUN","expect":"Tombstone/generation fences original operation replay and late worker","offline_gap":"SP-05","layer":"PG + worker recovery"},
+    {"id":"MC-04","name":"删除清除派生索引摘要提醒缓存","status":"NOT_RUN","expect":"All relevant projections stop using source; export/deletion scope has durable receipt","layer":"service + PG + client"},
+    {"id":"MC-05","name":"来源删除使关联记忆重审","status":"NOT_RUN","expect":"Deleted/expired source cannot remain active evidence; privacy scope cannot expand","layer":"service + PG"},
+    {"id":"MC-06","name":"召回冻结后撤权仍需停止dispatch","status":"NOT_RUN","expect":"No wrong subject/private/retracted source injection after revocation","layer":"service + PG interleaving"},
+    {"id":"MC-07","name":"健康观察与推断必须区分","status":"NOT_RUN","expect":"Sensitive/inferred/shared-scope changes require explicit confirmation; no diagnosis claim from observation","layer":"schema + approved model evaluation"},
+    {"id":"MC-08","name":"journal失败保留可恢复来源","status":"NOT_RUN","expect":"Claim/lease then save and consume atomically; failure keeps original fragments recoverable","offline_gap":"SP-08","layer":"isolated PG fault injection"},
+    {"id":"MC-09","name":"瞬时原媒体到期清扫","status":"NOT_RUN","expect":"Frozen TTL and explicit retention choice; deletion/orphan cleanup has bytes and receipt evidence","layer":"authorized isolated storage + service"},
+    {"id":"MC-10","name":"虚构中文跨会话质量集","status":"NOT_RUN","expect":"Freeze >=100 examples and denominator; proposed recall@6>=90%, wrong-subject/retracted injection=0, old correction used next turn=0","layer":"separate authorized model quality lane"}
+  ],
+  "log_cases": [
+    {"id":"LG-01","name":"异常日志合成敏感标记为零","status":"FAIL","layer":"offline injected error","evidence":"log-probe-results.json LP-01","actual":"Captured proactive logger arguments contain synthetic canary; safe logger/metrics controls do not","production_exposure":"UNVERIFIED"},
+    {"id":"LG-02","name":"原生OS日志无payload正文或工具参数","status":"NOT_RUN","layer":"authorized native/OS logging","static_risk":"ConversationSessionService.swift:351,684,695 use public payload/error description prefixes","expect":"Bounded synthetic markers absent, including error and SSE/tool argument paths"},
+    {"id":"LG-03","name":"无内容trace可拼时序","status":"NOT_RUN","layer":"service + client synthetic traces","expect":"30 frozen synthetic traces complete admission/command/dispatch/receipt phases; only allowed metadata, rotating/nonlinkable identity, no child text/media/token/tool body"}
+  ],
+  "not_counted_as_pass": ["fixture oracle matches", "static implementation exists", "mock token accepted", "RLS enabled literal", "skip", "blocked", "unknown", "historical reports", "child-agent self-report", "model creation arguments accepted"]
+}

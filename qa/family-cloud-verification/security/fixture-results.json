@@ -1,0 +1,335 @@
+{
+  "version": "family-security-fixture-v1",
+  "synthetic": true,
+  "layer": "fixture-only",
+  "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "contract_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+  "scope": "proposed-policy fixture consistency only",
+  "product_authorization_verified": false,
+  "postgres_rls_verified": false,
+  "real_auth_verified": false,
+  "total": 32,
+  "passed": 32,
+  "results": [
+    {
+      "id": "FP-01",
+      "name": "同家庭owner读取共享事项",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": true,
+        "reason": "authorized"
+      }
+    },
+    {
+      "id": "FP-02",
+      "name": "同家庭viewer读取共享事项",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": true,
+        "reason": "authorized"
+      }
+    },
+    {
+      "id": "FP-03",
+      "name": "同家庭viewer不得修改事项",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "read_only"
+      }
+    },
+    {
+      "id": "FP-04",
+      "name": "caregiver显式授权修改事项",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": true,
+        "reason": "authorized"
+      }
+    },
+    {
+      "id": "FP-05",
+      "name": "caregiver无对象授权不得读取",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "object_grant_required"
+      }
+    },
+    {
+      "id": "FP-06",
+      "name": "跨家庭对象ID不得读取",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "tenant_mismatch"
+      }
+    },
+    {
+      "id": "FP-07",
+      "name": "跨家庭对象ID不得修改",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "tenant_mismatch"
+      }
+    },
+    {
+      "id": "FP-08",
+      "name": "跨家庭父对象不得关联",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "tenant_mismatch"
+      }
+    },
+    {
+      "id": "FP-09",
+      "name": "另一成人私人观察owner也不可读",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "private_owner_required"
+      }
+    },
+    {
+      "id": "FP-10",
+      "name": "另一成人私人聊天admin也不可读",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "private_owner_required"
+      }
+    },
+    {
+      "id": "FP-11",
+      "name": "自己的私人记录可读",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": true,
+        "reason": "authorized"
+      }
+    },
+    {
+      "id": "FP-12",
+      "name": "会话绑定家庭不改变聊天所有权",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "private_owner_required"
+      }
+    },
+    {
+      "id": "FP-13",
+      "name": "invited成员未激活不得读取",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "membership_inactive"
+      }
+    },
+    {
+      "id": "FP-14",
+      "name": "撤权成员不得读取投影",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "membership_inactive"
+      }
+    },
+    {
+      "id": "FP-15",
+      "name": "撤权发生后worker不得dispatch",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "membership_inactive"
+      }
+    },
+    {
+      "id": "FP-16",
+      "name": "旧权限revision命令需重审",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "membership_revision_conflict"
+      }
+    },
+    {
+      "id": "FP-17",
+      "name": "伪造body actor不得成为身份",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "actor_mismatch"
+      }
+    },
+    {
+      "id": "FP-18",
+      "name": "未认证不得bootstrap读取",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "authentication_required"
+      }
+    },
+    {
+      "id": "FP-19",
+      "name": "service-role仍须家庭授权",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "membership_inactive"
+      }
+    },
+    {
+      "id": "FP-20",
+      "name": "用户metadata管理员字段无效",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "read_only"
+      }
+    },
+    {
+      "id": "FP-21",
+      "name": "儿童member不等于Auth账号",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "membership_inactive"
+      }
+    },
+    {
+      "id": "FP-22",
+      "name": "关闭共享时第二成人不得读取",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "single_adult_boundary"
+      }
+    },
+    {
+      "id": "FP-23",
+      "name": "关闭共享时主要成人仍可读取",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": true,
+        "reason": "authorized"
+      }
+    },
+    {
+      "id": "FP-24",
+      "name": "隐私范围改变必须独立确认",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "specific_consent_required"
+      }
+    },
+    {
+      "id": "FP-25",
+      "name": "有确认仍不得分享另一成人私聊",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "private_owner_required"
+      }
+    },
+    {
+      "id": "FP-26",
+      "name": "来源撤回后冻结记忆不可dispatch",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "source_not_current"
+      }
+    },
+    {
+      "id": "FP-27",
+      "name": "删除generation使迟到job失效",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "generation_superseded"
+      }
+    },
+    {
+      "id": "FP-28",
+      "name": "撤权后command receipt不可泄漏标题",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "membership_inactive"
+      }
+    },
+    {
+      "id": "FP-29",
+      "name": "跨家庭cursor增量不得读取",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "tenant_mismatch"
+      }
+    },
+    {
+      "id": "FP-30",
+      "name": "归档家庭不得创建新事项",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "household_archived"
+      }
+    },
+    {
+      "id": "FP-31",
+      "name": "viewer不得导出另一成人私有材料",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "private_owner_required"
+      }
+    },
+    {
+      "id": "FP-32",
+      "name": "未知角色默认拒绝",
+      "fixture_check": "PASS",
+      "acceptance_status": "NOT_RUN",
+      "actual": {
+        "allow": false,
+        "reason": "role_unknown"
+      }
+    }
+  ]
+}
