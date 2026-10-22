@@ -1,0 +1,149 @@
+{
+  "requested": {
+    "model": "gpt-6.1-sol",
+    "effort": "ultra"
+  },
+  "effective_model": null,
+  "effective_effort": null,
+  "effective_status": "UNVERIFIED",
+  "bundled_catalog": {
+    "command": "codex debug models --bundled",
+    "cli": "0.159.2",
+    "sha256": "262dc36e0e7beb290aef8196bd59f42acf51647b8f7b68dafa533ae7742019e6",
+    "matches": [
+      {
+        "id": "gpt-6.1-sol",
+        "supported_efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max",
+          "ultra"
+        ],
+        "default_effort": "low",
+        "supported_in_api": true
+      }
+    ],
+    "limit": "Bundled support catalog only; not account/run authorization or an effective model receipt"
+  },
+  "native_goal": {
+    "feature_output": "goals stable true",
+    "schema_command": "codex app-server generate-json-schema --out build/family-cloud-verification/app-server-schema",
+    "schema_summaries": [
+      {
+        "name": "ThreadGoalSetParams",
+        "sha256": "93162f095e9b3b5a051ceb24318b8922c663edefc1f8c67bd378085c0d6c01d2",
+        "required": [
+          "threadId"
+        ],
+        "properties": [
+          "objective",
+          "status",
+          "threadId",
+          "tokenBudget"
+        ]
+      },
+      {
+        "name": "ThreadGoalSetResponse",
+        "sha256": "b1c61b6068b3b73dd3d97b38f8a269593f8f7added4643bfdb2016315b71ad8e",
+        "required": [
+          "goal"
+        ],
+        "properties": [
+          "goal"
+        ]
+      },
+      {
+        "name": "ThreadGoalGetParams",
+        "sha256": "1a5de89b3c5c49528af404a65411a73ef05dc7c9c49c3f00c90d9926dfe34137",
+        "required": [
+          "threadId"
+        ],
+        "properties": [
+          "threadId"
+        ]
+      },
+      {
+        "name": "ThreadGoalGetResponse",
+        "sha256": "f610000963194731c96ce2b45e46722ca700f1b6ccc1fc55a2fd95e526018fd9",
+        "required": null,
+        "properties": [
+          "goal"
+        ]
+      }
+    ],
+    "current_callable_goal_tools": [],
+    "goal_created": false,
+    "goal_id": null,
+    "status": "NOT_STARTED",
+    "limit": "Installed CLI has Goal protocol schemas. Current cloud task has no exposed Goal create/get tool or verified current native thread binding; no daemon/session storage access or protocol mutation attempted."
+  },
+  "agents": [
+    {
+      "agent": "/root",
+      "requested_model": "gpt-6.1-sol",
+      "requested_effort": "ultra",
+      "accepted": null,
+      "effective_model": null,
+      "effective_effort": null
+    },
+    {
+      "agent": "/root/offline_regression",
+      "requested_model": "gpt-6.1-sol",
+      "requested_effort": "ultra",
+      "fork_turns": "none",
+      "accepted": true,
+      "effective_model": null,
+      "effective_effort": null
+    },
+    {
+      "agent": "/root/security_contract",
+      "requested_model": "gpt-6.1-sol",
+      "requested_effort": "ultra",
+      "fork_turns": "none",
+      "accepted": true,
+      "effective_model": null,
+      "effective_effort": null
+    },
+    {
+      "agent": "/root/offline_regression/read_only_review",
+      "requested_model": "gpt-6.1-sol",
+      "requested_effort": "ultra",
+      "fork_turns": "none",
+      "accepted": true,
+      "effective_model": null,
+      "effective_effort": null,
+      "evidence": "Parent A reported explicit creation fields and accepted task_name; no effective receipt"
+    }
+  ],
+  "configuration_deviations": [
+    {
+      "agent": "/root/security_contract/readonly_log_audit",
+      "fork_turns": "omitted (defaults to all)",
+      "model_parameter": null,
+      "reasoning_effort_parameter": null,
+      "status": "CONFIG_NOT_EXPLICIT",
+      "effective_model": null,
+      "effective_effort": null,
+      "outcome": "Read-only helper ended, no file writes. B independently re-executed log canary probe; helper conclusions are not credited as an independently configured verification lane."
+    },
+    {
+      "agent": "/root/offline_regression/read_only_review/sql_boundary_review",
+      "fork_turns": "omitted",
+      "model_parameter": null,
+      "reasoning_effort_parameter": null,
+      "status": "CONFIG_NOT_EXPLICIT",
+      "effective_model": null,
+      "effective_effort": null,
+      "outcome": "Parent A reports helper interrupted (previous status running), no more delegation. Helper output excluded from credited verification evidence; A independently read source and executed probes."
+    }
+  ],
+  "local_coordination": {
+    "local_goal": "Executing primary Goal, confirmed by user via parent",
+    "local_code_state": "UNKNOWN",
+    "cloud_role": "Independent bounded offline acceptance support",
+    "wait_for_local_summary": false,
+    "direct_handoff_acknowledged": false
+  }
+}

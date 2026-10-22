@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "lane": "/root/offline_regression",
+  "scope": "bounded offline verification, not a native Goal or product implementation",
+  "agents": [
+    {
+      "id": "/root/offline_regression",
+      "requested_model": "gpt-6.1-sol",
+      "requested_effort": "ultra",
+      "request_evidence": "Parent delegation states the creation request explicitly selected model and effort and was accepted.",
+      "effective_model": null,
+      "effective_effort": null,
+      "status": "UNVERIFIED"
+    },
+    {
+      "id": "/root/offline_regression/read_only_review",
+      "explicit_spawn_arguments": {
+        "fork_turns": "none",
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "ultra"
+      },
+      "accepted_receipt": {"task_name": "/root/offline_regression/read_only_review"},
+      "effective_model": null,
+      "effective_effort": null,
+      "status": "UNVERIFIED",
+      "contribution": "read-only source/test review; no writes or test execution"
+    },
+    {
+      "id": "/root/offline_regression/read_only_review/sql_boundary_review",
+      "explicit_spawn_arguments": {"task_name": "sql_boundary_review", "message": "provided; content not copied"},
+      "fork_turns_explicit": false,
+      "model_explicit": false,
+      "effort_explicit": false,
+      "accepted_receipt": {"task_name": "/root/offline_regression/read_only_review/sql_boundary_review"},
+      "effective_model": null,
+      "effective_effort": null,
+      "status": "CONFIG_NOT_EXPLICIT",
+      "action": "Parent reviewer interrupted further work; interrupt receipt previous_status=running. No retry or replacement agent created.",
+      "included_as_validation_evidence": false
+    }
+  ],
+  "evidence_limit": "Task creation acceptance proves neither effective model nor effective effort. The main lane independently read maintenance inputs and ran every delivered test. No claim that all agents meet the configuration gate.",
+  "goal_id": null,
+  "native_goal_created": false
+}

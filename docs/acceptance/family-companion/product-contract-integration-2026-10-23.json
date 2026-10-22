@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-10-23",
+  "kind": "static_contract_integration_not_product_acceptance",
+  "preparation_parent_sha": "58d7e741cd1ff865e32ecd9a8995bf6dc7a4ab00",
+  "branch": "docs/family-m0",
+  "source_commit": "a54d7f2b34db4bcda13fb1a22eaaf4b847dd9e17",
+  "original_cloud_qa_commit": "b5d365f8c8cd49a0525f6ae76d18af74b9759567",
+  "product_source_base": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "latest_actual_rerun_candidate": "88c71ac753bb2f52fa6ddbe2a1c25b6629293946",
+  "latest_actual_rerun_receipt": "docs/acceptance/family-companion/cloud-recheck-2026-10-23.json",
+  "new_product_runs": 0,
+  "product_source_changes": 0,
+  "product_fixes": 0,
+  "product_status": "NOT_RUN",
+  "m0_accepted": false,
+  "current_progress": "docs/status/master-plan.md",
+  "counting": {
+    "rows": 72,
+    "scenario_parents": 12,
+    "observables": 36,
+    "interaction_state_aliases": 10,
+    "ui_aliases": 14,
+    "original_gate_denominator": 97,
+    "original_memory_denominator": 100,
+    "recall_eligible_queries": 50,
+    "gold_references": 52,
+    "safety_denominator": 100,
+    "mapped_gates": 58,
+    "mapped_memory_cases": 70,
+    "criterion_links": 434,
+    "memory_subcase_links": 287,
+    "root_decisions": 10
+  },
+  "import": {
+    "files": 43,
+    "original_files_unchanged": 39,
+    "product_or_shared_protocol_files": 0,
+    "method": "exact reviewed bytes; original dated reports preserved"
+  },
+  "independent_reviews": {
+    "crosswalk": {
+      "blocking_findings": 0,
+      "editorial_findings": 0,
+      "original_36_observable_payloads_10_state_clauses_14_ui_requirements_preserved": true,
+      "all_72_rows_not_run": true,
+      "forward_reverse_consistent": true
+    },
+    "bootstrap_plan": {
+      "revision": 2,
+      "blocking_findings": 0,
+      "previous_findings": [
+        {
+          "id": "B01",
+          "disposition": "RESOLVED_IN_PLAN_NOT_RUNTIME_VERIFIED",
+          "anchors": "plan:25–26,31,39–45,59–61,88"
+        },
+        {
+          "id": "B02",
+          "disposition": "RESOLVED_IN_PLAN_NOT_RUNTIME_VERIFIED",
+          "anchors": "plan:47–57,86,91"
+        },
+        {
+          "id": "B03",
+          "disposition": "CLARIFIED_IN_PLAN",
+          "anchors": "plan:35–45,53–55,87"
+        },
+        {
+          "id": "B04",
+          "disposition": "RETAINED_AS_FUTURE_TEST_DESIGN_DETAIL",
+          "anchors": "plan:75–93,109–111"
+        }
+      ],
+      "residual_requirements": [
+        "Do not infer cleanup from final verify rejection or a swallowed async release return; observe the owned reservation boundary or quarantine.",
+        "SQL handle must remain owned if later pool/repository/auth/factory construction fails; partial context must not allocate a second driver.",
+        "Identity guard must compare actual stored flight or stable attempt token; successful ready/quarantined cannot be cleared by old waiters.",
+        "BR 13 is a group count only; individual case inputs, latches, counts, versions and denominators remain future implementation work.",
+        "Projection remains a local current-config implementation, not a general hot-reload/config framework.",
+        "Real PG/driver release/socket cleanup/timeout/multi-instance, Auth/model/user writes remain NOT_RUN."
+      ],
+      "proposed_supplemental_groups": 13,
+      "status": "NOT_RUN",
+      "curation_semantically_unchanged": true
+    }
+  },
+  "artifacts": [
+    {
+      "path": "docs/acceptance/family-companion/cloud-assets-provenance-2026-10-23.json",
+      "sha256": "a021ecb74efc5194cfbdf08f58fb1be07077b075c31ec2ba5cffba37a110896d",
+      "bytes": 8680
+    },
+    {
+      "path": "docs/acceptance/family-companion/product-contract-crosswalk-v1.json",
+      "sha256": "690281342c5098f8bcbec332125ebd389ad31319d447e7d270fef382e7c1fb1a",
+      "bytes": 397499
+    },
+    {
+      "path": "docs/acceptance/family-companion/product-contract-alignment-2026-10-23.md",
+      "sha256": "97c0880e17038966e51dd61e0f630222aa0cf5eaa29ece854503f26f7475eb88",
+      "bytes": 4421
+    },
+    {
+      "path": "docs/acceptance/family-companion/ui-evidence-requirements-2026-10-23.md",
+      "sha256": "648a768bf5b05655eeaf9b57e9bbce00fcca8550f91aeeb05dd08d725b4bf941",
+      "bytes": 5367
+    },
+    {
+      "path": "docs/acceptance/family-companion/bootstrap-plan-sources-2026-10-23.json",
+      "sha256": "56290c217ffc8b8e6ed7f0f23fb8334e38fa9dcac8c03fd631a3ae403b5827eb",
+      "bytes": 19702
+    },
+    {
+      "path": "docs/design/family-companion/bootstrap-recovery-plan.md",
+      "sha256": "cf798d7be0fe3cc7c742edc86971c20513faf4d7a25e0b91b2c90940e427f3e9",
+      "bytes": 18286
+    }
+  ],
+  "raw_review_outputs": [
+    {
+      "local_ignored_path": "build/family-contract-integration/contract-original-review.md",
+      "sha256": "8d1529933391c6fdc55e3ea039e84b2193e6a37ab95ba02b3356a8a63526e891",
+      "bytes": 7235
+    },
+    {
+      "local_ignored_path": "build/family-contract-integration/crosswalk-review.md",
+      "sha256": "57df30262097bc2b69955418038b9fd1f6cb9e993c3fde1c528be7d12992dd0b",
+      "bytes": 3926
+    },
+    {
+      "local_ignored_path": "build/family-contract-integration/crosswalk-review.json",
+      "sha256": "0089c46e8a6315824977b8a0c69e132d24d1d178b0e3c2c73e4d01f10c887d71",
+      "bytes": 1578
+    },
+    {
+      "local_ignored_path": "build/family-contract-integration/crosswalk-structure.json",
+      "sha256": "518a76e8bb0363a701fd1484d8722c45c0f6722554a32913b98f85e49f3dd5d3",
+      "bytes": 3110
+    },
+    {
+      "local_ignored_path": "build/family-contract-integration/bootstrap-original-review.md",
+      "sha256": "67a7a418e699b56450a1df7baae6ed2b1a5841cd10dd6273937515525446859e",
+      "bytes": 8968
+    },
+    {
+      "local_ignored_path": "build/family-contract-integration/bootstrap-v2-review.md",
+      "sha256": "a838388a697dd14e4f804e6af74e22ec4d2904c2fde2adb535b6d9ba9607cf30",
+      "bytes": 3238
+    },
+    {
+      "local_ignored_path": "build/family-contract-integration/bootstrap-v2-review.json",
+      "sha256": "4cfc063b04e0d4dbc68a120087b0e8024103347a031627df0dfce3b6ab62c44c",
+      "bytes": 1964
+    },
+    {
+      "local_ignored_path": "build/family-contract-integration/bootstrap-curation.md",
+      "sha256": "8654c3e03e81e940718cdfcc297d2ae9fcfd3141fdf4199004219df0941d66c3",
+      "bytes": 1045
+    },
+    {
+      "local_ignored_path": "build/family-contract-integration/bootstrap-curation.json",
+      "sha256": "de80218a1d11c5906924ed9ccf3dbab91c728ce0e7b7044239cea001700c9cea",
+      "bytes": 833
+    }
+  ],
+  "governance_checks": [
+    {
+      "command": "python3 scripts/check-repository-layout.py",
+      "exit_code": 0,
+      "output_sha256": "96555d463a7edf4a2a76f332a6e976ced39649106e2234a99857fdfa0f534ab6"
+    },
+    {
+      "command": "python3 scripts/check-repository.py",
+      "exit_code": 0,
+      "output_sha256": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d"
+    },
+    {
+      "command": "python3 scripts/check-deployed-source.py",
+      "exit_code": 0,
+      "output_sha256": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228"
+    },
+    {
+      "command": "python3 scripts/check-agent-foundation-plan.py",
+      "exit_code": 0,
+      "output_sha256": "71da24f70099c5cfb5c75ba771b66c4bf4a7191051c3bd879afd8ec58db3f748"
+    },
+    {
+      "command": "python3 scripts/check-agent-foundation-goals.py",
+      "exit_code": 0,
+      "output_sha256": "5e514e06da7e3f3b8a689bfeeb73d37027323026d35b3d55b36e0160fc816e5d"
+    },
+    {
+      "command": "python3 scripts/check-final-product-plan.py",
+      "exit_code": 0,
+      "output_sha256": "7b72c9e606d7cd160ae8d115c2f06fd10a8e293c8de3a662a01a92467c51161c"
+    },
+    {
+      "command": "python3 scripts/check-conversation-ui-plan.py",
+      "exit_code": 0,
+      "output_sha256": "0751a52050b8903f5812a6f0fc59db56a345f2b4dc1857e55e7d69c402873163"
+    }
+  ],
+  "scope_limits": [
+    "Static preparation only; no new native, service, model, PG/RLS/multi-instance, notification or device tests.",
+    "All new standards remain unexecuted; source-only evidence does not establish behavior.",
+    "Media scripts lack actual image/audio bytes and asynchronous control fixtures.",
+    "Caps, retention/autosave, schemas, execution topology and hosted reconciliation remain open as stated in the master plan.",
+    "13 bootstrap groups are proposed groups, not executed cases or closed product gates.",
+    "Original 18, 223, 32, 97 and 100 denominators remain separate."
+  ],
+  "final_sensitivity": {
+    "candidate_files": 1860,
+    "blocking_hits": 0,
+    "manual_review_hits": 0,
+    "reviewed_false_positives": 148,
+    "png_files": 120,
+    "command": "python3 scripts/scan-repository.py --json-output build/family-contract-integration/sensitivity-final.json",
+    "note": "Final command must be run after this receipt exists; integration is not delivered unless it agrees."
+  }
+}
