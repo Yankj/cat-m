@@ -1,7 +1,7 @@
 import Foundation
 #if !TASK_ACTIONS_PORTABLE
 import XCTest
-@testable import CatpawM
+@testable import cat
 #endif
 
 private actor TaskActionGate {
@@ -31,14 +31,14 @@ private actor TaskActionFixtureBackend:ConversationTaskActionBackend {
     func decideAction(_ reference:ConversationTaskActionReference,actionID:String,request:ConversationTaskActionDecisionRequest) async throws -> ConversationTaskActionEnvelope {
         if mode == .notSent {throw ConversationTaskActionDispatchFailure.notSent}
         posts.append(request)
-        if mode == .conflict {throw CatpawError.conflict}
+        if mode == .conflict {throw catError.conflict}
         snapshot.revision += 1;snapshot.approval_status=request.decision == .approve ? "approved":"denied";snapshot.decision_operation_id=request.operationID.uuidString.lowercased();snapshot.effect = .init(status:request.decision == .approve ? "waiting_device":"not_dispatched")
         let receipt=ConversationTaskActionDecisionReceipt(operation_id:request.operationID.uuidString.lowercased(),action_id:actionID,decision:request.decision,action_digest:request.action_digest,committed_at:"2026-10-14T00:05:00.000Z")
         var envelope=ConversationTaskActionEnvelope(action:snapshot,decision:receipt)
         if mode == .invalidReceipt {envelope.decision?.action_digest=String(repeating:"b",count:64)}
         receipts[request.operationID]=envelope
         if let gate {await gate.pause()}
-        if mode == .unknown || mode == .notFound {throw CatpawError.unavailable("Named synthetic lost response")}
+        if mode == .unknown || mode == .notFound {throw catError.unavailable("Named synthetic lost response")}
         return envelope
     }
     func readDecision(_ reference:ConversationTaskActionReference,actionID:String,operationID:UUID) async throws -> ConversationTaskActionEnvelope {
@@ -53,7 +53,7 @@ private final class TaskActionFailingPersistence:SnapshotPersistence,@unchecked 
     init(url:URL){base=FilePersistence(url:url)}
     func failNext(){lock.lock();fails=true;lock.unlock()}
     func load() throws -> StoreSnapshot {try base.load()}
-    func save(_ value:StoreSnapshot) throws {lock.lock();let fail=fails;fails=false;lock.unlock();if fail {throw CatpawError.unavailable("Named synthetic disk failure")};try base.save(value)}
+    func save(_ value:StoreSnapshot) throws {lock.lock();let fail=fails;fails=false;lock.unlock();if fail {throw catError.unavailable("Named synthetic disk failure")};try base.save(value)}
 }
 private enum TaskActionMatrix {
     struct Failure:Error {let description:String}

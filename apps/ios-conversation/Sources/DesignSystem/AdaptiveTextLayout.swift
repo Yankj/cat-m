@@ -3,7 +3,7 @@ import UIKit
 
 /// SwiftUI's environment is the authority for text size, including an in-app override.
 /// UIKit must use that same category, rather than silently reverting to the window's trait.
-@MainActor enum CatpawTypography {
+@MainActor enum catTypography {
     enum Role { case appTitle, title, heading, body, secondary, caption, table
         var font:Font {
             switch self {
@@ -57,19 +57,19 @@ import UIKit
 
 /// An intrinsic-width row may fit at ordinary size. Otherwise title and metadata
 /// use separate full-width lines; metadata never squeezes words into a thin column.
-struct CatpawAdaptiveHeader:View {
+struct catAdaptiveHeader:View {
     let title:String
     var detail:String?=nil
     var symbol:String?=nil
-    var titleRole:CatpawTypography.Role = .heading
-    var detailRole:CatpawTypography.Role = .caption
+    var titleRole:catTypography.Role = .heading
+    var detailRole:catTypography.Role = .caption
     var weight:Font.Weight = .semibold
     @Environment(\.dynamicTypeSize) private var size
     private var titleText:some View {Text(verbatim:title).font(titleRole.font.weight(weight))}
     private var metadata:some View {
         HStack(alignment:.firstTextBaseline,spacing:8) {
             if let symbol {Image(systemName:symbol).accessibilityHidden(true)}
-            if let detail {Text(verbatim:detail).font(detailRole.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true)}
+            if let detail {Text(verbatim:detail).font(detailRole.font).foregroundStyle(catColors.secondary).fixedSize(horizontal:false,vertical:true)}
         }
     }
     private var stacked:some View {
@@ -86,7 +86,7 @@ struct CatpawAdaptiveHeader:View {
                     HStack(alignment:.firstTextBaseline,spacing:8) {
                         if let symbol {Image(systemName:symbol).accessibilityHidden(true)}
                         titleText.fixedSize()
-                        if let detail {Text(verbatim:detail).font(detailRole.font).foregroundStyle(CatpawColors.secondary).fixedSize()}
+                        if let detail {Text(verbatim:detail).font(detailRole.font).foregroundStyle(catColors.secondary).fixedSize()}
                     }.fixedSize(horizontal:true,vertical:false)
                     stacked
                 }
@@ -98,7 +98,7 @@ struct CatpawAdaptiveHeader:View {
 
 /// Reading titles wrap. Compact association bars may truncate a title, but never
 /// spend the version's width on that title. VoiceOver receives the complete value.
-struct CatpawVersionedTitle:View {
+struct catVersionedTitle:View {
     enum Arrangement {case reading,compact}
     let title:String
     let version:String
@@ -106,13 +106,13 @@ struct CatpawVersionedTitle:View {
     var titleAccessibilityIdentifier:String? = nil
     var versionAccessibilityIdentifier:String? = nil
     private var titleText:some View {
-        Text(verbatim:title).font(layout == .reading ? CatpawTypography.Role.title.font.weight(.semibold) : CatpawTypography.Role.caption.font)
+        Text(verbatim:title).font(layout == .reading ? catTypography.Role.title.font.weight(.semibold) : catTypography.Role.caption.font)
             .accessibilityAddTraits(layout == .reading ? .isHeader : [])
             .accessibilityIdentifier(titleAccessibilityIdentifier ?? "")
     }
     private var versionText:some View {
-        Text(verbatim:version).font(layout == .reading ? CatpawTypography.Role.secondary.font : CatpawTypography.Role.caption.font)
-            .foregroundStyle(CatpawColors.secondary)
+        Text(verbatim:version).font(layout == .reading ? catTypography.Role.secondary.font : catTypography.Role.caption.font)
+            .foregroundStyle(catColors.secondary)
             .accessibilityIdentifier(versionAccessibilityIdentifier ?? "")
     }
     var body:some View {
@@ -138,7 +138,7 @@ struct CatpawVersionedTitle:View {
 
 /// Keep a control area as a sibling of the scroll viewport. Insetting an overlay
 /// into a nested editor can leave a visible text-view frame with a hidden caret.
-struct CatpawBottomActionArea<Content:View>:View {
+struct catBottomActionArea<Content:View>:View {
     @ViewBuilder var content:Content
     var body:some View {
         VStack(spacing:8){content}.padding(.horizontal,20).padding(.vertical,10)
@@ -150,7 +150,7 @@ struct CatpawBottomActionArea<Content:View>:View {
 /// Prefer the complete action title when its intrinsic width fits. Compact
 /// wording may wrap, while the button retains its complete accessibility label.
 /// Both variants inherit the same semantic font from the button style.
-struct CatpawAdaptiveActionTitle:View {
+struct catAdaptiveActionTitle:View {
     let fullTitle:String
     let compactTitle:String
     var body:some View {
@@ -161,7 +161,7 @@ struct CatpawAdaptiveActionTitle:View {
     }
 }
 
-struct CatpawAdaptiveActions<Content:View>:View {
+struct catAdaptiveActions<Content:View>:View {
     @Environment(\.dynamicTypeSize) private var size
     @ViewBuilder var content:Content
     var body:some View {
@@ -177,7 +177,7 @@ struct CatpawAdaptiveActions<Content:View>:View {
 
 /// Modal roots receive the presenting text/locale environment in one place.
 /// This also makes an accessibility override behave consistently across a sheet.
-private struct CatpawSheetModifier<Sheet:View>:ViewModifier {
+private struct catSheetModifier<Sheet:View>:ViewModifier {
     @Binding var isPresented:Bool
     var onDismiss:(()->Void)?
     @ViewBuilder var sheet:()->Sheet
@@ -189,7 +189,7 @@ private struct CatpawSheetModifier<Sheet:View>:ViewModifier {
         }
     }
 }
-private struct CatpawItemSheetModifier<Item:Identifiable,Sheet:View>:ViewModifier {
+private struct catItemSheetModifier<Item:Identifiable,Sheet:View>:ViewModifier {
     @Binding var item:Item?
     var onDismiss:(()->Void)?
     @ViewBuilder var sheet:(Item)->Sheet
@@ -203,16 +203,16 @@ private struct CatpawItemSheetModifier<Item:Identifiable,Sheet:View>:ViewModifie
 }
 extension View {
     func catpawSheet<Sheet:View>(isPresented:Binding<Bool>,onDismiss:(()->Void)?=nil,@ViewBuilder content:@escaping()->Sheet)->some View {
-        modifier(CatpawSheetModifier(isPresented:isPresented,onDismiss:onDismiss,sheet:content))
+        modifier(catSheetModifier(isPresented:isPresented,onDismiss:onDismiss,sheet:content))
     }
     func catpawSheet<Item:Identifiable,Sheet:View>(item:Binding<Item?>,onDismiss:(()->Void)?=nil,@ViewBuilder content:@escaping(Item)->Sheet)->some View {
-        modifier(CatpawItemSheetModifier(item:item,onDismiss:onDismiss,sheet:content))
+        modifier(catItemSheetModifier(item:item,onDismiss:onDismiss,sheet:content))
     }
 }
 
 /// Sizes are derived from rendered font metrics and the actual unobscured area.
 /// A field larger than that area scrolls internally; labels may scroll above it.
-enum CatpawTextViewport {
+enum catTextViewport {
     static func hasUncommittedCaretExtent(contentHeight:CGFloat,caretBottom:CGFloat,screenScale:CGFloat)->Bool {
         let pixel=1/max(1,screenScale)
         // Scroll extent must contain the actual caret. Desired decorative
@@ -278,25 +278,25 @@ enum CatpawTextViewport {
     }
 }
 
-struct CatpawVisibleViewport:Equatable {
+struct catVisibleViewport:Equatable {
     let bounds:CGRect
     let safeBounds:CGRect
     let keyboardTop:CGFloat?
-    var visibleBounds:CGRect {CatpawTextViewport.visibleBounds(bounds:bounds,safeBounds:safeBounds,keyboardTop:keyboardTop)}
+    var visibleBounds:CGRect {catTextViewport.visibleBounds(bounds:bounds,safeBounds:safeBounds,keyboardTop:keyboardTop)}
 }
 
 /// Observe rendered UIKit boundaries. A SwiftUI GeometryProxy may already be
 /// inset by the keyboard, so subtracting its safeAreaInsets again is ambiguous.
-@MainActor struct CatpawViewportObserver:UIViewRepresentable {
-    var changed:(CatpawVisibleViewport)->Void
-    func makeUIView(context:Context)->CatpawViewportTrackingView {
-        let view=CatpawViewportTrackingView();view.changed=changed;return view
+@MainActor struct catViewportObserver:UIViewRepresentable {
+    var changed:(catVisibleViewport)->Void
+    func makeUIView(context:Context)->catViewportTrackingView {
+        let view=catViewportTrackingView();view.changed=changed;return view
     }
-    func updateUIView(_ view:CatpawViewportTrackingView,context:Context) {view.changed=changed;view.report()}
+    func updateUIView(_ view:catViewportTrackingView,context:Context) {view.changed=changed;view.report()}
 }
-@MainActor final class CatpawViewportTrackingView:UIView {
-    var changed:((CatpawVisibleViewport)->Void)?
-    private var last:CatpawVisibleViewport?
+@MainActor final class catViewportTrackingView:UIView {
+    var changed:((catVisibleViewport)->Void)?
+    private var last:catVisibleViewport?
     private var keyboardFrame:CGRect?
     private var observers:[NSObjectProtocol]=[]
     override init(frame:CGRect) {super.init(frame:frame);isUserInteractionEnabled=false;backgroundColor = .clear}
@@ -342,7 +342,7 @@ struct CatpawVisibleViewport:Equatable {
             // layout. Intersection avoids subtracting either boundary twice.
             if docked {keyboardTop=min(keyboardTop ?? frame.minY,frame.minY)}
         }
-        let value=CatpawVisibleViewport(bounds:rect,safeBounds:safe,keyboardTop:keyboardTop)
+        let value=catVisibleViewport(bounds:rect,safeBounds:safe,keyboardTop:keyboardTop)
         guard value != last else {return};last=value
         DispatchQueue.main.async{[weak self] in guard let self,self.window != nil,self.last==value else {return};self.changed?(value)}
     }
@@ -351,8 +351,8 @@ struct CatpawVisibleViewport:Equatable {
 
 /// Both chat and document editing preserve UIKit's selection/composition and
 /// bring the caret into the text viewport when keyboard or font layout changes.
-@MainActor class CatpawEditingTextView:UITextView {
-    weak var outerInteraction:CatpawEditorInteraction?
+@MainActor class catEditingTextView:UITextView {
+    weak var outerInteraction:catEditorInteraction?
     private struct LayoutKey:Equatable {
         let revision:UInt64
         let viewport:CGSize
@@ -432,7 +432,7 @@ struct CatpawVisibleViewport:Equatable {
         var caret=caretRect(for:end)
         guard !caret.isNull,!caret.isInfinite,caret.height>0,caret.minY.isFinite,caret.maxY.isFinite else {return}
         let notVisible=caret.minY<bounds.minY || caret.maxY>bounds.maxY
-        let uncommittedSize=CatpawTextViewport.hasUncommittedCaretExtent(contentHeight:contentSize.height,caretBottom:caret.maxY,screenScale:window?.screen.scale ?? contentScaleFactor)
+        let uncommittedSize=catTextViewport.hasUncommittedCaretExtent(contentHeight:contentSize.height,caretBottom:caret.maxY,screenScale:window?.screen.scale ?? contentScaleFactor)
         if documentChanged || notVisible || uncommittedSize {
             // Glyph layout and UITextView's content-size/rendering transaction
             // are separate. A clean UIView does nothing on layoutIfNeeded alone.
@@ -459,10 +459,10 @@ struct CatpawVisibleViewport:Equatable {
 
 /// The outer page and inner editor share one interaction gate. Layout recovery
 /// must not take over a user's outer scroll or an active marked-text composition.
-@MainActor final class CatpawEditorInteraction:NSObject,ObservableObject {
+@MainActor final class catEditorInteraction:NSObject,ObservableObject {
     weak var outerScroll:UIScrollView?
-    private weak var activeEditor:CatpawEditingTextView?
-    private var viewport:CatpawVisibleViewport?
+    private weak var activeEditor:catEditingTextView?
+    private var viewport:catVisibleViewport?
     private(set) var hasPendingReveal=false
     private var revealQueued=false
     private var recovering=false
@@ -474,16 +474,16 @@ struct CatpawVisibleViewport:Equatable {
         guard let editor=activeEditor,editor.isFirstResponder,editor.markedTextRange == nil else {return false}
         return !editor.isTracking && !editor.isDragging && !editor.isDecelerating && !(outerScroll.map{$0.isTracking || $0.isDragging || $0.isDecelerating} ?? false)
     }
-    func began(_ editor:CatpawEditingTextView){
+    func began(_ editor:catEditingTextView){
         if activeEditor !== editor {activeEditor?.outerInteraction=nil}
         activeEditor=editor;editor.outerInteraction=self;requestReveal()
     }
-    func ended(_ editor:CatpawEditingTextView){
+    func ended(_ editor:catEditingTextView){
         guard activeEditor === editor else {return}
         editor.outerInteraction=nil;activeEditor=nil;hasPendingReveal=false;stopScrollObservation()
     }
     func detached(){outerScroll=nil;viewport=nil;hasPendingReveal=false;stopScrollObservation()}
-    func viewportChanged(_ value:CatpawVisibleViewport){viewport=value;requestReveal()}
+    func viewportChanged(_ value:catVisibleViewport){viewport=value;requestReveal()}
     /// A focus, edit or rendered size change requests one recovery after UIKit
     /// has committed its layout. Unrelated model projections do not request it.
     func requestReveal(){
@@ -568,13 +568,13 @@ struct CatpawVisibleViewport:Equatable {
         if permitsAutomaticReveal {flushPendingReveal()}
     }
 }
-@MainActor struct CatpawEditorScrollObserver:UIViewRepresentable {
-    let interaction:CatpawEditorInteraction
-    func makeUIView(context:Context)->CatpawEditorScrollTrackingView {let view=CatpawEditorScrollTrackingView();view.interaction=interaction;return view}
-    func updateUIView(_ view:CatpawEditorScrollTrackingView,context:Context){view.interaction=interaction;view.attach()}
+@MainActor struct catEditorScrollObserver:UIViewRepresentable {
+    let interaction:catEditorInteraction
+    func makeUIView(context:Context)->catEditorScrollTrackingView {let view=catEditorScrollTrackingView();view.interaction=interaction;return view}
+    func updateUIView(_ view:catEditorScrollTrackingView,context:Context){view.interaction=interaction;view.attach()}
 }
-@MainActor final class CatpawEditorScrollTrackingView:UIView {
-    weak var interaction:CatpawEditorInteraction?
+@MainActor final class catEditorScrollTrackingView:UIView {
+    weak var interaction:catEditorInteraction?
     private weak var observedScroll:UIScrollView?
     private var observations:[NSKeyValueObservation]=[]
     override init(frame:CGRect){super.init(frame:frame);isUserInteractionEnabled=false}
@@ -603,30 +603,30 @@ struct CatpawVisibleViewport:Equatable {
     }
 }
 
-@MainActor struct CatpawTextEditor:UIViewRepresentable {
+@MainActor struct catTextEditor:UIViewRepresentable {
     @Binding var text:String
     @Binding var focused:Bool
     var accessibilityLabel:String
     var accessibilityIdentifier:String
     var enabled=true
-    var interaction:CatpawEditorInteraction?=nil
+    var interaction:catEditorInteraction?=nil
     func makeCoordinator()->Coordinator {Coordinator(self)}
-    func makeUIView(context:Context)->CatpawEditingTextView {
-        let view=CatpawEditingTextView();view.delegate=context.coordinator
-        view.backgroundColor = .clear;view.textColor=UIColor(CatpawColors.ink)
+    func makeUIView(context:Context)->catEditingTextView {
+        let view=catEditingTextView();view.delegate=context.coordinator
+        view.backgroundColor = .clear;view.textColor=UIColor(catColors.ink)
         view.textContainerInset=UIEdgeInsets(top:8,left:8,bottom:8,right:8)
         view.textContainer.lineFragmentPadding=0
         view.setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
         return view
     }
-    func updateUIView(_ view:CatpawEditingTextView,context:Context) {
+    func updateUIView(_ view:catEditingTextView,context:Context) {
         context.coordinator.parent=self
         view.accessibilityLabel=accessibilityLabel;view.accessibilityIdentifier=accessibilityIdentifier
         view.isEditable=enabled && context.environment.isEnabled
         // The environment's category is already applied. UIKit's independent
         // automatic adjustment must not later replace the explicitly chosen font.
         view.adjustsFontForContentSizeCategory=false
-        let font=CatpawTypography.font(size:context.environment.dynamicTypeSize)
+        let font=catTypography.font(size:context.environment.dynamicTypeSize)
         let fontChanged=view.font?.isEqual(font) != true
         if fontChanged {view.font=font}
         var replaced=false
@@ -644,15 +644,15 @@ struct CatpawVisibleViewport:Equatable {
         if fontChanged || replaced || acquiringFocus {view.keepSelectionVisible();interaction?.requestReveal()}
     }
     final class Coordinator:NSObject,UITextViewDelegate {
-        var parent:CatpawTextEditor
+        var parent:catTextEditor
         var replacing=false
-        init(_ parent:CatpawTextEditor){self.parent=parent}
-        func textViewDidBeginEditing(_ textView:UITextView){if let editor=textView as? CatpawEditingTextView {parent.interaction?.began(editor)};if !parent.focused {parent.focused=true}}
-        func textViewDidEndEditing(_ textView:UITextView){if let editor=textView as? CatpawEditingTextView {parent.interaction?.ended(editor)};if parent.focused {parent.focused=false}}
+        init(_ parent:catTextEditor){self.parent=parent}
+        func textViewDidBeginEditing(_ textView:UITextView){if let editor=textView as? catEditingTextView {parent.interaction?.began(editor)};if !parent.focused {parent.focused=true}}
+        func textViewDidEndEditing(_ textView:UITextView){if let editor=textView as? catEditingTextView {parent.interaction?.ended(editor)};if parent.focused {parent.focused=false}}
         func textViewDidChange(_ textView:UITextView) {
             guard !replacing else {return};parent.text=textView.text
-            (textView as? CatpawEditingTextView)?.noteTextChanged()
+            (textView as? catEditingTextView)?.noteTextChanged()
         }
-        func textViewDidChangeSelection(_ textView:UITextView){(textView as? CatpawEditingTextView)?.keepSelectionVisible();parent.interaction?.flushPendingReveal()}
+        func textViewDidChangeSelection(_ textView:UITextView){(textView as? catEditingTextView)?.keepSelectionVisible();parent.interaction?.flushPendingReveal()}
     }
 }

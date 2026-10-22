@@ -105,8 +105,8 @@ import UIKit
                 .padding(.horizontal, 24)
             }
         }
-        .foregroundStyle(CatpawColors.ink)
-        .tint(CatpawColors.ink)                      // text buttons: ink, never orange text
+        .foregroundStyle(catColors.ink)
+        .tint(catColors.ink)                      // text buttons: ink, never orange text
         // Reduce Motion (§3): the whole landing fades out 0.10–0.30 s; no flight, no morph.
         .opacity(leaving && reduceMotion ? 0 : 1)
         .overlay(alignment: .top) {
@@ -115,7 +115,7 @@ import UIKit
             else if entryWaitVisible { FirstRunEntryCapsule(message: ui("正在进入…"), action: nil, onAction: {}).padding(.top, 8) }
         }
         // Unhosted (today's root): this view draws the flight/morph itself; hosted, FirstRunTransitionHost does.
-        .overlay { if !transition.isHosted { FirstRunTransitionOverlay(ctaTitle: ctaTitle, placeholder: ui("问问 Catpaw")) } }
+        .overlay { if !transition.isHosted { FirstRunTransitionOverlay(ctaTitle: ctaTitle, placeholder: ui("问问 cat")) } }
         .onChange(of: friendlyError, initial: true) { _, message in withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.4, dampingFraction: 0.9)) { toast = message } }
         .onAppear {
             // Wait for the launch mark to hand off (it is still overlaid by the root), so the entrance never competes for frames.
@@ -125,7 +125,7 @@ import UIKit
         .onDisappear { if transition.phase == .leaving, !transition.isHosted { transition.finish() } }
         .accessibilityIdentifier("onboarding.pages")
         // Same policy as the chat: `.inactive` (the Google sign-in sheet, Control Center) no longer blanks the landing.
-        .modifier(CatpawPrivacyShield(lockedText: nil, identifier: "onboarding.privacyShield"))
+        .modifier(catPrivacyShield(lockedText: nil, identifier: "onboarding.privacyShield"))
     }
 
     /// §2.1 entrance; t = 0 when the landing becomes visible.
@@ -157,7 +157,7 @@ import UIKit
 
     /// `calmPage` == chat canvas in each mode (FirstRunAppearance). Hosted, it clears before chat rises (+0.20–0.38 s).
     private var landingBackground: some View {
-        CatpawColors.calmPage
+        catColors.calmPage
             .ignoresSafeArea()
             .opacity(leaving && transition.isHosted ? 0 : 1)
             .animation(.linear(duration: 0.18).delay(0.20), value: leaving)
@@ -174,25 +174,25 @@ import UIKit
 
     private var brandAndCopy: some View {
         VStack(alignment: .leading, spacing: 10) {
-            rise(Text(ui("Catpaw-m"))
-                .font(CatpawTypography.Role.secondary.font.weight(.semibold))
-                .foregroundStyle(CatpawColors.ink)
+            rise(Text(ui("cat"))
+                .font(catTypography.Role.secondary.font.weight(.semibold))
+                .foregroundStyle(catColors.ink)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("onboarding.brand"), "brand")
             rise(Text(ui("先你一步，把事办妥"))
-                .font(CatpawTypography.Role.caption.font)
-                .foregroundStyle(CatpawColors.calmSecondary)
+                .font(catTypography.Role.caption.font)
+                .foregroundStyle(catColors.calmSecondary)
                 .accessibilityIdentifier("onboarding.brandSubtitle"), "brandSubtitle")
             rise(Text(ui("解放双手，\n让工作自己向前走"))
                 .font(serif.headline)
                 .lineSpacing(4)
-                .foregroundStyle(CatpawColors.ink)
+                .foregroundStyle(catColors.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("onboarding.headline"), "headline")
             rise(Text(ui("从一句话开始，把事情交给我。"))
-                .font(CatpawTypography.Role.secondary.font)
-                .foregroundStyle(CatpawColors.calmSecondary)
+                .font(catTypography.Role.secondary.font)
+                .foregroundStyle(catColors.calmSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("onboarding.subtitle"), "subtitle")
         }
@@ -206,14 +206,14 @@ import UIKit
         ZStack {
             // Static warm wash confined to the ring (never an animated blur).
             Circle()
-                .fill(RadialGradient(colors: [CatpawColors.orbLight.opacity(FirstRunAppearance.washPeak), CatpawColors.orbLight.opacity(0)], center: .center, startRadius: 20, endRadius: radius * 1.3))
+                .fill(RadialGradient(colors: [catColors.orbLight.opacity(FirstRunAppearance.washPeak), catColors.orbLight.opacity(0)], center: .center, startRadius: 20, endRadius: radius * 1.3))
                 .frame(width: radius * 2.6, height: radius * 2.6)
                 .allowsHitTesting(false)
                 .opacity(shown && !leaving ? 1 : 0)
                 .animation(leaving ? .linear(duration: 0.40).delay(0.05) : entry("glow", response: 0.6, damping: 0.95), value: shown && !leaving)
             Circle()
                 .stroke(style: StrokeStyle(lineWidth: 1.2, dash: [3, 7]))
-                .foregroundStyle(CatpawColors.ink.opacity(0.12))
+                .foregroundStyle(catColors.ink.opacity(0.12))
                 .frame(width: radius * 2, height: radius * 2)
                 .opacity(shown && !leaving ? 1 : 0)
                 .animation(leaving ? copyOut : entry("ring", response: 0.55, damping: 0.88), value: shown && !leaving)
@@ -293,8 +293,8 @@ import UIKit
         VStack(spacing: 12) {
             if auth.state.phase == .restoring {
                 Text(ui("正在复核登录…"))
-                    .font(CatpawTypography.Role.caption.font)
-                    .foregroundStyle(CatpawColors.calmSecondary)
+                    .font(catTypography.Role.caption.font)
+                    .foregroundStyle(catColors.calmSecondary)
                     .accessibilityIdentifier("auth.restoring")
             }
             StartUsingCTA(
@@ -311,8 +311,8 @@ import UIKit
             .allowsHitTesting(ctaReady && !leaving)
             .accessibilityIdentifier("auth.startExperience")
             rise(Text(ui("无需注册，即刻开始"))
-                .font(CatpawTypography.Role.caption.font)
-                .foregroundStyle(CatpawColors.calmSecondary)
+                .font(catTypography.Role.caption.font)
+                .foregroundStyle(catColors.calmSecondary)
                 .multilineTextAlignment(.center), "footer", by: 10)
                 .accessibilityIdentifier("onboarding.footer")
             NativeOAuthLandingEntry()
@@ -338,10 +338,10 @@ import UIKit
     @ViewBuilder private var debugBanner: some View {
         if isConfigurationError, let e = gateFailure ?? auth.error {
             Text(verbatim: "DEBUG · \(e) Configuration/Local.xcconfig → CATPAW_SUPABASE_* / CATPAW_BACKEND_ORIGIN")
-                .font(CatpawTypography.Role.caption.font)
-                .foregroundStyle(CatpawColors.calmSecondary)
+                .font(catTypography.Role.caption.font)
+                .foregroundStyle(catColors.calmSecondary)
                 .padding(8)
-                .background(CatpawColors.panel.opacity(0.8), in: RoundedRectangle(cornerRadius: 10))
+                .background(catColors.panel.opacity(0.8), in: RoundedRectangle(cornerRadius: 10))
                 .padding(.horizontal, 16)
                 .accessibilityIdentifier("auth.debugConfiguration")
         }
@@ -349,14 +349,14 @@ import UIKit
     private var fixtureLogin: some View {
         VStack(spacing: 12) {
             Text(ui("合成登录测试 · 无真实 Auth 或模型调用"))
-                .font(CatpawTypography.Role.caption.font)
-                .foregroundStyle(CatpawColors.attention)
+                .font(catTypography.Role.caption.font)
+                .foregroundStyle(catColors.attention)
                 .accessibilityIdentifier("auth.fixture")
-            TextField(ui("邮箱"), text: $email, prompt: Text(ui("邮箱")).foregroundStyle(CatpawColors.calmSecondary))
+            TextField(ui("邮箱"), text: $email, prompt: Text(ui("邮箱")).foregroundStyle(catColors.calmSecondary))
                 .textContentType(.username).keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .accessibilityIdentifier("auth.email")
-            SecureField(ui("密码"), text: $password, prompt: Text(ui("密码")).foregroundStyle(CatpawColors.calmSecondary))
+            SecureField(ui("密码"), text: $password, prompt: Text(ui("密码")).foregroundStyle(catColors.calmSecondary))
                 .textContentType(.password)
                 .accessibilityIdentifier("auth.password")
             Button(ui("登录")) {
@@ -367,7 +367,7 @@ import UIKit
             .accessibilityIdentifier("auth.signIn")
         }
         .padding(14)
-        .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 18))
+        .background(catColors.panel, in: RoundedRectangle(cornerRadius: 18))
         .disabled(auth.actionBusy || auth.state.phase == .restoring)
     }
     #endif
@@ -380,19 +380,19 @@ struct CapabilityChip: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(CatpawTypography.Role.caption.font.weight(.semibold))
-                .foregroundStyle(CatpawColors.calmChipIcon)   // SPEC-E §1: icon only, 4.79:1 / 7.36:1
+                .font(catTypography.Role.caption.font.weight(.semibold))
+                .foregroundStyle(catColors.calmChipIcon)   // SPEC-E §1: icon only, 4.79:1 / 7.36:1
                 .accessibilityHidden(true)
             Text(title)
-                .font(CatpawTypography.Role.caption.font.weight(.medium))
-                .foregroundStyle(CatpawColors.ink)
+                .font(catTypography.Role.caption.font.weight(.medium))
+                .foregroundStyle(catColors.ink)
                 .lineLimit(1)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(CatpawColors.calmSurface, in: Capsule())    // white / #1F1B18
-        .overlay(Capsule().stroke(CatpawColors.hairline))
-        .shadow(color: CatpawColors.calmShadow.opacity(0.08), radius: 8, y: 3)
+        .background(catColors.calmSurface, in: Capsule())    // white / #1F1B18
+        .overlay(Capsule().stroke(catColors.hairline))
+        .shadow(color: catColors.calmShadow.opacity(0.08), radius: 8, y: 3)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
     }
@@ -441,17 +441,17 @@ struct FirstRunEntryCapsule: View {
     var body: some View {
         HStack(spacing: 8) {
             if action == nil { ProgressView().controlSize(.small) }
-            Text(message).font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
+            Text(message).font(catTypography.Role.caption.font.weight(.medium)).foregroundStyle(catColors.ink)
             if let action {
                 Button(action, action: onAction)
-                    .font(CatpawTypography.Role.caption.font.weight(.semibold))
+                    .font(catTypography.Role.caption.font.weight(.semibold))
                     .accessibilityIdentifier("onboarding.entryRetry")
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
-        .background(CatpawColors.calmSurface, in: Capsule())
-        .overlay(Capsule().stroke(CatpawColors.hairline))
-        .shadow(color: CatpawColors.calmShadow.opacity(0.12), radius: 12, y: 4)
+        .background(catColors.calmSurface, in: Capsule())
+        .overlay(Capsule().stroke(catColors.hairline))
+        .shadow(color: catColors.calmShadow.opacity(0.12), radius: 12, y: 4)
         .transition(.opacity.combined(with: .move(edge: .top)))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("onboarding.entryCapsule")
@@ -465,18 +465,18 @@ struct FirstRunToast: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.circle")
-                .font(CatpawTypography.Role.caption.font.weight(.semibold))
-                .foregroundStyle(CatpawColors.calmIcon)
+                .font(catTypography.Role.caption.font.weight(.semibold))
+                .foregroundStyle(catColors.calmIcon)
                 .accessibilityHidden(true)
             Text(message)
-                .font(CatpawTypography.Role.caption.font)
-                .foregroundStyle(CatpawColors.ink)
+                .font(catTypography.Role.caption.font)
+                .foregroundStyle(catColors.ink)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
-        .background(CatpawColors.calmSurface, in: Capsule())
-        .overlay(Capsule().stroke(CatpawColors.hairline))
-        .shadow(color: CatpawColors.calmShadow.opacity(0.12), radius: 12, y: 4)
+        .background(catColors.calmSurface, in: Capsule())
+        .overlay(Capsule().stroke(catColors.hairline))
+        .shadow(color: catColors.calmShadow.opacity(0.12), radius: 12, y: 4)
         .padding(.horizontal, 24)
         .transition(.opacity.combined(with: .move(edge: .top)))
         .onTapGesture(perform: dismiss)

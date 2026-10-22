@@ -17,13 +17,13 @@ import SwiftUI
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 CategoryPaw(category: s.actions?.contains(.create_reminder) == true ? .reminder : (s.signals?.first?.kind.contains("mail") == true ? .email : .calendar)).accessibilityHidden(true)
-                Text(ui("小猫主动提醒")).font(CatpawTypography.Role.caption.font.weight(.semibold)).foregroundStyle(CatpawColors.secondary)
+                Text(ui("小猫主动提醒")).font(catTypography.Role.caption.font.weight(.semibold)).foregroundStyle(catColors.secondary)
                 Spacer(minLength: 0)
-                Button(ui("为什么找你")) { whyOpen = true }.font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                Button(ui("为什么找你")) { whyOpen = true }.font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     .touchTarget().accessibilityIdentifier("chat.proactiveSuggestion.why")
             }
-            Text(s.title).font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
-            Text(s.reason).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(s.title).font(catTypography.Role.heading.font).foregroundStyle(catColors.ink).fixedSize(horizontal: false, vertical: true)
+            Text(s.reason).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true)
             if !s.usedMemories.isEmpty { memoryChips }
             switch s.effectiveStatus {
             case .pending:
@@ -35,21 +35,21 @@ import SwiftUI
                     HStack(spacing: 8) {
                         ProactiveStatusRow(textKey: "已转为任务", symbol: "checkmark.circle.fill", accent: true)
                         Spacer(minLength: 0)
-                        Button(ui("查看任务")) { CatpawRouteCenter.shared.pending = .tasks }
-                            .font(CatpawTypography.Role.caption.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+                        Button(ui("查看任务")) { catRouteCenter.shared.pending = .tasks }
+                            .font(catTypography.Role.caption.font.weight(.semibold)).foregroundStyle(catColors.ink)
                             .touchTarget().accessibilityIdentifier("chat.proactiveSuggestion.openTasks")
                     }
                 } else { ProactiveStatusRow(textKey: "已处理", symbol: "checkmark.circle.fill", accent: true) }
             case .snoozed: ProactiveStatusRow(textKey: "稍后再提醒你", symbol: "clock", accent: false)
             case .dismissed: ProactiveStatusRow(textKey: "已忽略", symbol: "minus.circle", accent: false)
             }
-            if let key = store.errorKey { Text(ui(key)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention) }
-            Button(ui("查看全部主动提醒")) { inboxOpen = true }.font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            if let key = store.errorKey { Text(ui(key)).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention) }
+            Button(ui("查看全部主动提醒")) { inboxOpen = true }.font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                 .touchTarget().accessibilityIdentifier("chat.proactiveSuggestion.inbox")
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-        .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(CatpawColors.ink.opacity(0.08), lineWidth: 0.5))
+        .background(catColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(catColors.ink.opacity(0.08), lineWidth: 0.5))
         .onAppear { store.adopt(suggestion) }
         .sheet(isPresented: $memoryOpen) { NavigationStack { MemoryLibraryView(backend: MemoryLibraryHub.pageBackend) } }
         .sheet(isPresented: $inboxOpen) { NavigationStack { ProactiveInboxView() } }
@@ -60,14 +60,14 @@ import SwiftUI
 
     private var memoryChips: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(ui("参考了 {0} 条记忆", [String(s.usedMemories.count)])).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            Text(ui("参考了 {0} 条记忆", [String(s.usedMemories.count)])).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(s.usedMemories) { m in
                         Button { memoryOpen = true } label: {
                             Label(m.content, systemImage: "pawprint.fill").labelStyle(PawLabelStyle())
-                                .font(CatpawTypography.Role.caption.font).padding(.horizontal, 10).padding(.vertical, 6)
-                                .background(CatpawColors.ink.opacity(0.06), in: Capsule())
+                                .font(catTypography.Role.caption.font).padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(catColors.ink.opacity(0.06), in: Capsule())
                         }
                         .buttonStyle(.plain).frame(minHeight: 44)
                         .accessibilityHint(ui("打开记忆页")).accessibilityIdentifier("chat.proactiveSuggestion.memory." + m.id)
@@ -90,10 +90,10 @@ import SwiftUI
         switch a {
         case .create_reminder, .notify_attendees:
             Button(ui(Self.label(a))) { Task { await store.perform(a, s) } }
-                .buttonStyle(CatpawPrimaryButtonStyle()).accessibilityIdentifier("chat.proactiveSuggestion." + a.rawValue)
+                .buttonStyle(catPrimaryButtonStyle()).accessibilityIdentifier("chat.proactiveSuggestion." + a.rawValue)
         case .snooze, .dismiss:
             Button(ui(Self.label(a))) { Task { await store.perform(a, s) } }
-                .font(CatpawTypography.Role.body.font).foregroundStyle(a == .dismiss ? CatpawColors.secondary : CatpawColors.ink)
+                .font(catTypography.Role.body.font).foregroundStyle(a == .dismiss ? catColors.secondary : catColors.ink)
                 .touchTarget().accessibilityIdentifier("chat.proactiveSuggestion." + a.rawValue)
         }
     }
@@ -110,8 +110,8 @@ struct ProactiveStatusRow: View {
     @Environment(\.locale) private var locale
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: symbol).foregroundStyle(accent ? CatpawBrand.paw : CatpawColors.secondary).accessibilityHidden(true)
-            Text(AppLanguage(locale: locale).ui(textKey)).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+            Image(systemName: symbol).foregroundStyle(accent ? catBrand.paw : catColors.secondary).accessibilityHidden(true)
+            Text(AppLanguage(locale: locale).ui(textKey)).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
         }.frame(minHeight: 44)
     }
 }
@@ -134,14 +134,14 @@ struct ProactiveStatusRow: View {
             }
             if let notice = ProactiveRules.suppressionNotice(now: Date(), deliveredToday: ProactiveEngine.shared.quota.count(on: Date())) {
                 // v1.2: say why nothing is ringing (quiet hours / today's cap) instead of looking broken.
-                Label(ui(notice), systemImage: "moon.zzz").font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                Label(ui(notice), systemImage: "moon.zzz").font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                     .accessibilityIdentifier("proactive.inbox.suppressed")
             }
             let rows = store.sorted(tab)
             if rows.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(ui("这里还没有内容")).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
-                    Text(ui(ProactiveRules.emptyHint(tab.rawValue))).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                    Text(ui("这里还没有内容")).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
+                    Text(ui(ProactiveRules.emptyHint(tab.rawValue))).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                 }.accessibilityElement(children: .combine).accessibilityIdentifier("proactive.inbox.empty")
             }
             ForEach(rows) { s in
@@ -149,7 +149,7 @@ struct ProactiveStatusRow: View {
             }
         }
         .listStyle(.plain)
-        .navigationTitle(ui("Catpaw 发现")).navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(ui("cat 发现")).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button(ui("完成")) { dismiss() } } }
         .task { await store.load() }
         .refreshable { await store.load() }

@@ -1,5 +1,5 @@
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 /// Settings › 关于 version row: parsing the build stamp, Asia/Shanghai display and graceful fallbacks.
 final class AppBuildInfoTests: XCTestCase {
@@ -17,7 +17,7 @@ final class AppBuildInfoTests: XCTestCase {
         XCTAssertEqual(info.buildDateLabel(timeZone: shanghai), "2026-10-18 07:30", "UTC 23:30 is 07:30 next day in Shanghai")
         XCTAssertEqual(info.buildDateLabel(timeZone: TimeZone(identifier: "UTC")!), "2026-10-17 23:30")
         XCTAssertEqual(info.commitLabel, "1a2b3c4d")
-        XCTAssertEqual(info.diagnosticText, "Catpaw 1.1.0 (712) · 1a2b3c4d · 2026-10-17T23:30:00Z · DeviceTrial")
+        XCTAssertEqual(info.diagnosticText, "cat 1.1.0 (712) · 1a2b3c4d · 2026-10-17T23:30:00Z · DeviceTrial")
     }
 
     func testFractionalSecondsAndDirtyMarker() {
@@ -36,7 +36,7 @@ final class AppBuildInfoTests: XCTestCase {
         XCTAssertNil(info.buildDateLabel(timeZone: shanghai))
         XCTAssertNil(info.commitLabel)
         XCTAssertEqual(info.versionLabel, "1.1.0 (build 1)")
-        XCTAssertEqual(info.diagnosticText, "Catpaw 1.1.0 (1)")
+        XCTAssertEqual(info.diagnosticText, "cat 1.1.0 (1)")
     }
 
     func testEmptyUnprocessedAndGarbageValuesAreTreatedAsMissing() {
@@ -50,7 +50,7 @@ final class AppBuildInfoTests: XCTestCase {
         XCTAssertNil(info.gitSHA)
         XCTAssertFalse(info.gitDirty)
         XCTAssertEqual(info.versionLabel, "— (build —)")
-        XCTAssertEqual(AppBuildInfo(info: nil).diagnosticText, "Catpaw ? (?)")
+        XCTAssertEqual(AppBuildInfo(info: nil).diagnosticText, "cat ? (?)")
     }
 
     func testDateLabelIsLocaleIndependent() {

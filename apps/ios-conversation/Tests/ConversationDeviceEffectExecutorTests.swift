@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 private actor DeviceExecutorOS:ConversationDeviceEffectOSPort {
     var allowed:ConversationDeviceOSPermission = .authorized

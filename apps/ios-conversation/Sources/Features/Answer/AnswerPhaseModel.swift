@@ -351,7 +351,7 @@ enum StatusLinePhase: Equatable, Sendable {
         switch self {
         case .sending: return t("正在发送", "Sending")
         case .busyRetry: return t("有点忙，稍后自动重试", "Busy — retrying shortly")
-        case .accepted(let n): return n % 2 == 0 ? t("Catpaw 正在工作", "Catpaw is working") : t("正在琢磨", "Thinking it over")
+        case .accepted(let n): return n % 2 == 0 ? t("cat 正在工作", "cat is working") : t("正在琢磨", "Thinking it over")
         case .recallingMemory: return t("正在回想相关记忆", "Recalling what you've told me")
         case .switchingModel: return t("换个模型再试", "Trying another model")
         case .tool(let name, let n): return ToolStepCopy.title(name, occurrence: n, en: en)
@@ -421,7 +421,7 @@ enum StatusLinePhase: Equatable, Sendable {
         default: return "working:" + symbol
         }
     }
-    /// Shimmer only while Catpaw is actually working; waiting on the user, failures and stops are static.
+    /// Shimmer only while cat is actually working; waiting on the user, failures and stops are static.
     var animated: Bool { kind == .working }
     static let timeoutReason = "timeout"
     /// Plain, generic failure reasons only — never server messages, arguments or reasoning.

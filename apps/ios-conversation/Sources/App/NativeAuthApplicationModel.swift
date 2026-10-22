@@ -6,7 +6,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
     let manager: NativeAuthSessionManager
     let partition: AuthenticatedLocalPartition
     public func authorization(scope: DataScope) async throws -> String {
-        guard scope == partition.scope else { throw CatpawError.scopeMismatch }
+        guard scope == partition.scope else { throw catError.scopeMismatch }
         return try await manager.authorization(subject: partition.subject)
     }
     public func rejected(scope: DataScope) async { if scope == partition.scope { try? await manager.rejectAuthorization(subject: partition.subject) } }
@@ -40,7 +40,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     @Published private(set) var registrationNotice: String?
     @Published private(set) var actionBusy = false
     /// Intro gate. Anonymous warm-up runs in the background regardless; the UI stays on the intro
-    /// until `completeOnboarding()` succeeds. Key: `CatpawOnboarding.completedKey`.
+    /// until `completeOnboarding()` succeeds. Key: `catOnboarding.completedKey`.
     @Published private(set) var onboarding: OnboardingGateState = .needsOnboarding { didSet { needsOnboarding = onboarding.needsOnboarding } }
     @Published private(set) var needsOnboarding = true
     @Published private(set) var requiresSessionRestart = false
@@ -78,7 +78,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     /// admission stays closed and the send / attach / dictation controls are inert: it accepts a draft only, and that draft
     /// moves into the account's own chat the moment it attaches (didAttachChat). Never assigned to `chat`.
     let launchShell: ConversationFirstModel? = NativeAuthApplicationModel.makeLaunchShell()
-    /// First run whose tap flipped onto the shell: CatpawOnboarding is written once the account chat really attaches.
+    /// First run whose tap flipped onto the shell: catOnboarding is written once the account chat really attaches.
     private var firstRunMarkPending = false
     /// Splash/login P0 (21:41 iPhone 13, e9e2efce): set only by an explicit entry action, the 「开始使用」 tap or a completed
     /// OAuth sign-in. While it is set, the gate opens reactively the moment an account chat attaches, whichever path
@@ -154,7 +154,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
                 let env = ProcessInfo.processInfo.environment
                 let fromEnv = ["CatpawSupabaseProjectURL":"CATPAW_SUPABASE_PROJECT_URL","CatpawSupabasePublishableKey":"CATPAW_SUPABASE_PUBLISHABLE_KEY","CatpawBackendOrigin":"CATPAW_BACKEND_ORIGIN","CatpawServerScopeID":"CATPAW_SERVER_SCOPE_ID"]
                 for (key,name) in fromEnv { if let value = env[name], !value.isEmpty { values[key] = value } }
-                values = CatpawDebugPublicConfig.remember(values)
+                values = catDebugPublicConfig.remember(values)
             }
             if fixture { values = [keys[0]:"https://abcdefghijklmnopqrst.supabase.co",keys[1]:"sb_publishable_test_public_value",keys[2]:"https://backend.example.invalid",keys[3]:"11111111-2222-4333-8444-555555555555"] }
             #endif
@@ -180,7 +180,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
                 manager = NativeAuthSessionManager(configuration:configuration,remote:remote,vault:vault,barrier:barrier,accountBarrier:.shared)   // p89d-3: passive invalidation closes AccountEpoch at the source
             } else { manager = nil; error = "登录连接尚未配置。" }
         } catch { configuration = nil; manager = nil; self.error = "登录公开配置未通过校验。" }
-        let gate = CatpawOnboarding.initialState(fixture: fixture); onboarding = gate; needsOnboarding = gate.needsOnboarding
+        let gate = catOnboarding.initialState(fixture: fixture); onboarding = gate; needsOnboarding = gate.needsOnboarding
     }
     // Test initializer is mock-only; production continues using the configured Keychain.
     init(configuration:NativeAuthConfiguration,manager:NativeAuthSessionManager,vault:any NativeAuthVault,barrier:any NativeAuthLogoutBarrier,root:URL,workspaceResolver:(any NativeApplicationScopeResolving)? = nil,connectionMonitor:ConnectionMonitor? = nil,retryClock:any NativeWorkspaceRetryClock = NativeWorkspaceSystemClock(),retrySchedule:NativeWorkspaceRetrySchedule = .production) {
@@ -237,7 +237,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             // The local receipt conveys local reading only; it never authorizes HTTP.
             let chatConfiguration=try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:receipt.serverScopeID,publishableKey:configuration.publishableKey,expectedSubjectID:partition.subject)
             let credentials=AuthenticatedNativeChatCredentials(manager:manager!,partition:partition)
-            Task { await CatpawPushTokenUploader.shared.setAuthorization { try await credentials.authorization(scope: partition.scope) } }
+            Task { await catPushTokenUploader.shared.setAuthorization { try await credentials.authorization(scope: partition.scope) } }
             let backend=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
             if !isFixture { let routeScope=partition.scope; ModelRouteCatalog.shared.install { await backend.modelRoutes(scope:routeScope) } }
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
@@ -245,7 +245,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             ProactiveFeedbackSync.shared.activate(); ProactiveEngine.feedbackGate = ProactiveLearnedGate.gate   // #90+#91 merge (PR91 S1): learned, downgrade-only, per-account
             var selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
             #if DEBUG
-            selected=CatpawDemoBackendSwitch.select(selected)
+            selected=catDemoBackendSwitch.select(selected)
             #endif
             let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:url.deletingLastPathComponent().appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:backend),subjectID:partition.subject)
             preview.setNetworkAdmissionAllowed(false);await preview.start()
@@ -411,7 +411,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         if let verifiedSubject { guard chat.trustedSubjectID == verifiedSubject else { return } }
         else if state.phase == .authenticated, let user = state.user, let subject = chat.trustedSubjectID, subject != user.id { return }
         error = nil; firstRunMarkPending = false
-        CatpawOnboarding.markCompleted(); onboarding = .completed
+        catOnboarding.markCompleted(); onboarding = .completed
         entryAttemptID += 1; entryAttempt = nil
         LaunchTrace.mark("onboarding.completed", reason)
     }
@@ -450,7 +450,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         await ensureEntryChat()
         if chat != nil {
             error = nil
-            CatpawOnboarding.markCompleted(); onboarding = .completed
+            catOnboarding.markCompleted(); onboarding = .completed
             return
         }
         // Last resort: still do not cite model health — storage/config only.
@@ -491,7 +491,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         if onboarding != .completed {   // else the reactive gate already opened onto the attached account chat
             error = nil
             // NoBug (b): the first-run flag is written only once the account's own chat exists.
-            if chat != nil { CatpawOnboarding.markCompleted() } else { firstRunMarkPending = true; scheduleOfflineRecovery() }
+            if chat != nil { catOnboarding.markCompleted() } else { firstRunMarkPending = true; scheduleOfflineRecovery() }
             onboarding = .completed
             LaunchTrace.mark("onboarding.completed", chat != nil ? "account" : "shell")
         }
@@ -673,7 +673,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     private func didAttachChat(_ opened: ConversationFirstModel) {
         LaunchTrace.mark("chat.attached", opened.loaded ? "loaded" : "loading", once: true)
         launchSlow = false; launchChatStalled = false
-        if firstRunMarkPending { firstRunMarkPending = false; CatpawOnboarding.markCompleted() }
+        if firstRunMarkPending { firstRunMarkPending = false; catOnboarding.markCompleted() }
         completeEntryIfRequested("attach")
         guard let shell = launchShell, shell !== opened, !logoutInProgress else { return }
         let carried = shell.draft
@@ -707,7 +707,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             backend = http
             var selected: any ConversationBackend = isFixture ? UnconfiguredConversationBackend() : http
             #if DEBUG
-            selected = CatpawDemoBackendSwitch.select(selected)
+            selected = catDemoBackendSwitch.select(selected)
             #endif
             let opened = ConversationFirstModel(repository: repository, service: ConversationSessionService(repository: repository, backend: selected, resilience: ConnectionMonitorResilience(), outbox: ConversationOutbox(fileURL: directory.appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString), scope: partition.scope, imageStore: imageStore, taskPlanService: isFixture ? nil : ConversationTaskPlanService(repository: repository, scope: partition.scope, backend: http), artifactEditService: isFixture ? nil : ConversationArtifactEditService(repository: repository, scope: partition.scope, backend: http), taskActionService: isFixture ? nil : ConversationTaskActionService(repository: repository, scope: partition.scope, backend: http), taskControlService: isFixture ? nil : ConversationTaskControlService(repository: repository, scope: partition.scope, backend: http), memoryService: memory, inboxService: isFixture ? nil : ConversationInboxService(reference: .init(scope: partition.scope, serverScopeID: chatConfiguration.serverScopeID, subjectID: partition.subject), backend: http), subjectID: partition.subject)
             try? await saveLocalReceipt(.init(issuer: configuration.issuer, subject: user.id, serverScopeID: serverScope))
@@ -792,7 +792,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             let region=(Bundle.main.object(forInfoDictionaryKey:"CatpawEdgeRegion") as? String).flatMap{$0.isEmpty ? nil : $0}
             let chatConfiguration=try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:serverScope,publishableKey:configuration.publishableKey,edgeRegion:region,expectedSubjectID:partition.subject)
             let credentials=AuthenticatedNativeChatCredentials(manager:manager,partition:partition)
-            Task {await CatpawPushTokenUploader.shared.setAuthorization {try await credentials.authorization(scope:partition.scope)}}
+            Task {await catPushTokenUploader.shared.setAuthorization {try await credentials.authorization(scope:partition.scope)}}
             let http=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
             if !isFixture { let routeScope=partition.scope; ModelRouteCatalog.shared.install { await http.modelRoutes(scope:routeScope) } }
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
@@ -800,7 +800,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             backend=http
             var selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : http
             #if DEBUG
-            selected=CatpawDemoBackendSwitch.select(selected)
+            selected=catDemoBackendSwitch.select(selected)
             #endif
             let opened=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:directory.appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:http),subjectID:partition.subject)
             try await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
@@ -1023,7 +1023,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     @Published private(set) var parkedPrompt: [AccountParkedItem] = []
     private var parkedAnswer: CheckedContinuation<[String: AccountParkedDecision], Never>?
     var parkedDecider: AccountParkedItems.Decider?
-    /// Installs the shared confirmation UI decider (CatpawApp).
+    /// Installs the shared confirmation UI decider (catApp).
     func attachParkedPrompt() {
         parkedDecider = { [weak self] items in
             guard let self else { return [:] }
@@ -1037,11 +1037,11 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     static func registerDeviceParkedSources() {
         if !AccountParkedItems.registeredKeys.contains(DeviceCallParkedSource.key) { AccountParkedItems.register(DeviceCallParkedSource.key, DeviceCallParkedSource()) }
         if !AccountParkedItems.registeredKeys.contains(DeviceLedgerParkedSource.key) { AccountParkedItems.register(DeviceLedgerParkedSource.key, DeviceLedgerParkedSource()) }
-        ProactiveEngine.registerParkedSource()   // #90 wiring (one line): EventKit items Catpaw created, cold start → sign-out
+        ProactiveEngine.registerParkedSource()   // #90 wiring (one line): EventKit items cat created, cold start → sign-out
     }
     func requestSignOut(after: (@MainActor () async -> Void)? = nil) async { await signOut(); await after?() }
     /// Seams (PR91 XCTest; production defaults): sign-out Live Activity stop, the at-rest migrator, an order trace.
-    var stopLiveActivities: @MainActor () -> Void = { CatpawLeaveActivity.stopAll() }
+    var stopLiveActivities: @MainActor () -> Void = { catLeaveActivity.stopAll() }
     var atRestMigrator: @MainActor (Repository, AuthenticatedLocalPartition) -> Void = { repository, partition in
         AtRestMigrationScheduler.shared.repositoryOpened(repository, subject: partition.subject, partition: partition.namespace)
     }
@@ -1073,7 +1073,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         signOutTrace?("firstAwait")
         Self.registerDeviceParkedSources()
         await AccountParkedItems.resolve(account: leaving, decider: parkedDecider)   // 2–4 (no silent clear, default keep)
-        await CatpawPushTokenUploader.shared.clearAuthorization()
+        await catPushTokenUploader.shared.clearAuthorization()
         let detached=takeChat()
         // Close manager admission immediately; local draining must not postpone its barrier.
         async let cleanup:Bool=finishDetaching(detached)

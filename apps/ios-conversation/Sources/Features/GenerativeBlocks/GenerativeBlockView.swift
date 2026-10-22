@@ -45,13 +45,13 @@ import SwiftUI
                 Text(ui("已排队 · 回复结束后发送")).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
                 Button(ui("取消")) { store.cancelQueued(live.id) }.touchTarget().accessibilityIdentifier("chat.block.queued.cancel")
-            }.font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.block.queued")
+            }.font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).accessibilityIdentifier("chat.block.queued")
         case .failed(let message):
-            Text(ui(message)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.block.error")
+            Text(ui(message)).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention).accessibilityIdentifier("chat.block.error")
         case .idle: EmptyView()
         }
         if needsAnswer, store.submissions[live.id] != .submitting, store.submissions[live.id] != .queued {
-            Button(ui("跳过")) { store.dismiss(live.id) }.font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            Button(ui("跳过")) { store.dismiss(live.id) }.font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                 .touchTarget().accessibilityIdentifier("chat.block.dismiss")
         }
     }
@@ -76,8 +76,8 @@ import SwiftUI
         VStack(alignment: .leading, spacing: 10) { content }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(CatpawColors.ink.opacity(0.08), lineWidth: 0.5))
+            .background(catColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(catColors.ink.opacity(0.08), lineWidth: 0.5))
             .opacity(appeared ? 1 : 0).offset(y: appeared || reduceMotion ? 0 : 8)
             .onAppear { withAnimation(reduceMotion ? nil : .smooth(duration: 0.35)) { appeared = true } }
             .accessibilityElement(children: .contain)
@@ -118,12 +118,12 @@ import SwiftUI
     var body: some View {
         if block.title != nil || icon != nil {
             HStack(spacing: 8) {
-                if let icon { Image(systemName: icon).foregroundStyle(CatpawBrand.paw).accessibilityHidden(true) }
-                if let title = block.title { Text(title).font(CatpawTypography.Role.heading.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).accessibilityAddTraits(.isHeader) }
+                if let icon { Image(systemName: icon).foregroundStyle(catBrand.paw).accessibilityHidden(true) }
+                if let title = block.title { Text(title).font(catTypography.Role.heading.font.weight(.semibold)).foregroundStyle(catColors.ink).accessibilityAddTraits(.isHeader) }
             }
         }
         if let text = block.body, !text.isEmpty {
-            Text(GenerativeSafeMarkdown.render(text)).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
+            Text(GenerativeSafeMarkdown.render(text)).font(catTypography.Role.body.font).foregroundStyle(catColors.ink).fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("chat.block.body")
         }
     }
@@ -132,7 +132,7 @@ import SwiftUI
 @MainActor struct GenerativeExpiredLabel: View {
     @Environment(\.locale) private var locale
     var body: some View {
-        Label(AppLanguage(locale: locale).ui("已过期"), systemImage: "clock").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+        Label(AppLanguage(locale: locale).ui("已过期"), systemImage: "clock").font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
             .accessibilityIdentifier("chat.block.expired")
     }
 }
@@ -153,7 +153,7 @@ import SwiftUI
                         .buttonStyle(.borderedProminent).tint(.red).accessibilityIdentifier("chat.block.action." + action.id)
                 case .secondary:
                     Button { tap(action) } label: { Text(action.label).frame(maxWidth: .infinity, minHeight: 44) }
-                        .buttonStyle(.bordered).tint(CatpawColors.ink).accessibilityIdentifier("chat.block.action." + action.id)
+                        .buttonStyle(.bordered).tint(catColors.ink).accessibilityIdentifier("chat.block.action." + action.id)
                 }
             }
         }
@@ -166,7 +166,7 @@ import SwiftUI
     var icon = "checkmark.circle.fill"
     var edit: (() -> Void)? = nil
     var body: some View {
-        let label = Label(text, systemImage: icon).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink.opacity(0.55))
+        let label = Label(text, systemImage: icon).font(catTypography.Role.body.font).foregroundStyle(catColors.ink.opacity(0.55))
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         if let edit { Button(action: edit) { label }.buttonStyle(.plain).accessibilityIdentifier("chat.block.summary") }
         else { label.accessibilityIdentifier("chat.block.summary") }
@@ -192,9 +192,9 @@ import SwiftUI
 @MainActor struct GenerativeBlockPlaceholder: View {
     @Environment(\.locale) private var locale
     var body: some View {
-        HStack(spacing: 8) { ProgressView(); Text(AppLanguage(locale: locale).ui("正在准备卡片…")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
+        HStack(spacing: 8) { ProgressView(); Text(AppLanguage(locale: locale).ui("正在准备卡片…")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary) }
             .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-            .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(catColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .accessibilityIdentifier("chat.block.placeholder")
     }
 }
@@ -228,7 +228,7 @@ enum GenerativeSafeMarkdown {
     }()
     var body: some View {
         Group {
-            if let image { Image(uiImage: image).resizable().scaledToFill() } else { CatpawColors.ink.opacity(0.05) }
+            if let image { Image(uiImage: image).resizable().scaledToFill() } else { catColors.ink.opacity(0.05) }
         }
         .task(id: url) {
             guard url.scheme == "https", let (data, response) = try? await Self.session.data(from: url),

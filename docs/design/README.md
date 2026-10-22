@@ -30,7 +30,7 @@
 
 | 浅色输入 | 浅色审批 | 最大辅助字号深色审批 |
 |---|---|---|
-| ![v1 合成输入](../assets/ios-v1/CatpawM-v1-final-light-input.png) | ![v1 合成审批](../assets/ios-v1/CatpawM-v1-final-light-approval.png) | ![v1 最大字号合成审批](../assets/ios-v1/CatpawM-v1-final-max-dark-approval.png) |
+| ![v1 合成输入](../assets/ios-v1/cat-v1-final-light-input.png) | ![v1 合成审批](../assets/ios-v1/cat-v1-final-light-approval.png) | ![v1 最大字号合成审批](../assets/ios-v1/cat-v1-final-max-dark-approval.png) |
 
 历史普通字号 8 组实际组件取色全部 ≥4.5，最低 4.929；最大字号 7 组有效采样全部 ≥4.5，最低 5.501。最大字号浅色结束按钮部分在屏幕外被排除。此处没有打包原始取色/设备日志；结果来源为 v1 集成验收报告，原材料由交付资产保留。设计 token 计算不能替代实际系统样式或完整无障碍验证。
 

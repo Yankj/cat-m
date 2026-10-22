@@ -67,7 +67,7 @@ import Combine
     }
 }
 
-/// Settings › 模型与接口. Selection persists and drives X-Catpaw-Route / X-Catpaw-Model.
+/// Settings › 模型与接口. Selection persists and drives X-cat-Route / X-cat-Model.
 struct ModelRoutesSettingsView: View {
     @Environment(\.locale) private var uiLocale
     private func ui(_ key: String, arguments: [String] = []) -> String { AppLanguage(locale: uiLocale).ui(key, arguments: arguments) }
@@ -95,7 +95,7 @@ struct ModelRoutesSettingsView: View {
                 Text(ui("只在服务端已同意的免费路由间选择；繁忙时是否切换由服务端配置决定。永不使用付费路由。密钥只在服务端。"))
                 if catalog.usingFixture { Text(ui("示例路由（服务端接口未部署）")) }
             }
-            .font(CatpawTypography.Role.caption.font)
+            .font(catTypography.Role.caption.font)
         }
         .task { if catalog.contract == nil { await catalog.refresh() } }
     }
@@ -105,14 +105,14 @@ struct ModelRoutesSettingsView: View {
             HStack(spacing: 10) {
                 ConnectionStatusDot(kind: catalog.routes.contains { $0.statusKind == .online } ? .online : .offline)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(ui("自动")).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                    Text(ui("自动")).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                     if let chain = catalog.contract?.chain, !chain.isEmpty {
                         Text(chain.map(catalog.displayName).joined(separator: " → "))
-                            .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                            .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     }
                 }
                 Spacer(minLength: 0)
-                if routeID == ModelRouteSelection.autoID { Image(systemName: "checkmark").foregroundStyle(CatpawColors.ink) }
+                if routeID == ModelRouteSelection.autoID { Image(systemName: "checkmark").foregroundStyle(catColors.ink) }
             }
         }
         .buttonStyle(.plain)
@@ -137,11 +137,11 @@ struct ModelRoutesSettingsView: View {
                 HStack(spacing: 10) {
                     ConnectionStatusDot(kind: r.statusKind)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(r.display_name).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
-                        Text(statusLine(r)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        Text(r.display_name).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
+                        Text(statusLine(r)).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     }
                     Spacer(minLength: 0)
-                    if selected { Image(systemName: "checkmark").foregroundStyle(CatpawColors.ink) }
+                    if selected { Image(systemName: "checkmark").foregroundStyle(catColors.ink) }
                 }
             }
             .buttonStyle(.plain)
@@ -154,15 +154,15 @@ struct ModelRoutesSettingsView: View {
                 )) { ForEach(r.models) { Text($0.id).tag($0.id) } }
                 .accessibilityIdentifier("settings.route.\(r.id).model")
             } else if selected, let m = r.defaultModel {
-                Text(m).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                Text(m).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
             }
             if let err = r.last_error {
                 Text(ui("上次错误 {0}", arguments: [err.code + (err.at.map { " · " + $0.prefix(16).replacingOccurrences(of: "T", with: " ") } ?? "")]))
-                    .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
             }
             if let url = r.policy_url.flatMap(URL.init(string:)) {
                 Link(ui("隐私说明"), destination: url)
-                    .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     .accessibilityIdentifier("settings.route.\(r.id).privacy")
             }
         }
@@ -201,8 +201,8 @@ struct ChatHeaderModelPicker: View {
                 }
             }
         } label: {
-            Image(systemName: "chevron.up.chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold))
-                .foregroundStyle(CatpawColors.secondary).frame(width: 30, height: 30)
+            Image(systemName: "chevron.up.chevron.down").font(catTypography.Role.caption.font.weight(.semibold))
+                .foregroundStyle(catColors.secondary).frame(width: 30, height: 30)
                 .modifier(ModelPickerGlass())
                 .contentShape(Circle())
         }
@@ -221,7 +221,7 @@ struct ChatHeaderModelPicker: View {
 private struct ModelPickerGlass: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     func body(content: Content) -> some View {
-        if reduceTransparency { content.background(CatpawColors.card, in: Circle()) }
+        if reduceTransparency { content.background(catColors.card, in: Circle()) }
         else {
             #if compiler(>=6.2)
             if #available(iOS 26.0, *) { content.glassEffect(.regular, in: Circle()) } else { content.background(.ultraThinMaterial, in: Circle()) }
@@ -264,7 +264,7 @@ struct ModelSettingsSection: View {
         Section {
             HStack(spacing: 10) {
                 ConnectionStatusDot(kind: presence.online ? .online : .offline, size: 10)
-                Text(currentLine).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                Text(currentLine).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                 Spacer(minLength: 0)
             }
             .accessibilityElement(children: .combine)
@@ -310,14 +310,14 @@ struct ModelSettingsSection: View {
             HStack(spacing: 10) {
                 dot(selected: isAuto)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(ui("自动")).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                    Text(ui("自动")).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                     if let chain = catalog.contract?.chain, !chain.isEmpty {
                         Text(ui("失败时依次切换：{0}", arguments: [chain.map(catalog.displayName).joined(separator: " → ")]))
-                            .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                            .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     }
                 }
                 Spacer(minLength: 0)
-                if isAuto { Image(systemName: "checkmark").foregroundStyle(CatpawColors.ink) }
+                if isAuto { Image(systemName: "checkmark").foregroundStyle(catColors.ink) }
             }
             .contentShape(Rectangle())
         }
@@ -343,20 +343,20 @@ struct ModelSettingsSection: View {
                     dot(selected: selected)
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
-                            Text(r.display_name).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                            Text(r.display_name).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                             if inUse {
                                 Text(ui("实际在用"))
-                                    .font(CatpawTypography.Role.caption.font.weight(.semibold))
-                                    .foregroundStyle(CatpawColors.ink)
+                                    .font(catTypography.Role.caption.font.weight(.semibold))
+                                    .foregroundStyle(catColors.ink)
                                     .padding(.horizontal, 6).padding(.vertical, 1)
-                                    .background(Capsule().strokeBorder(CatpawColors.secondary.opacity(0.5), lineWidth: 1))
+                                    .background(Capsule().strokeBorder(catColors.secondary.opacity(0.5), lineWidth: 1))
                                     .accessibilityIdentifier("settings.route.\(r.id).inUse")
                             }
                         }
-                        Text(subtitle(r, selected: selected)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        Text(subtitle(r, selected: selected)).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     }
                     Spacer(minLength: 0)
-                    if selected { Image(systemName: "checkmark").foregroundStyle(CatpawColors.ink) }
+                    if selected { Image(systemName: "checkmark").foregroundStyle(catColors.ink) }
                 }
                 .contentShape(Rectangle())
             }
@@ -385,13 +385,13 @@ struct ModelPrivacyDetailView: View {
             ForEach(catalog.routes) { r in
                 if r.data_note != nil || r.policy_url != nil {
                     Section(r.display_name) {
-                        if let n = r.data_note { Text(n).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
+                        if let n = r.data_note { Text(n).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary) }
                         if let url = r.policy_url.flatMap(URL.init(string:)) { Link(ui("隐私说明"), destination: url).accessibilityIdentifier("settings.route.\(r.id).privacy") }
                     }
                 }
             }
         }
-        .foregroundStyle(CatpawColors.ink)
+        .foregroundStyle(catColors.ink)
         .navigationTitle(ui("隐私与数据"))
     }
 }
@@ -408,7 +408,7 @@ struct ModelConnectionDetailView: View {
             Section {
                 ConnectionStatusRow(kind: .from(monitor.state), detail: ui(model.connection.detail))
                     .accessibilityIdentifier("connection.state")
-                if let m = model.connection.model { LabeledContent(ui("已验证模型")) { Text(m).foregroundStyle(CatpawColors.secondary) } }
+                if let m = model.connection.model { LabeledContent(ui("已验证模型")) { Text(m).foregroundStyle(catColors.secondary) } }
                 if let at = model.connection.verifiedReplyAt { LabeledContent(ui("最近确认回复"), value: at.formatted(date: .omitted, time: .shortened)) }
                 if let e = catalog.lastEvent {
                     LabeledContent(ui("最近路由"), value: catalog.displayName(e.route) + (e.model.map { " · " + $0 } ?? ""))
@@ -424,13 +424,13 @@ struct ModelConnectionDetailView: View {
                         Text([r.status, r.cooling_seconds.flatMap { $0 > 0 ? ui("冷却 {0} 秒", arguments: [String($0)]) : nil },
                               r.last_error.map { ui("上次错误 {0}", arguments: [$0.code + ($0.at.map { " · " + $0.prefix(16).replacingOccurrences(of: "T", with: " ") } ?? "")]) }]
                             .compactMap { $0 }.joined(separator: " · "))
-                            .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                            .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     }
                 }
-                if catalog.usingFixture { Text(ui("示例路由（服务端接口未部署）")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
+                if catalog.usingFixture { Text(ui("示例路由（服务端接口未部署）")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary) }
             }
         }
-        .foregroundStyle(CatpawColors.ink)
+        .foregroundStyle(catColors.ink)
         .navigationTitle(ui("连接详情"))
     }
 }

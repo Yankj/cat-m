@@ -17,7 +17,7 @@ import Foundation
 }
 private struct AcceptedWorkLoopbackCredentials:NativeChatSessionCredentials {
     func authorization(scope:DataScope) async throws -> String {
-        guard scope==Profiles.user else {throw CatpawError.scopeMismatch}
+        guard scope==Profiles.user else {throw catError.scopeMismatch}
         return "Bearer native-wire-offline"
     }
 }

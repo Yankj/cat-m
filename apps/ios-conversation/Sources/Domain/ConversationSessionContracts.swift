@@ -270,7 +270,7 @@ public struct ConversationTurnRequest: Codable, Sendable {
         return .init(scope:scope,conversationID:conversationID,threadID:threadID,operationID:operationID,epoch:epoch,history:history,context:context,image:image,imageBytes:imageBytes,continuation:continuation,continuationOriginalBinding:continuationOriginalBinding,continuationSubjectID:continuationSubjectID,acceptedWork:intent)
     }
 }
-/// Live-only `text_preview` frame (catpaw-api fix/context-window-v11x 59b5aae6; opt-in `X-Catpaw-Live-Text: 1`).
+/// Live-only `text_preview` frame (catpaw-api fix/context-window-v11x 59b5aae6; opt-in `X-cat-Live-Text: 1`).
 /// Never journaled, never replayed, never a cursor: its `sequence` equals the last persisted event already delivered.
 /// `text` is the whole unsaved tail from `offset` (UTF-16 code units into the assistant message text), not an increment.
 /// Persisted `text_delta` text stays authoritative; a preview only extends what is displayed.
@@ -497,7 +497,7 @@ public struct ConversationDeviceCall: Codable, Sendable, Equatable, Identifiable
     public static let header = "X-Catpaw-Device-Contract"
     /// The app turns this on once a device-call renderer and executor are installed (DeviceCallHub, #44); off = header not sent, server never offers device tools.
     nonisolated(unsafe) public static var clientEnabled = false
-    /// Tools this build executes (DeviceToolContract.clientTools), sent as `X-Catpaw-Device-Tools`; server offers only these.
+    /// Tools this build executes (DeviceToolContract.clientTools), sent as `X-cat-Device-Tools`; server offers only these.
     public static let toolsHeader = "X-Catpaw-Device-Tools"
     nonisolated(unsafe) public static var clientTools: [String] = []
     /// Codex P0-1 (PR #89): the authenticated SSE boundary reports received / revoked calls to the execution gate.
@@ -552,7 +552,7 @@ public struct ConversationUIEvent: Codable, Sendable, Equatable {
     public static let header = "X-Catpaw-UI-Contract"
     public static let resolveStatuses: Set<String> = ["submitted", "dismissed", "error", "expired", "cancelled"]
     public static let kinds: Set<String> = ["card", "choices", "confirm", "form", "sheet", "list", "progress", "place", "event"]
-    /// Kinds this build renders, sent as `X-Catpaw-UI-Kinds`; the server only grounds place/event cards for clients that list them.
+    /// Kinds this build renders, sent as `X-cat-UI-Kinds`; the server only grounds place/event cards for clients that list them.
     public static let kindsHeader = "X-Catpaw-UI-Kinds"
     /// Plus non-block capabilities (`followups` chips, chat-ux #4).
     public static var kindsHeaderValue: String { (kinds.sorted() + [FollowUpSuggestions.kind]).joined(separator: ",") }
@@ -857,7 +857,7 @@ public enum ConversationSideChannelEvents {
 }
 
 /// Codex PR91 P0-2 (server side): the client's 「使用记忆」 switch for the signed-in account, sent on every chat turn as
-/// `X-Catpaw-Use-Memory: 0|1` (services/edge/docs/agent-memory-contract.md). nil = unknown → header omitted.
+/// `X-cat-Use-Memory: 0|1` (services/edge/docs/agent-memory-contract.md). nil = unknown → header omitted.
 public enum ConversationMemorySwitch {
     public static let header = "X-Catpaw-Use-Memory"
     private static let lock = NSLock()

@@ -1,6 +1,6 @@
 import Foundation
 
-func require(_ value: Bool, _ text: String) throws { if !value { throw CatpawError.invalid(text) }; print("PASS: " + text) }
+func require(_ value: Bool, _ text: String) throws { if !value { throw catError.invalid(text) }; print("PASS: " + text) }
 actor ScriptedConversationBackend: ConversationBackend {
     private(set) var requests: [ConversationTurnRequest] = []
     func connection(scope: DataScope) async -> ConversationConnection { ConversationConnection(state: .connected, provider: "Explicit test backend", model: "test-only", detail: "Not included in the app") }
@@ -14,7 +14,7 @@ actor ScriptedConversationBackend: ConversationBackend {
             c.finish()
         }
     }
-    func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { throw CatpawError.unavailable("No scripted observation in this test") }
+    func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { throw catError.unavailable("No scripted observation in this test") }
     func captured() -> [ConversationTurnRequest] { requests }
 }
 actor InterruptedConversationBackend: ConversationBackend {
@@ -222,8 +222,8 @@ actor CancelScenarioBackend: ConversationBackend {
     }
     func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation {
         observes += 1
-        if mode == .readBackFails && observes == 1 { throw CatpawError.unavailable("offline read-back") }
-        if mode == .readBackFailsWithDeviceCall { throw CatpawError.unavailable("offline read-back") }
+        if mode == .readBackFails && observes == 1 { throw catError.unavailable("offline read-back") }
+        if mode == .readBackFailsWithDeviceCall { throw catError.unavailable("offline read-back") }
         return ConversationObservation(request: r, events: [ConversationTurnEvent(operationID: r.operationID, epoch: r.epoch, sequence: 1, payload: .textDelta(messageID: message, text: "部分回答")), terminal(r)])
     }
     func counts() -> [Int] { [replies, cancels, observes] }
@@ -455,7 +455,7 @@ func approvalSessionChecks(directory: URL) async throws {
         let frozenOperation = UUID()
         _ = try await connected.send(scope: Profiles.user, conversationID: first, text: "scope-bound question", operationID: frozenOperation, context: [ConversationExplicitContext(id: "version", text: "v1")])
         var rejected = false
-        do { _ = try await connected.send(scope: Profiles.user, conversationID: first, text: "scope-bound question", operationID: frozenOperation, context: [ConversationExplicitContext(id: "version", text: "v2")]) } catch CatpawError.conflict { rejected = true }
+        do { _ = try await connected.send(scope: Profiles.user, conversationID: first, text: "scope-bound question", operationID: frozenOperation, context: [ConversationExplicitContext(id: "version", text: "v2")]) } catch catError.conflict { rejected = true }
         try require(rejected, "same operation cannot change frozen explicit context")
         let interrupted = InterruptedConversationBackend()
         let dropped = ConversationSessionService(repository: repository, backend: interrupted)
@@ -511,7 +511,7 @@ func approvalSessionChecks(directory: URL) async throws {
         let legacyService = ConversationSessionService(repository: legacyRepo, backend: legacyBackend), legacyID = try await legacyService.create(scope: Profiles.user), legacyOperation = UUID()
         _ = try await legacyService.send(scope: Profiles.user, conversationID: legacyID, text: "Synthetic former-client delegation", operationID: legacyOperation)
         var legacy = try await legacyService.read(scope: Profiles.user, conversationID: legacyID)
-        guard let legacyMessage = legacy.turns.last?.assistantMessageID else { throw CatpawError.missing }
+        guard let legacyMessage = legacy.turns.last?.assistantMessageID else { throw catError.missing }
         let otherReply = ConversationTranscriptMessage(role: .assistant, content: "")
         legacy.messages.insert(otherReply, at: 0); await legacyBackend.prependHistoricalReply(otherReply)
         legacy.messages.append(.init(id: legacyMessage, role: .assistant, content: ""))

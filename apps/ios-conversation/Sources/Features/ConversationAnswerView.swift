@@ -31,17 +31,17 @@ import UIKit
                     HStack(spacing: 4) {
                         Text(ui("思考结果"))
                         if let thoughtSeconds, thoughtSeconds > 0 { Text("· \(thoughtSeconds)s").monospacedDigit() }
-                        Image(systemName: "chevron.right").font(CatpawTypography.Role.caption.font.weight(.semibold))
+                        Image(systemName: "chevron.right").font(catTypography.Role.caption.font.weight(.semibold))
                             .rotationEffect(.degrees(thoughtOpen ? 90 : 0)).accessibilityHidden(true)
                     }
-                    .font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                    .font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                     .frame(minHeight: 32).contentShape(Rectangle())
                 }
-                .buttonStyle(CatpawPressButtonStyle())
+                .buttonStyle(catPressButtonStyle())
                 .accessibilityValue(thoughtOpen ? ui("已展开") : ui("已收起"))
                 .accessibilityIdentifier("chat.answer.thoughtChip")
                 if thoughtOpen {
-                    Text(thoughtSummary).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                    Text(thoughtSummary).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                         .fixedSize(horizontal: false, vertical: true).transition(.opacity)
                 }
             }
@@ -52,7 +52,7 @@ import UIKit
                 if !followUps.isEmpty, let onFollowUp { FollowUpList(items: followUps, onSelect: onFollowUp) }
             }
         }
-        .animation(CatpawMotion.resolved(CatpawMotion.thinkingCollapse, reduceMotion), value: thoughtOpen)
+        .animation(catMotion.resolved(catMotion.thinkingCollapse, reduceMotion), value: thoughtOpen)
     }
 }
 
@@ -114,11 +114,11 @@ import UIKit
             if let control, control.count > 1 { ReplyVariantPager(control: control) }
             else if let generationSeconds {
                 Text(String(format: "%.2fs", generationSeconds))
-                    .font(CatpawTypography.Role.caption.font).monospacedDigit().foregroundStyle(CatpawColors.secondary)
+                    .font(catTypography.Role.caption.font).monospacedDigit().foregroundStyle(catColors.secondary)
                     .accessibilityIdentifier("chat.answer.duration")
             }
         }
-        .buttonStyle(CatpawPressButtonStyle())
+        .buttonStyle(catPressButtonStyle())
         .sensoryFeedback(.selection, trigger: rating)
     }
 
@@ -136,18 +136,18 @@ import UIKit
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(items.prefix(3).enumerated()), id: \.offset) { i, item in
-                if i > 0 { Divider().overlay(CatpawColors.hairline) }
+                if i > 0 { Divider().overlay(catColors.hairline) }
                 Button { onSelect(item) } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: "arrow.turn.down.right").font(CatpawTypography.Role.caption.font)
-                            .foregroundStyle(CatpawColors.secondary).accessibilityHidden(true)
-                        Text(item).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                        Image(systemName: "arrow.turn.down.right").font(catTypography.Role.caption.font)
+                            .foregroundStyle(catColors.secondary).accessibilityHidden(true)
+                        Text(item).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                             .multilineTextAlignment(.leading)
                         Spacer(minLength: 0)
                     }
                     .frame(minHeight: 44).contentShape(Rectangle())
                 }
-                .buttonStyle(CatpawPressButtonStyle())
+                .buttonStyle(catPressButtonStyle())
             }
         }
         .accessibilityElement(children: .contain)
@@ -159,7 +159,7 @@ import UIKit
 extension View {
     /// Bare action glyph: 32pt hit box, secondary ink, no circle (quieter than `answerActionIcon`).
     func replyActionGlyph() -> some View {
-        self.font(CatpawTypography.Role.secondary.font).imageScale(.medium).foregroundStyle(CatpawColors.secondary)
+        self.font(catTypography.Role.secondary.font).imageScale(.medium).foregroundStyle(catColors.secondary)
             .frame(width: 32, height: 32).contentShape(Rectangle().inset(by: -4))
     }
 }

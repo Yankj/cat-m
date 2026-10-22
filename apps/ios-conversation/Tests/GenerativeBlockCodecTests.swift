@@ -1,5 +1,5 @@
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 final class GenerativeBlockCodecTests: XCTestCase {
     func testAllFixturesDecodeOrDegrade() {

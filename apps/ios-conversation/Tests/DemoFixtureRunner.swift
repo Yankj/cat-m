@@ -6,7 +6,7 @@ import Foundation
 func check(_ condition: Bool, _ message: String) { if !condition { print("FAIL", message); exit(1) }; print("PASS", message) }
 /// Demo backend whose streams pause before `turn_suspended` / `turn_completed`, so decisions arrive mid-stream.
 actor SlowDemoBackend: ConversationBackend {
-    let inner = CatpawDemoConversationBackend()
+    let inner = catDemoConversationBackend()
     private(set) var uiDecisions: [String] = []
     func connection(scope: DataScope) async -> ConversationConnection { await inner.connection(scope: scope) }
     private static func slow(_ source: AsyncThrowingStream<ConversationTurnEvent, Error>) -> AsyncThrowingStream<ConversationTurnEvent, Error> {
@@ -42,11 +42,11 @@ func waitFor(_ condition: () async throws -> Bool) async throws { for _ in 0..<3
     }
     static func run() async throws {
         let defaults = UserDefaults(suiteName: "catpaw-demo-fixture-test")!
-        defaults.removeObject(forKey: CatpawDemoBackendSwitch.defaultsKey)
-        check(!CatpawDemoBackendSwitch.isEnabled(arguments: [], defaults: defaults) && CatpawDemoBackendSwitch.isEnabled(arguments: ["-CatpawDemoBackend"], defaults: defaults), "demo switch: off by default, launch argument turns it on")
-        defaults.set(true, forKey: CatpawDemoBackendSwitch.defaultsKey)
-        check(CatpawDemoBackendSwitch.isEnabled(arguments: [], defaults: defaults), "demo switch: UserDefaults")
-        defaults.removeObject(forKey: CatpawDemoBackendSwitch.defaultsKey)
+        defaults.removeObject(forKey: catDemoBackendSwitch.defaultsKey)
+        check(!catDemoBackendSwitch.isEnabled(arguments: [], defaults: defaults) && catDemoBackendSwitch.isEnabled(arguments: ["-CatpawDemoBackend"], defaults: defaults), "demo switch: off by default, launch argument turns it on")
+        defaults.set(true, forKey: catDemoBackendSwitch.defaultsKey)
+        check(catDemoBackendSwitch.isEnabled(arguments: [], defaults: defaults), "demo switch: UserDefaults")
+        defaults.removeObject(forKey: catDemoBackendSwitch.defaultsKey)
 
         // 1) Recorded wire session.
         let fixture = URL(fileURLWithPath: "../../services/edge/docs/fixtures/catpaw-ui-demo.jsonl")
@@ -82,7 +82,7 @@ func waitFor(_ condition: () async throws -> Bool) async throws { for _ in 0..<3
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("catpaw-ui-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let store = directory.appendingPathComponent("journal.json")
-        let backend = CatpawDemoConversationBackend()
+        let backend = catDemoConversationBackend()
         let service = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: store)), backend: backend)
         let conversation = try await service.create(scope: Profiles.user)
         let operation = UUID()
@@ -108,7 +108,7 @@ func waitFor(_ condition: () async throws -> Bool) async throws { for _ in 0..<3
         pending = try await service.pendingUIBlocks(scope: Profiles.user, conversationID: conversation)
         check(Set(pending.map(\.id)) == ["demo-form", "demo-confirm", "demo-sheet"], "choices answered: resolve + round 2 suspended on form/confirm/sheet")
         var consumed = false
-        do { _ = try await backend.submitUIDecision(try await service.read(scope: Profiles.user, conversationID: conversation).turns.last!.request, interruptID: CatpawDemoUIScript.interruptID("demo-choices"), decision: .dismiss, argsHash: String(repeating: "0", count: 64), response: nil, operationID: UUID(), afterSequence: 0) }
+        do { _ = try await backend.submitUIDecision(try await service.read(scope: Profiles.user, conversationID: conversation).turns.last!.request, interruptID: catDemoUIScript.interruptID("demo-choices"), decision: .dismiss, argsHash: String(repeating: "0", count: 64), response: nil, operationID: UUID(), afterSequence: 0) }
         catch ConversationApprovalFailure.consumed { consumed = true }
         check(consumed, "answering an answered block with another operation → .consumed")
 
@@ -158,7 +158,7 @@ func waitFor(_ condition: () async throws -> Bool) async throws { for _ in 0..<3
         _ = try await queued.send(scope: Profiles.user, conversationID: qConversation, text: "排队测试", operationID: qOperation)
         let qApproval = try await queued.pendingApprovals(scope: Profiles.user, conversationID: qConversation)[0]
         let approving = Task { try await queued.submitApproval(scope: Profiles.user, conversationID: qConversation, interruptID: qApproval.interruptID, decision: .approve) }
-        let choicesID = CatpawDemoUIScript.interruptID("demo-choices"), zero = String(repeating: "0", count: 64)
+        let choicesID = catDemoUIScript.interruptID("demo-choices"), zero = String(repeating: "0", count: 64)
         try await waitFor { try await queued.read(scope: Profiles.user, conversationID: qConversation).turns.last?.uiEvents?.contains { $0.interruptID == choicesID } == true }
         // Stream is still running (paused before turn_suspended): the answer queues instead of throwing busy.
         let early = Task { try await queued.submitUIDecision(scope: Profiles.user, conversationID: qConversation, turnID: qOperation, interruptID: choicesID, decision: .submit, argsHash: zero, response: choices, operationID: choicesOperation) }
@@ -176,7 +176,7 @@ func waitFor(_ condition: () async throws -> Bool) async throws { for _ in 0..<3
         // Round 2 is streaming (paused before turn_suspended) right after choices: answer form/confirm/sheet in any order, cancel one.
         let qPending: [ConversationUIEvent] = try await queued.read(scope: Profiles.user, conversationID: qConversation).turns.last?.pendingUIBlocks ?? []
         check(Set(qPending.map(\.id)) == ["demo-form", "demo-confirm", "demo-sheet"], "round 2 pending after queued choices")
-        let sheetID = CatpawDemoUIScript.interruptID("demo-sheet"), confirmID = CatpawDemoUIScript.interruptID("demo-confirm"), formID = CatpawDemoUIScript.interruptID("demo-form")
+        let sheetID = catDemoUIScript.interruptID("demo-sheet"), confirmID = catDemoUIScript.interruptID("demo-confirm"), formID = catDemoUIScript.interruptID("demo-form")
         let blocker = Task { try await queued.submitUIDecision(scope: Profiles.user, conversationID: qConversation, turnID: qOperation, interruptID: sheetID, decision: .dismiss, argsHash: zero, response: nil) }
         try await waitFor { await slow.uiDecisions.contains(sheetID) }
         let cancelled = Task { try await queued.submitUIDecision(scope: Profiles.user, conversationID: qConversation, turnID: qOperation, interruptID: formID, decision: .submit, argsHash: zero, response: Data(#"{"type":"ui.response","blockId":"demo-form","values":{"km":3},"respondedAt":"2026-10-16T00:10:00Z"}"#.utf8)) }

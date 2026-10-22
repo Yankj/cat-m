@@ -1,4 +1,4 @@
-/* R5 uses user-provided mobile references; these are Catpaw roles, not official tokens. */
+/* R5 uses user-provided mobile references; these are cat roles, not official tokens. */
 body{background:#ECECEE;color:#202020}
 .legacy-scenes[hidden]{display:none!important}
 .reference-nav{display:grid;gap:4px;margin-top:24px}

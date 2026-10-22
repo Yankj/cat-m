@@ -396,11 +396,11 @@ final class NativeUITests: XCTestCase {
     }
 }
 
-// Integrate into the existing CatpawMUITests iOS UI Testing Bundle. No app source changes required.
+// Integrate into the existing catUITests iOS UI Testing Bundle. No app source changes required.
 // All cases require explicit Simulator handoff and scoped QA data writes authorization.
 import XCTest
 
-final class CatpawAcceptanceUITests: XCTestCase {
+final class catAcceptanceUITests: XCTestCase {
     @MainActor private func start() throws -> XCUIApplication {
         let env = ProcessInfo.processInfo.environment
         // Running this UI suite is a deliberate local test action; retain existing App data.

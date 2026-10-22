@@ -1,7 +1,7 @@
 import SwiftUI
 import EventKit
 
-/// Local ledger of things Catpaw created on this phone (EventKit reminders / calendar events), shown in 任务 next to
+/// Local ledger of things cat created on this phone (EventKit reminders / calendar events), shown in 任务 next to
 /// server tasks with a "本机" source tag and an undo. Stored in Application Support; never synced.
 struct DeviceLedgerEntry: Codable, Identifiable, Equatable {
     enum Kind: String, Codable { case reminder, event }
@@ -51,7 +51,7 @@ extension DeviceLedgerItemStore {
     func candidates(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String, identity: DeviceSavedIdentity?) async -> [DeviceUndoCandidate] { [] }
     func removeChosen(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String) -> DeviceLedgerRemoval { .undetermined }
 }
-/// One object carrying the call marker, shown to the user when Catpaw can't prove which one it created.
+/// One object carrying the call marker, shown to the user when cat can't prove which one it created.
 struct DeviceUndoCandidate: Equatable, Identifiable, Sendable {
     let id: String; let title: String; let start: Date?
     /// The ledger's recorded id (may still be the original even though its identity no longer matches, e.g. moved).
@@ -219,7 +219,7 @@ enum DeviceEventKitRule {
     private let ledger: DeviceLedger
     init(ledger: DeviceLedger? = nil) { self.ledger = ledger ?? .shared }
     func parkedItems(account: String) -> [AccountParkedItem] {
-        // EXTERNAL effect (an EventKit item Catpaw created) → the user decides keep vs undo (automatic = nil).
+        // EXTERNAL effect (an EventKit item cat created) → the user decides keep vs undo (automatic = nil).
         ledger.entries(account: account).map { AccountParkedItem(source: Self.key, key: $0.id, title: ($0.kind == .reminder ? "本机提醒「" : "本机日程「") + $0.title + "」", detail: $0.due.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "") }
     }
     func apply(_ decision: AccountParkedDecision, to item: AccountParkedItem, account: String) async -> String {
@@ -392,14 +392,14 @@ enum DeviceEventKitRule {
             Section {
                 ForEach(ledger.active) { entry in
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Image(systemName: entry.kind == .reminder ? "checklist" : "calendar").foregroundStyle(CatpawColors.action).accessibilityHidden(true)
+                        Image(systemName: entry.kind == .reminder ? "checklist" : "calendar").foregroundStyle(catColors.action).accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(entry.title).font(CatpawTypography.Role.body.font)
+                            Text(entry.title).font(catTypography.Role.body.font)
                             HStack(spacing: 6) {
                                 Text(ui(entry.kind == .reminder ? "本机提醒" : "本机日程"))
-                                    .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.actionText)
-                                    .padding(.horizontal, 6).padding(.vertical, 2).background(CatpawColors.action.opacity(0.1), in: Capsule())
-                                if let due = entry.due { Text(due.formatted(date: .abbreviated, time: .shortened)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
+                                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.actionText)
+                                    .padding(.horizontal, 6).padding(.vertical, 2).background(catColors.action.opacity(0.1), in: Capsule())
+                                if let due = entry.due { Text(due.formatted(date: .abbreviated, time: .shortened)).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary) }
                             }
                         }
                         Spacer(minLength: 0)
@@ -411,13 +411,13 @@ enum DeviceEventKitRule {
                             case .needsPermission: needsPermission = true
                             }
                         } }
-                            .font(CatpawTypography.Role.secondary.font).buttonStyle(.borderless)
+                            .font(catTypography.Role.secondary.font).buttonStyle(.borderless)
                             .accessibilityIdentifier("tasks.device.undo." + entry.id)
                     }
                     .accessibilityElement(children: .contain).accessibilityIdentifier("tasks.device." + entry.id)
-                    if failed == entry.id { Text(ui("撤销未完成，请在系统 App 中删除。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention) }
+                    if failed == entry.id { Text(ui("撤销未完成，请在系统 App 中删除。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention) }
                 }
-            } header: { Text(ui("Catpaw 在本机创建的")) }
+            } header: { Text(ui("cat 在本机创建的")) }
             .modifier(DeviceUndoDecision(candidates: $candidates, needsPermission: $needsPermission, callID: choosing, ledger: ledger) { o in if !o.removed { failed = choosing } })
         }
     }
@@ -435,11 +435,11 @@ enum DeviceEventKitRule {
     private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
     private func label(_ c: DeviceUndoCandidate) -> String {
         let when = c.start.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? ui("无时间")
-        return ui("删除") + "「\(c.title)」\(when)" + (c.isRecorded ? ui("（Catpaw 记录的那一个）") : "")
+        return ui("删除") + "「\(c.title)」\(when)" + (c.isRecorded ? ui("（cat 记录的那一个）") : "")
     }
     func body(content: Content) -> some View {
         content
-            .confirmationDialog(ui("无法确认哪一个是 Catpaw 创建的"), isPresented: Binding(get: { !candidates.isEmpty }, set: { if !$0 && !candidates.isEmpty { ledger.keepAll(callID: callID); candidates = [] } }), titleVisibility: .visible) {
+            .confirmationDialog(ui("无法确认哪一个是 cat 创建的"), isPresented: Binding(get: { !candidates.isEmpty }, set: { if !$0 && !candidates.isEmpty { ledger.keepAll(callID: callID); candidates = [] } }), titleVisibility: .visible) {
                 ForEach(candidates) { c in
                     Button(label(c), role: .destructive) { candidates = []; done(ledger.undoChosen(callID: callID, itemID: c.id)) }
                 }
@@ -448,7 +448,7 @@ enum DeviceEventKitRule {
             .alert(ui("没有日历或提醒事项权限"), isPresented: $needsPermission) {
                 Button(ui("去设置")) { DeviceLedger.log("undo \(callID): user → settings"); if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } }
                 Button(ui("先不处理"), role: .cancel) { DeviceLedger.log("undo \(callID): user left it") }
-            } message: { Text(ui("权限已关闭，Catpaw 不会删除任何内容。开启后可再次撤销。")) }
+            } message: { Text(ui("权限已关闭，cat 不会删除任何内容。开启后可再次撤销。")) }
     }
 }
 
@@ -470,13 +470,13 @@ enum DeviceEventKitRule {
                             Text(ui("撤销")).tag(AccountParkedDecision.cancel)
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(item.title).font(CatpawTypography.Role.body.font)
-                                if !item.detail.isEmpty { Text(item.detail).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
+                                Text(item.title).font(catTypography.Role.body.font)
+                                if !item.detail.isEmpty { Text(item.detail).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary) }
                             }
                         }
                         .accessibilityIdentifier("parked." + item.id)
                     }
-                } footer: { Text(ui("这些是 Catpaw 在本机日历、提醒事项里创建的内容。保留：留在系统里；撤销：仅删除能确认是 Catpaw 创建的那一项，无法确认的会保留。")) }
+                } footer: { Text(ui("这些是 cat 在本机日历、提醒事项里创建的内容。保留：留在系统里；撤销：仅删除能确认是 cat 创建的那一项，无法确认的会保留。")) }
             }
             .navigationTitle(ui("要保留本机日程和提醒吗？")).navigationBarTitleDisplayMode(.inline)
             .toolbar {

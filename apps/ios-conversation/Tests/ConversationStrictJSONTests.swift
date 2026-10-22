@@ -6,7 +6,7 @@ import Darwin
 }
 #else
 import XCTest
-@testable import CatpawM
+@testable import cat
 final class ConversationStrictJSONTests:XCTestCase {func testBoundedObjectsEscapedKeysAndMalformedBytes() throws {try StrictJSONScenarios.run()}}
 #endif
 private enum StrictJSONScenarios {

@@ -95,25 +95,25 @@ struct PermissionCardPayload: Codable, Sendable, Equatable {
             switch status {
             case .authorized?, .limited?:
                 Label(ui("已允许，可以继续了"), systemImage: "checkmark.circle.fill").labelStyle(PermissionIconLabelStyle())
-                    .font(CatpawTypography.Role.body.font).frame(minHeight: 44, alignment: .leading)
+                    .font(catTypography.Role.body.font).frame(minHeight: 44, alignment: .leading)
             case .denied?, .restricted?:
                 header
-                Text(ui("你之前没有允许。可以在系统设置里打开，回来后小猫会继续。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(ui("你之前没有允许。可以在系统设置里打开，回来后小猫会继续。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true)
                 Button(ui("去设置")) { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
-                    .buttonStyle(CatpawPrimaryButtonStyle()).accessibilityIdentifier("chat.permission.settings")
+                    .buttonStyle(catPrimaryButtonStyle()).accessibilityIdentifier("chat.permission.settings")
             case .unavailable?:
                 header
-                Text(ui("这台设备暂不支持这项功能。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                Text(ui("这台设备暂不支持这项功能。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
             default:
                 if dismissed {
-                    Label(ui("暂不允许"), systemImage: "minus.circle").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary).frame(minHeight: 44, alignment: .leading)
+                    Label(ui("暂不允许"), systemImage: "minus.circle").font(catTypography.Role.body.font).foregroundStyle(catColors.secondary).frame(minHeight: 44, alignment: .leading)
                 } else {
                     header
                     HStack(spacing: 10) {
                         Button(ui("继续")) { Task { await ask() } }
-                            .buttonStyle(CatpawPrimaryButtonStyle()).disabled(asking || status == nil).accessibilityIdentifier("chat.permission.continue")
+                            .buttonStyle(catPrimaryButtonStyle()).disabled(asking || status == nil).accessibilityIdentifier("chat.permission.continue")
                         Button(ui("暂不")) { dismissed = true; onResult?(.denied) }
-                            .font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary).touchTarget().accessibilityIdentifier("chat.permission.later")
+                            .font(catTypography.Role.body.font).foregroundStyle(catColors.secondary).touchTarget().accessibilityIdentifier("chat.permission.later")
                     }
                 }
             }
@@ -126,12 +126,12 @@ struct PermissionCardPayload: Codable, Sendable, Equatable {
         HStack(alignment: .top, spacing: 12) {
             ZStack(alignment: .bottomTrailing) {
                 BrandMark(size: artSize, style: .fill).frame(width: artSize, height: artSize)
-                Image(systemName: kind.symbol).font(.footnote.weight(.semibold)).foregroundStyle(CatpawColors.onInk)
-                    .padding(5).background(CatpawColors.ink, in: Circle()).offset(x: 6, y: 6)
+                Image(systemName: kind.symbol).font(.footnote.weight(.semibold)).foregroundStyle(catColors.onInk)
+                    .padding(5).background(catColors.ink, in: Circle()).offset(x: 6, y: 6)
             }.accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
-                Text(ui(kind.titleKey)).font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
-                Text(payload.reason ?? ui(kind.defaultReasonKey)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(ui(kind.titleKey)).font(catTypography.Role.heading.font).foregroundStyle(catColors.ink).fixedSize(horizontal: false, vertical: true)
+                Text(payload.reason ?? ui(kind.defaultReasonKey)).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -146,11 +146,11 @@ struct PermissionCardPayload: Codable, Sendable, Equatable {
 
 private struct PermissionIconLabelStyle: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 8) { configuration.icon.foregroundStyle(CatpawBrand.paw); configuration.title.foregroundStyle(CatpawColors.ink) }
+        HStack(spacing: 8) { configuration.icon.foregroundStyle(catBrand.paw); configuration.title.foregroundStyle(catColors.ink) }
     }
 }
 
-/// Registers `receipt` and `permission` with `MarkdownCustomBlockRegistry` (#34). Called from `CatpawMApp.init`.
+/// Registers `receipt` and `permission` with `MarkdownCustomBlockRegistry` (#34). Called from `catApp.init`.
 @MainActor enum DeviceStatusCardAdapter {
     private static var registered = false
     static func register() {

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "native_host": "apps/ios-conversation",
-  "native_project": "apps/ios-conversation/CatpawM.xcodeproj",
-  "native_entry": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+  "native_project": "apps/ios-conversation/cat.xcodeproj",
+  "native_entry": "apps/ios-conversation/Sources/App/catApp.swift",
   "backend_maintenance": "services/edge/supabase/functions",
   "backend_entries_present": ["services/edge/supabase/functions/catpaw-api/index.ts"],
   "backend_shared": "services/edge/supabase/functions/_shared",

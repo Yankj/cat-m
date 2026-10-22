@@ -98,7 +98,7 @@ public actor ConversationTaskControlService {
             do {envelope=try await backend.submitControl(reference,request:request)}
             catch {
                 provenNotSent=error is ConversationTaskControlDispatchFailure
-                if case CatpawError.conflict=error {serverRejected=true}
+                if case catError.conflict=error {serverRejected=true}
                 throw error
             }
             try ensure(epoch)
@@ -141,11 +141,11 @@ public actor ConversationTaskControlService {
         state.latest=value
     }
     private func load(_ reference:ConversationTaskControlReference) async throws -> (ConversationTaskControlLocalState,StoredRecord?) {
-        guard !invalidated,reference.scope==scope else {throw CatpawError.scopeMismatch}
+        guard !invalidated,reference.scope==scope else {throw catError.scopeMismatch}
         try reference.validate()
         let conversation=try await repository.record(reference.binding.conversation_id,scope:scope);guard conversation.conversation != nil else {throw ConversationTaskControlError.invalidResponse}
         let record:StoredRecord
-        do {record=try await repository.record(stableID(key(reference)),scope:scope)} catch CatpawError.missing {return (.init(),nil)}
+        do {record=try await repository.record(stableID(key(reference)),scope:scope)} catch catError.missing {return (.init(),nil)}
         guard case .preference(let preference)=record.payload,preference.key==key(reference),preference.value.utf8.count<=1_048_576 else {throw ConversationTaskControlError.invalidResponse}
         let state=try JSONDecoder().decode(ConversationTaskControlLocalState.self,from:Data(preference.value.utf8))
         guard state.schemaVersion==1,state.submissions.count<=64,state.submissions.values.filter({$0.state == .unknown}).count<=1 else {throw ConversationTaskControlError.invalidResponse}

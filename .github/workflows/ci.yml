@@ -55,4 +55,4 @@ jobs:
         run: python3 Scripts/validate-project.py
       - name: xcodebuild build-for-testing (simulator)
         working-directory: apps/ios-conversation
-        run: xcodebuild -project CatpawM.xcodeproj -scheme CatpawM -destination 'generic/platform=iOS Simulator' build-for-testing CODE_SIGNING_ALLOWED=NO
+        run: xcodebuild -project cat.xcodeproj -scheme cat -destination 'generic/platform=iOS Simulator' build-for-testing CODE_SIGNING_ALLOWED=NO

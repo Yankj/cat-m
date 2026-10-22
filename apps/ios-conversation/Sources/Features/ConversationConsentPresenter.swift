@@ -114,33 +114,33 @@ struct ConversationConsentPresentationCoordinator {
         NavigationStack {
             ScrollView {VStack(alignment:.leading,spacing:16) {
                 if let preview,let image=UIImage(data:preview) {Image(uiImage:image).resizable().scaledToFit().frame(maxHeight:192).accessibilityLabel(ui("待确认的图片预览")).accessibilityIdentifier("image.consent.preview")}
-                Text(caption).font(CatpawTypography.Role.body.font).textSelection(.enabled)
-                Text(ui(consent.body)).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("image.consent.notice")
-                Text(ui("确认后返回输入区，点击发送才会传输图片。")).font(CatpawTypography.Role.caption.font)
-            }.padding(20).frame(maxWidth:CatpawLayout.readableWidth,alignment:.leading).frame(maxWidth:.infinity)}
+                Text(caption).font(catTypography.Role.body.font).textSelection(.enabled)
+                Text(ui(consent.body)).font(catTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("image.consent.notice")
+                Text(ui("确认后返回输入区，点击发送才会传输图片。")).font(catTypography.Role.caption.font)
+            }.padding(20).frame(maxWidth:catLayout.readableWidth,alignment:.leading).frame(maxWidth:.infinity)}
             .accessibilityIdentifier("image.consent.viewport")
             .navigationTitle(ui(consent.title)).navigationBarTitleDisplayMode(.inline)
             .toolbar {ToolbarItem(placement:.cancellationAction){
-                Button(action:cancel){Image(systemName:"xmark").font(CatpawTypography.Role.body.font).touchTarget()}
-                    .buttonStyle(CatpawPressButtonStyle()).disabled(saving).accessibilityLabel(ui("关闭")).accessibilityIdentifier("image.consent.close")
+                Button(action:cancel){Image(systemName:"xmark").font(catTypography.Role.body.font).touchTarget()}
+                    .buttonStyle(catPressButtonStyle()).disabled(saving).accessibilityLabel(ui("关闭")).accessibilityIdentifier("image.consent.close")
             }}
             .safeAreaInset(edge:.bottom,spacing:0) {
                 VStack(spacing:8) {
-                    CatpawConfirmationCheckbox(title:ui(consent.confirmation),isOn:$confirmed).disabled(saving)
+                    catConfirmationCheckbox(title:ui(consent.confirmation),isOn:$confirmed).disabled(saving)
                         .accessibilityIdentifier("image.consent.nonSensitive")
                     // v1.1 inline-status SPEC §4.1: the confirmation is stored on this conversation's record only.
-                    Text(ui("只对本对话有效")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                    Text(ui("只对本对话有效")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                         .frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier("image.consent.scope")
                     VStack(spacing:4) {
                         Button{allow(confirmed)} label:{Text(ui("本对话允许"))}
-                            .buttonStyle(CatpawSheetPrimaryButtonStyle()).disabled(!confirmed || saving).accessibilityIdentifier("image.consent.allow")
+                            .buttonStyle(catSheetPrimaryButtonStyle()).disabled(!confirmed || saving).accessibilityIdentifier("image.consent.allow")
                         Button(action:cancel){Text(ui("不发了"))}
-                            .buttonStyle(CatpawSheetSecondaryButtonStyle()).disabled(saving).accessibilityIdentifier("image.consent.cancel")
+                            .buttonStyle(catSheetSecondaryButtonStyle()).disabled(saving).accessibilityIdentifier("image.consent.cancel")
                     }
                     if saving {ProgressView().accessibilityLabel(ui("正在保存确认…"))}
-                }.padding(.horizontal,20).padding(.top,12).padding(.bottom,8).frame(maxWidth:CatpawLayout.readableWidth).frame(maxWidth:.infinity)
-                    .background(CatpawColors.background).overlay(alignment:.top){CatpawColors.hairline.frame(height:0.5)}
-            }.background(CatpawColors.background)
-        }.tint(CatpawColors.ink).foregroundStyle(CatpawColors.ink).presentationDragIndicator(.visible)
+                }.padding(.horizontal,20).padding(.top,12).padding(.bottom,8).frame(maxWidth:catLayout.readableWidth).frame(maxWidth:.infinity)
+                    .background(catColors.background).overlay(alignment:.top){catColors.hairline.frame(height:0.5)}
+            }.background(catColors.background)
+        }.tint(catColors.ink).foregroundStyle(catColors.ink).presentationDragIndicator(.visible)
     }
 }
