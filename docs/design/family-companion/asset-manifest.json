@@ -55,8 +55,8 @@
     },
     {
       "path": "docs/design/family-companion/decisions.md",
-      "bytes": 3210,
-      "sha256": "52e39fc02b7664ab6e58bc55f4d75f597c040668c013d4784216ce12df49fcdd"
+      "bytes": 3503,
+      "sha256": "0a6cb7af2f4335918fd54cfec4095b0787bad9baa2f8912c6c6445b141d5b327"
     },
     {
       "path": "docs/design/family-companion/explorations/visual-v0.1-not-implementation-baseline.png",
