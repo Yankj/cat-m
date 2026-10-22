@@ -39,8 +39,8 @@ def commit():
 
 def push(remote, url):
     require(remote == 'origin', 'Only origin may be pushed; legacy-local is read-only.')
-    require(url in ['https://github.com/Yankj/catpaw-m.git', 'https://github.com/Yankj/catpaw-m',
-                    'git@github.com:Yankj/catpaw-m.git'], 'Unexpected origin destination.')
+    require(url in ['https://github.com/Yankj/cat-m.git', 'https://github.com/Yankj/cat-m',
+                    'git@github.com:Yankj/cat-m.git'], 'Unexpected origin destination.')
     require(git('rev-parse', '--verify', 'refs/remotes/origin/main').returncode == 0,
             'Verified origin/main reference required.')
     for line in sys.stdin:
