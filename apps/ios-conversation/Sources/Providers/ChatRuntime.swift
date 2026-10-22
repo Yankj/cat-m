@@ -3,16 +3,16 @@ import Foundation
 extension Repository {
     @discardableResult private func requireReplyAttempt(task: WorkTask, scope: DataScope, epoch: Int) throws -> ChatRequest {
         let record = try self.record(stableID("reply-request-\(task.operationID)"), scope: scope)
-        guard case .preference(let value) = record.payload, let data = value.value.data(using: .utf8) else { throw CatpawError.conflict }
+        guard case .preference(let value) = record.payload, let data = value.value.data(using: .utf8) else { throw catError.conflict }
         let request = try JSONDecoder().decode(ChatRequest.self, from: data)
-        guard request.context.runtimeEpoch == epoch else { throw CatpawError.conflict }
+        guard request.context.runtimeEpoch == epoch else { throw catError.conflict }
         return request
     }
     public func persistOperation(scope: DataScope, messageID: UUID, taskID: UUID, outcome: OperationReducer) throws {
         let mr = try record(messageID, scope: scope), tr = try record(taskID, scope: scope)
-        guard var m = mr.message, var t = tr.task else { throw CatpawError.missing }
+        guard var m = mr.message, var t = tr.task else { throw catError.missing }
         try requireReplyAttempt(task: t, scope: scope, epoch: outcome.attemptEpoch)
-        guard t.state != .cancelled || outcome.taskState == .cancelled else { throw CatpawError.conflict }
+        guard t.state != .cancelled || outcome.taskState == .cancelled else { throw catError.conflict }
         m.blocks = [.text(outcome.text + (outcome.error.map { "\n\n" + $0 } ?? ""))]; m.state = outcome.messageState
         m.reality = outcome.observedReality; t.reality = outcome.observedReality
         t.state = outcome.taskState == .succeeded && t.results.isEmpty ? .running : outcome.taskState
@@ -21,7 +21,7 @@ extension Repository {
     }
     public func finishReply(scope: DataScope, messageID: UUID, taskID: UUID, outcome: OperationReducer, blobHash: String) throws {
         let mr = try record(messageID, scope: scope), tr = try record(taskID, scope: scope)
-        guard var m = mr.message, var t = tr.task, t.state == .running, outcome.taskState == .succeeded else { throw CatpawError.conflict }
+        guard var m = mr.message, var t = tr.task, t.state == .running, outcome.taskState == .succeeded else { throw catError.conflict }
         let request = try requireReplyAttempt(task: t, scope: scope, epoch: outcome.attemptEpoch)
         let id = stableID("reply-result-\(taskID)")
         let gatewayReply = request.context.providerID == "catpaw.gateway.v1"
@@ -35,7 +35,7 @@ extension Repository {
         var projectMutations: [Mutation] = []
         if let projectID = request.frozenConfiguration.projectID {
             let projectRecord = try record(projectID, scope: scope)
-            guard case .core(.project(var project)) = projectRecord.payload else { throw CatpawError.scopeMismatch }
+            guard case .core(.project(var project)) = projectRecord.payload else { throw catError.scopeMismatch }
             owners.append(projectID)
             if !project.documentIDs.contains(id) { project.documentIDs.append(id) }
             projectMutations.append(.update(projectID, projectRecord.header.revision, .core(.project(project))))
@@ -83,11 +83,11 @@ public actor ChatRuntime {
     private let afterAdmissionCommit: (@Sendable () async -> Void)?
     public init(repository: Repository, service: WorkspaceService, provider: (any AgentProvider)? = nil, providerMode: ChatProviderMode = .fixture, beforeAdmissionCommit: (@Sendable () async -> Void)? = nil, afterAdmissionCommit: (@Sendable () async -> Void)? = nil) { self.repository = repository; self.service = service; self.providerOverride = provider; self.providerMode = providerMode; self.beforeAdmissionCommit = beforeAdmissionCommit; self.afterAdmissionCommit = afterAdmissionCommit }
     @discardableResult public func send(scope: DataScope, conversationID: UUID, text: String, clientMessageID: UUID, scenario: FixtureScenario) async throws -> UUID {
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw CatpawError.invalid("请输入内容。") }
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw catError.invalid("请输入内容。") }
         let admissionEpoch = runtimeEpoch
-        guard providerMode == .fixture || providerOverride != nil else { throw CatpawError.unavailable("Gateway provider is not configured.") }
+        guard providerMode == .fixture || providerOverride != nil else { throw catError.unavailable("Gateway provider is not configured.") }
         let providerID = await providerOverride?.descriptor().id ?? "catpaw.fixture.v1"
-        guard providerMode == .fixture || providerID == "catpaw.gateway.v1" else { throw CatpawError.invalid("Gateway mode requires the configured gateway adapter.") }
+        guard providerMode == .fixture || providerID == "catpaw.gateway.v1" else { throw catError.invalid("Gateway mode requires the configured gateway adapter.") }
         let userID = stableID("user-message-\(clientMessageID)")
         let assistantID = stableID("assistant-message-\(clientMessageID)")
         let taskID = stableID("task-\(clientMessageID)")
@@ -95,11 +95,11 @@ public actor ChatRuntime {
         let existing = await repository.read(scope: scope)
         if let r = existing.records[userID] {
             guard r.message?.conversationID == conversationID,
-                  r.message?.blocks.textValue == text else { throw CatpawError.invalid("消息ID与旧提交不一致。") }
+                  r.message?.blocks.textValue == text else { throw catError.invalid("消息ID与旧提交不一致。") }
             return operationID // Persisted duplicate never causes another provider invocation.
         }
         let cr = try await repository.record(conversationID, scope: scope)
-        guard var c = cr.conversation else { throw CatpawError.missing }
+        guard var c = cr.conversation else { throw catError.missing }
         let sequence = (existing.list("message", scope: scope).compactMap(\.message).filter { $0.conversationID == conversationID }.map(\.sequence).max() ?? 0) + 1
         c.draftText = ""; if c.title == "新任务" { c.title = String(text.prefix(28)) }
         let user = ChatMessage(conversationID: conversationID, clientMessageID: clientMessageID, role: .user, blocks: [.text(text)], replyToID: nil, state: .localSaved, reality: .localEffect, sequence: sequence)
@@ -130,17 +130,17 @@ public actor ChatRuntime {
     }
     public func retry(scope: DataScope, taskID: UUID, scenario: FixtureScenario) async throws {
         let admissionEpoch = runtimeEpoch
-        guard providerMode == .fixture else { throw CatpawError.invalid("Remote requests require verification of the original operation before another attempt.") }
+        guard providerMode == .fixture else { throw catError.invalid("Remote requests require verification of the original operation before another attempt.") }
         let tr = try await repository.record(taskID, scope: scope)
-        guard var task = tr.task, [.failed, .cancelled].contains(task.state), live[task.operationID] == nil else { throw CatpawError.invalid("只能重试明确失败或已取消的模拟运行；未知结果先核验。") }
+        guard var task = tr.task, [.failed, .cancelled].contains(task.state), live[task.operationID] == nil else { throw catError.invalid("只能重试明确失败或已取消的模拟运行；未知结果先核验。") }
         let saved = try await repository.record(stableID("reply-request-\(task.operationID)"), scope: scope)
-        guard case .preference(let p) = saved.payload, let data = p.value.data(using: .utf8) else { throw CatpawError.missing }
+        guard case .preference(let p) = saved.payload, let data = p.value.data(using: .utf8) else { throw catError.missing }
         var request = try JSONDecoder().decode(ChatRequest.self, from: data)
         let retryProviderID = await providerOverride?.descriptor().id ?? "catpaw.fixture.v1"
         guard retryProviderID == request.context.providerID,
-              (providerMode == .fixture ? task.reality == .simulated : [.unknown, .remoteAccepted].contains(task.reality)) else { throw CatpawError.invalid("Frozen provider changed; start an explicit new request.") }
+              (providerMode == .fixture ? task.reality == .simulated : [.unknown, .remoteAccepted].contains(task.reality)) else { throw catError.invalid("Frozen provider changed; start an explicit new request.") }
         let s = await repository.read(scope: scope)
-        guard let mr = s.list("message", scope: scope).first(where: { $0.message?.replyToID == request.userMessageID }), var message = mr.message else { throw CatpawError.missing }
+        guard let mr = s.list("message", scope: scope).first(where: { $0.message?.replyToID == request.userMessageID }), var message = mr.message else { throw catError.missing }
         let archive = String(data: try JSONEncoder().encode([tr, mr]), encoding: .utf8)!
         task.state = .queued; task.results = []; message.state = .waitingProvider; message.blocks = [.text("")]
         task.reality = providerMode.admissionReality; message.reality = providerMode.admissionReality

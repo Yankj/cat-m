@@ -1,4 +1,4 @@
-# Catpaw 长期目标与可验收开发 prompt
+# cat 长期目标与可验收开发 prompt
 
 整理日期：2026-10-13（Asia/Shanghai）。本文综合现有docs的产品、UI交互、架构、研究与验收合同，供用户复制启动后续开发。本次整理不执行正文，也不创建/切换运行Goal。权威与授权边界见[启动合同](development-start-contract.md)，实时状态只见[master-plan](../../status/master-plan.md)。
 
@@ -38,7 +38,7 @@
 ## 可复制正文
 
 ```text
-在当前 Catpaw-m 主维护仓库中继续开发 Catpaw。终版交付终点是 FINAL-G3：Swift 优先、iPhone 体验优先的通用主动 Agent App。体验承诺是“把你交代的事变成可用成果；需要你时说清楚，回来时接得上”。持续完成实现与必要验证，不停在规划、骨架、合成Demo或组件通过。
+在当前 cat 主维护仓库中继续开发 cat。终版交付终点是 FINAL-G3：Swift 优先、iPhone 体验优先的通用主动 Agent App。体验承诺是“把你交代的事变成可用成果；需要你时说清楚，回来时接得上”。持续完成实现与必要验证，不停在规划、骨架、合成Demo或组件通过。
 
 【2026-10-15交付优先级，启动后立即执行】
 沿用已有FINAL-G3，先读docs/planning/AF-1/goal.md中的“2026-10-15交付优先级与启动规则”和master-plan接管现有WIP。硬节点为Asia/Shanghai 2026-10-15 12:00前交付一个已在现有Simulator启动、可完整点测工作路径的原生阶段版：优先收口build24的工作条款确认、关闭/重开保稿、计划与可打开成果、冷启动和unknown不重复提交。10:30冻结候选，11:30完成同包适用检查与交付准备；启动若已超过阶段时间，如实记录并立即收口，不顺延或伪造准时。交付包/源码hash、一键启动入口、3–5步验收、限制和提交/推送身份；新片不能用旧build23冒充。
@@ -95,7 +95,7 @@ BP-01–08分别对照对话阅读、流中决定、审批恢复、手机改计�
 需要新包安装、扩大真实测试、部署、新依赖或资源时，先准备具体候选、改动、验证数量/预算/停止条件，再说明最小授权及出处，同时继续独立工作。已有Supabase先行，新增计算预算0；云电脑资源/provider/region未确认不实施。不能重置数据、用常开手机/Mac冒充独立调度或把两次短探针扩展成性能/日用许可。
 
 独立调度仍是基础必需项，但现有套餐/实际Cron/配额/调用方/部署需核实，没有条件保留BLOCKED；不把免费套餐宣传当当前资源证据。云电脑AF-C01–03限方案确认后的无第三方登录网页/文件范围，试用赠额不当长期免费；即时APNs、语音、多Specialist、任意MCP/第三方登录等独立扩展，不混入本版必需门。
-唯一维护App为apps/ios-conversation/CatpawM.xcodeproj，后端为services/edge/supabase/functions；历史App、vendor pin/MIT/controlled patch、部署快照和legacy-local保留。读适用子目录AGENTS，按短分支规则开发，不在main、不覆盖独立checkout、不整段merge/push旧历史。交付前跑check-repository-layout.py、check-repository.py、check-deployed-source.py、scan-repository.py、git diff --check及AF/FINAL/CG规划检查，再做受影响源码/行为检查。新QA用独立执行副本，不改冻结报告。Github发布遵守实际授权；CLI hooks不是服务器强制保护。按实际工时/等待/阻塞滚动估算，不继承旧一周/4–6周承诺。
+唯一维护App为apps/ios-conversation/cat.xcodeproj，后端为services/edge/supabase/functions；历史App、vendor pin/MIT/controlled patch、部署快照和legacy-local保留。读适用子目录AGENTS，按短分支规则开发，不在main、不覆盖独立checkout、不整段merge/push旧历史。交付前跑check-repository-layout.py、check-repository.py、check-deployed-source.py、scan-repository.py、git diff --check及AF/FINAL/CG规划检查，再做受影响源码/行为检查。新QA用独立执行副本，不改冻结报告。Github发布遵守实际授权；CLI hooks不是服务器强制保护。按实际工时/等待/阻塞滚动估算，不继承旧一周/4–6周承诺。
 
 【证据与最终交付】
 验收结果只有PASS/FAIL/NOT_RUN/BLOCKED，缺证据不通过。静态/合成、Simulator、loopback、真实模型、真实PG多实例、独立调度、物理手机/系统、日用、竞品分层记账。历史PASS只覆盖固定输入，变更影响断言则重验。

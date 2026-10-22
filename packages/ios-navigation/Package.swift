@@ -1,11 +1,11 @@
 // swift-tools-version: 5.9
 import PackageDescription
 let package = Package(
-    name: "CatpawNavigation",
+    name: "catNavigation",
     platforms: [.iOS(.v17), .macOS(.v14)],
-    products: [.library(name: "CatpawNavigation", targets: ["CatpawNavigation"])],
+    products: [.library(name: "catNavigation", targets: ["catNavigation"])],
     targets: [
-        .target(name: "CatpawNavigation"),
-        .testTarget(name: "CatpawNavigationTests", dependencies: ["CatpawNavigation"])
+        .target(name: "catNavigation"),
+        .testTarget(name: "catNavigationTests", dependencies: ["catNavigation"])
     ]
 )

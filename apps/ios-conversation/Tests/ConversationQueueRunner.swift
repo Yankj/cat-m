@@ -29,7 +29,7 @@ actor QueueHistoryBackend:ConversationBackend {
             c.finish()
         }
     }
-    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
+    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw catError.missing}
 }
 actor QueueBusyBackend:ConversationBackend {
     var restarts=0
@@ -56,7 +56,7 @@ actor QueueBusyBackend:ConversationBackend {
             c.finish()
         }
     }
-    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
+    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw catError.missing}
 }
 /// 409 model_history_conflict (fix/context-window-v11x): the first `failures` replies fail with it, then replies complete.
 actor QueueConflictBackend:ConversationBackend {
@@ -86,8 +86,8 @@ actor QueueConflictBackend:ConversationBackend {
             c.finish()
         }
     }
-    func retryBusyTurn(_ r:ConversationTurnRequest,afterSequence:Int) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> { restarts+=1;throw CatpawError.unavailable("409 turn_not_restartable") }
-    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
+    func retryBusyTurn(_ r:ConversationTurnRequest,afterSequence:Int) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> { restarts+=1;throw catError.unavailable("409 turn_not_restartable") }
+    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw catError.missing}
 }
 actor QueueEditBackend:ConversationBackend {
     var admitting=false
@@ -108,7 +108,7 @@ actor QueueEditBackend:ConversationBackend {
             c.finish()
         }
     }
-    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
+    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw catError.missing}
 }
 @main struct ConversationQueueRunner {
     static func main() async throws {
@@ -116,7 +116,7 @@ actor QueueEditBackend:ConversationBackend {
         let repo = try Repository(persistence: FilePersistence(url: path)), service = ConversationSessionService(repository: repo)
         let id = try await service.openLatest(scope: Profiles.user)
         let queue = ConversationFollowupQueueService(repository: repo, scope: Profiles.user, conversationID: id)
-        func check(_ good: Bool, _ text: String) throws { guard good else { throw CatpawError.invalid(text) }; print("PASS: " + text) }
+        func check(_ good: Bool, _ text: String) throws { guard good else { throw catError.invalid(text) }; print("PASS: " + text) }
         let a = ConversationFollowup(text: "first"), b = ConversationFollowup(text: "second"), c = ConversationFollowup(text: "third")
         try await queue.enqueue(a); try await queue.enqueue(b)
         let log = QueueSendLog()
@@ -138,10 +138,10 @@ actor QueueEditBackend:ConversationBackend {
         state=try await queue.state()
         try check(state.paused && state.pending.map(\.id) == [edited.id,c.id] && edited.id != b.id,"edit stays paused, uses a fresh intent identity and preserves queue order")
         var staleRejected=false
-        do {_=try await queue.edit(b,text:"stale replacement",session:service)} catch CatpawError.conflict {staleRejected=true}
+        do {_=try await queue.edit(b,text:"stale replacement",session:service)} catch catError.conflict {staleRejected=true}
         try check(staleRejected,"stale editor cannot overwrite or recreate a replaced message")
         var activeRejected=false
-        do {_=try await queue.edit(a,text:"change admitted intent",session:service)} catch CatpawError.conflict {activeRejected=true}
+        do {_=try await queue.edit(a,text:"change admitted intent",session:service)} catch catError.conflict {activeRejected=true}
         try check(activeRejected,"an in-flight or already sent item cannot be edited through the queue")
         let disk = ConversationFollowupQueueService(repository: try Repository(persistence: FilePersistence(url: path)), scope: Profiles.user, conversationID: id)
         state = try await disk.state()
@@ -168,7 +168,7 @@ actor QueueEditBackend:ConversationBackend {
         try check(!userResumed && userPaused, "a user pause is never cleared by the preflight resume")
         try await queue.remove(behind.id)
         try await queue.resume()
-        do { try await queue.flush { message in await log.send(message); throw CatpawError.unavailable("explicit test failure after transcript admission") } } catch { }
+        do { try await queue.flush { message in await log.send(message); throw catError.unavailable("explicit test failure after transcript admission") } } catch { }
         try await queue.resume(); try await queue.flush { message in await log.send(message); return .sent }
         let failures = await log.captured()
         try check(failures.filter { $0 == d.id }.count == 1, "failed admitted message is never implicitly resent")
@@ -176,7 +176,7 @@ actor QueueEditBackend:ConversationBackend {
         try await queue.enqueue(e); try await queue.remove(e.id)
         state = try await queue.state(); try check(state.pending.isEmpty, "user can remove an unsent follow-up")
         let cross = ConversationFollowupQueueService(repository: repo, scope: Profiles.demo, conversationID: id)
-        var rejected = false; do { _ = try await cross.state() } catch CatpawError.scopeMismatch { rejected = true }
+        var rejected = false; do { _ = try await cross.state() } catch catError.scopeMismatch { rejected = true }
         try check(rejected, "queue state cannot cross scope")
         let backend=QueueEditBackend(),editingService=ConversationSessionService(repository:repo,backend:backend)
         let editingConversation=try await editingService.create(scope:Profiles.user)
@@ -344,9 +344,9 @@ actor QueueEditBackend:ConversationBackend {
         try check(!tstate.paused && tstate.pending.isEmpty && tstate.inflight == nil && tsent == [failedImage.id,nextImage.id],"rate_limited turn does not pause the queue; the next message goes out (supersedes it)")
         // A queue persisted as paused (recovery) behind a terminal failure is unpaused on launch.
         let stuck=ConversationFollowup(text:"待发送")
-        do { try await tq.flush { _ in throw CatpawError.unavailable("rate_limited") } } catch { }
+        do { try await tq.flush { _ in throw catError.unavailable("rate_limited") } } catch { }
         try await tq.enqueue(stuck)
-        do { try await tq.flush { _ in throw CatpawError.unavailable("rate_limited") } } catch { }
+        do { try await tq.flush { _ in throw catError.unavailable("rate_limited") } } catch { }
         try await tq.enqueue(ConversationFollowup(text:"第二条"))
         let pausedState=try await tq.state()
         try check(pausedState.paused && pausedState.pauseReason == .recovery,"precondition: a thrown send leaves a recovery pause")

@@ -57,18 +57,18 @@ public actor WorkspaceService {
     }
     public func saveDraft(scope: DataScope, conversationID: UUID, text: String, expectedRevision: Int? = nil) async throws {
         let r = try await repository.record(conversationID, scope: scope)
-        guard var c = r.conversation else { throw CatpawError.missing }
+        guard var c = r.conversation else { throw catError.missing }
         c.draftText = text
         try await repository.commit(scope: scope, mutations: [.update(r.id, expectedRevision ?? r.header.revision, .core(.conversation(c)))])
     }
     public func rename(scope: DataScope, id: UUID, name: String, expectedRevision: Int) async throws {
-        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw CatpawError.invalid("名称不能为空。") }
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw catError.invalid("名称不能为空。") }
         let r = try await repository.record(id, scope: scope)
         var payload = r.payload
         switch payload {
         case .core(.conversation(var c)): c.title = name; payload = .core(.conversation(c))
         case .core(.project(var p)): p.name = name; payload = .core(.project(p))
-        default: throw CatpawError.invalid("这项内容不支持重命名。")
+        default: throw catError.invalid("这项内容不支持重命名。")
         }
         try await repository.commit(scope: scope, mutations: [.update(id, expectedRevision, payload)])
     }
@@ -79,28 +79,28 @@ public actor WorkspaceService {
         try blobs.reconcile(referenced: await repository.referencedBlobs())
     }
     public func createProject(scope: DataScope, name: String, environment: UUID) async throws -> UUID {
-        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw CatpawError.invalid("项目名不能为空。") }
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw catError.invalid("项目名不能为空。") }
         let id = UUID()
         try await repository.commit(scope: scope, mutations: [.create(id, .core(.project(Project(name: name, summary: "新增本地管理流程", documentIDs: [], defaultExpertID: nil, skillIDs: [])))), .create(stableID("project-env-\(id)"), .preference(Preference(key: "project_environment:\(id)", value: environment.uuidString)))])
         return id
     }
     public func configureConversation(scope: DataScope, id: UUID, project: UUID?, expert: UUID?, skills: [UUID], expectedRevision: Int) async throws {
-        let r = try await repository.record(id, scope: scope); guard var c = r.conversation else { throw CatpawError.missing }
+        let r = try await repository.record(id, scope: scope); guard var c = r.conversation else { throw catError.missing }
         if let project {
             let mapping = try await repository.record(stableID("project-env-\(project)"), scope: scope)
-            guard case .preference(let p) = mapping.payload, p.value == c.environmentID.uuidString else { throw CatpawError.invalid("项目与当前会话环境不一致。") }
+            guard case .preference(let p) = mapping.payload, p.value == c.environmentID.uuidString else { throw catError.invalid("项目与当前会话环境不一致。") }
         }
-        guard project == c.projectID else { throw CatpawError.invalid("切换项目必须打开独立会话，不能迁移已有历史。") }
+        guard project == c.projectID else { throw catError.invalid("切换项目必须打开独立会话，不能迁移已有历史。") }
         c.expertID = expert; c.skillIDs = skills
         try await repository.commit(scope: scope, mutations: [.update(id, expectedRevision, .core(.conversation(c)))])
     }
     /// Draft persistence and target creation are one transaction. The original conversation never moves.
     public func selectProjectConversation(scope: DataScope, sourceID: UUID, project: UUID?, draft: String) async throws -> UUID {
         let source = try await repository.record(sourceID, scope: scope)
-        guard var conversation = source.conversation else { throw CatpawError.missing }
+        guard var conversation = source.conversation else { throw catError.missing }
         if let project {
             let mapping = try await repository.record(stableID("project-env-\(project)"), scope: scope)
-            guard case .preference(let p) = mapping.payload, p.value == conversation.environmentID.uuidString else { throw CatpawError.invalid("项目与当前环境不一致。") }
+            guard case .preference(let p) = mapping.payload, p.value == conversation.environmentID.uuidString else { throw catError.invalid("项目与当前环境不一致。") }
         }
         let snapshot = await repository.read(scope: scope)
         conversation.draftText = draft
@@ -121,7 +121,7 @@ public actor WorkspaceService {
     }
     public func installSkill(scope: DataScope, id: UUID, environment: UUID, enabled: Bool) async throws {
         let r = try await repository.record(id, scope: scope)
-        guard case .core(.skill(var skill)) = r.payload else { throw CatpawError.missing }
+        guard case .core(.skill(var skill)) = r.payload else { throw catError.missing }
         skill.enabledScopeIDs.removeAll { $0 == environment }; if enabled { skill.enabledScopeIDs.append(environment) }
         try await repository.commit(scope: scope, mutations: [.update(id, r.header.revision, .core(.skill(skill)))])
     }
@@ -140,28 +140,28 @@ public actor WorkspaceService {
     public func readDocument(scope: DataScope, id: UUID, version: Int) async throws -> (DocumentReference, Data) {
         _ = try await repository.record(id, scope: scope)
         let r = try await repository.record(stableID("\(id)-v\(version)"), scope: scope)
-        guard case .core(.documentVersion(let v)) = r.payload else { throw CatpawError.missing }
+        guard case .core(.documentVersion(let v)) = r.payload else { throw catError.missing }
         let data = try blobs.read(v.privateBlobReference)
-        guard bytesHash(data) == v.contentHash else { throw CatpawError.corrupt("正文校验失败。") }
+        guard bytesHash(data) == v.contentHash else { throw catError.corrupt("正文校验失败。") }
         return (DocumentReference(documentID: id, version: version, contentHash: v.contentHash), data)
     }
     public func editDocument(scope: DataScope, id: UUID, expectedVersion: Int, text: String, voiceTurn: FrozenVoiceTurn? = nil, adapterID: String = "user_text_edit") async throws -> DocumentReference {
         if let voiceTurn {
             guard voiceTurn.scope == scope, case .document(let target) = voiceTurn.target, target.documentID == id, target.version == expectedVersion,
-                  textHash(voiceTurn.transcript.submittedText) == voiceTurn.transcript.submittedTextHash else { throw CatpawError.scopeMismatch }
+                  textHash(voiceTurn.transcript.submittedText) == voiceTurn.transcript.submittedTextHash else { throw catError.scopeMismatch }
             let receiptID = stableID("voice-edit-\(scope.profileID)-\(voiceTurn.transcript.clientMessageID)")
             let snapshot = await repository.read(scope: scope)
             if case .voiceEdit(let receipt) = snapshot.records[receiptID]?.payload {
                 guard receipt.draftHash == textHash(text), receipt.turn.target == voiceTurn.target,
-                      receipt.turn.transcript.submittedTextHash == voiceTurn.transcript.submittedTextHash else { throw CatpawError.conflict }
+                      receipt.turn.transcript.submittedTextHash == voiceTurn.transcript.submittedTextHash else { throw catError.conflict }
                 return receipt.result
             }
             let verified = try await readDocument(scope: scope, id: id, version: expectedVersion)
-            guard verified.0 == target else { throw CatpawError.conflict }
+            guard verified.0 == target else { throw catError.conflict }
         }
-        let r = try await repository.record(id, scope: scope); guard var d = r.document, d.currentVersion == expectedVersion else { throw CatpawError.conflict }
-        guard d.sourceKind != "gateway_synthetic" else { throw CatpawError.invalid("Gateway-owned results are read-only in the native mirror.") }
-        guard d.mimeType.hasPrefix("text/") else { throw CatpawError.invalid("当前格式只支持阅读。") }
+        let r = try await repository.record(id, scope: scope); guard var d = r.document, d.currentVersion == expectedVersion else { throw catError.conflict }
+        guard d.sourceKind != "gateway_synthetic" else { throw catError.invalid("Gateway-owned results are read-only in the native mirror.") }
+        guard d.mimeType.hasPrefix("text/") else { throw catError.invalid("当前格式只支持阅读。") }
         let next = expectedVersion + 1; let hash = try blobs.stage(Data(text.utf8)); d.currentVersion = next
         let v = DocumentVersion(documentID: id, version: next, parentVersion: expectedVersion, privateBlobReference: hash, contentHash: hash)
         var mutations: [Mutation] = [.update(id, r.header.revision, .core(.document(d))), .create(stableID("\(id)-v\(next)"), .core(.documentVersion(v)))]
@@ -184,15 +184,15 @@ public actor WorkspaceService {
         return result
     }
     public func saveSchedule(scope: DataScope, id: UUID? = nil, revision: Int? = nil, title: String, spec: ScheduleSpec, template: ScheduleTemplate) async throws {
-        guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !template.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw CatpawError.invalid("名称、工作空间与提示词必填。") }
+        guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !template.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw catError.invalid("名称、工作空间与提示词必填。") }
         let project = try await repository.record(stableID("project-env-\(template.projectID)"), scope: scope)
-        guard case .preference(let mapping) = project.payload, mapping.value == template.environmentID.uuidString else { throw CatpawError.invalid("工作空间不属于选定环境。") }
+        guard case .preference(let mapping) = project.payload, mapping.value == template.environmentID.uuidString else { throw catError.invalid("工作空间不属于选定环境。") }
         let p = ScheduledTask(title: title, schedule: spec, enabled: true, nextDueAt: try ScheduleCalculator.next(spec, after: Date()), lastLocalAttemptAt: nil, executionMode: .localSessionOnly, taskTemplateJSON: try JSONEncoder().encode(template))
         if let id, let revision { try await repository.commit(scope: scope, mutations: [.update(id, revision, .core(.schedule(p)))]) }
         else { try await repository.commit(scope: scope, mutations: [.create(UUID(), .core(.schedule(p)))]) }
     }
     public func toggleSchedule(scope: DataScope, id: UUID) async throws {
-        let r = try await repository.record(id, scope: scope); guard case .core(.schedule(var p)) = r.payload else { throw CatpawError.missing }
+        let r = try await repository.record(id, scope: scope); guard case .core(.schedule(var p)) = r.payload else { throw catError.missing }
         p.enabled.toggle(); p.nextDueAt = p.enabled ? try ScheduleCalculator.next(p.schedule, after: Date()) : nil
         try await repository.commit(scope: scope, mutations: [.update(id, r.header.revision, .core(.schedule(p)))])
     }

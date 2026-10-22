@@ -1,4 +1,4 @@
-// Catpaw-m assistant-domain contract v0.1. Compile alongside catpaw-ios-contracts.swift.
+// cat assistant-domain contract v0.1. Compile alongside catpaw-ios-contracts.swift.
 // Design reference only; no runtime or backend implementation is included.
 import Foundation
 

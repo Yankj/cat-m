@@ -4,7 +4,7 @@
 "NSPhotoLibraryUsageDescription" = "仅在你主动选择相册图片时将该图片保存到当前本地项目；不会自动上传相册内容。";
 "NSCalendarsFullAccessUsageDescription" = "仅在你明确确认日程并允许访问后，创建并核对该日程，用于防止重复创建和找回执行结果。";
 
-"NSRemindersFullAccessUsageDescription" = "Catpaw 在你确认后把提醒写入“提醒事项”，不会自动修改。";
+"NSRemindersFullAccessUsageDescription" = "cat 在你确认后把提醒写入“提醒事项”，不会自动修改。";
 "NSContactsUsageDescription" = "用来找到你要联系的人，只在这次请求里使用。";
 "NSPhotoLibraryAddUsageDescription" = "把你选择的图片保存到“照片”。";
 "NSLocationWhenInUseUsageDescription" = "用于估算去会议地点的公共交通时间，以便在合适的时间提醒你出发。";

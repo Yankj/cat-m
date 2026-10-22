@@ -46,7 +46,7 @@
 | 根对话左边缘，横向意图明确 | 抽屉 | 可编辑／横向控件排除；纵向阅读优先 |
 | 消息正文纵向拖动 | 消息 ScrollView | 不触发抽屉；读上方时停止自动追最新 |
 
-表中的方向锁是项目策略：现有 `SidebarGesturePolicy` 以 `abs(vx) > 1.2 × abs(vy)` 判断横向意图，边缘区域 24pt。参数可在同候选试用后调校，不作为 Apple 的强制标准。现有入口为 [SidebarGestureBridge](../../packages/ios-navigation/Sources/CatpawNavigation/SidebarGestureBridge.swift) 与 [SidebarHost](../../packages/ios-navigation/Sources/CatpawNavigation/SidebarHost.swift)。
+表中的方向锁是项目策略：现有 `SidebarGesturePolicy` 以 `abs(vx) > 1.2 × abs(vy)` 判断横向意图，边缘区域 24pt。参数可在同候选试用后调校，不作为 Apple 的强制标准。现有入口为 [SidebarGestureBridge](../../packages/ios-navigation/Sources/catNavigation/SidebarGestureBridge.swift) 与 [SidebarHost](../../packages/ios-navigation/Sources/catNavigation/SidebarHost.swift)。
 
 iOS 26 的系统返回还可从内容区域开始；Apple 说明它会判断竞争交互。局部自定义 gesture 需要优先权时，使用公开 failure requirements 与 `interactiveContentPopGestureRecognizer` 协调，不用全窗口 `simultaneousGesture` 放行全部横滑。支持旧系统时沿系统 edge-pop 行为。此结论来自 [UIKit 新设计视频的转场部分](https://developer.apple.com/videos/play/wwdc2025/284/?time=730)，API 必须按最低支持系统做 availability 检查。
 
@@ -81,7 +81,7 @@ Apple 的 [Enhance your UI animations and transitions](https://developer.apple.c
 | 审批修改、长表单、复杂编辑 | large | 随键盘安全区变化，保留字段光标与草稿 |
 | 辅助大字体／横向紧凑高度 | large 或系统自适应 | 不坚持半屏，按钮改纵排 |
 
-采用 `.sheet(item:)`，同对象由一个 presenter 管；detent selection 属于本次 presentation 的局部状态。原生停靠与滚动交给 `.presentationDetents`／`UISheetPresentationController`，参考 [SwiftUI presentation modifiers](https://developer.apple.com/documentation/swiftui/view-presentation) 与 [UISheetPresentationController](https://developer.apple.com/documentation/uikit/uisheetpresentationcontroller)。这些 API 提供 detents、grabber、滚动到边缘的扩展协调；本表的默认档位是 Catpaw 的选择。
+采用 `.sheet(item:)`，同对象由一个 presenter 管；detent selection 属于本次 presentation 的局部状态。原生停靠与滚动交给 `.presentationDetents`／`UISheetPresentationController`，参考 [SwiftUI presentation modifiers](https://developer.apple.com/documentation/swiftui/view-presentation) 与 [UISheetPresentationController](https://developer.apple.com/documentation/uikit/uisheetpresentationcontroller)。这些 API 提供 detents、grabber、滚动到边缘的扩展协调；本表的默认档位是 cat 的选择。
 
 Sheet 内布局由正文 ScrollView＋`.safeAreaInset(edge: .bottom)` 决定区组成。确认区不能放在长文尾部，也不能靠绝对屏幕坐标悬浮在键盘背后；同时预留它占用的正文空间。确认按钮维持明确动作名称；关闭与“稍后／拒绝／修改”分开。短档若无法完整呈现四种决定，直接选 large，不把次动作缩成 30pt 图标。
 

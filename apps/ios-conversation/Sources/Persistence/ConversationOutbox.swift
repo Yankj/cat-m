@@ -29,7 +29,7 @@ public actor ConversationOutbox {
     public func enqueue(_ entry: ConversationOutboxEntry) throws {
         var all = load()
         guard !all.contains(where: { $0.id == entry.id }) else { return }
-        guard all.count < Self.maxEntries else { throw CatpawError.invalid("待发消息过多，请联网后再发送。") }
+        guard all.count < Self.maxEntries else { throw catError.invalid("待发消息过多，请联网后再发送。") }
         all.append(entry); try persist(all)
     }
     public func remove(_ id: UUID) throws {

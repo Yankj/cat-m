@@ -36,8 +36,8 @@ import PDFKit
                     else if let string = String(data: data, encoding: .utf8) { MarkdownReader(text: string) }
                     else { EmptyState(title: ui("该格式暂不支持预览"), detail: ui("可以通过系统分享导出原文件；不会当作可执行文本打开。")) }
                     if let reference {
-                        DisclosureGroup(ui("文件校验信息")) { Text("SHA-256 \(reference.contentHash)").font(.caption).foregroundStyle(CatpawColors.secondary).textSelection(.enabled) }
-                            .font(.caption).foregroundStyle(CatpawColors.secondary)
+                        DisclosureGroup(ui("文件校验信息")) { Text("SHA-256 \(reference.contentHash)").font(.caption).foregroundStyle(catColors.secondary).textSelection(.enabled) }
+                            .font(.caption).foregroundStyle(catColors.secondary)
                     }
                     VStack(alignment: .leading, spacing: 12) {
                         if textSize.isAccessibilitySize { readerActions(document, data: data) }
@@ -76,7 +76,7 @@ import PDFKit
                 VoiceInputSheet(accept: { _ in }, acceptSubmission: { submission in
                     let frozen = FrozenVoiceTurn(scope: selectedScope, target: .document(voiceTarget), transcript: submission)
                     model.perform {
-                        guard model.scope == selectedScope else { throw CatpawError.scopeMismatch }
+                        guard model.scope == selectedScope else { throw catError.scopeMismatch }
                         let original = try await model.service.readDocument(scope: selectedScope, id: voiceTarget.documentID, version: voiceTarget.version)
                         let draft = try await FixtureVoiceRevisionAdapter().draft(turn: frozen, original: String(data: original.1, encoding: .utf8) ?? "")
                         NativeVoiceController.shared.stopPlayback(); voiceTurn = frozen; voiceAdapterID = draft.adapterID; text = draft.text; editing = true
@@ -107,8 +107,8 @@ import PDFKit
         Label(title, systemImage: symbol).font(.body.weight(.medium))
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).padding(12)
-            .foregroundStyle(CatpawColors.ink)
-            .background(CatpawColors.input, in: RoundedRectangle(cornerRadius: CatpawLayout.controlRadius, style: .continuous))
+            .foregroundStyle(catColors.ink)
+            .background(catColors.input, in: RoundedRectangle(cornerRadius: catLayout.controlRadius, style: .continuous))
             .contentShape(Rectangle())
     }
 
@@ -140,11 +140,11 @@ import PDFKit
                                 .font(rowIndex == 0 ? .headline : .body)
                                 .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
                                 .padding(12).frame(width: columnWidth(column), alignment: .leading)
-                                .foregroundStyle(CatpawColors.ink).textSelection(.enabled)
+                                .foregroundStyle(catColors.ink).textSelection(.enabled)
                                 .accessibilityAddTraits(rowIndex == 0 ? .isHeader : [])
                         }
                     }
-                    .background(rowIndex == 0 ? CatpawColors.input : CatpawColors.panel)
+                    .background(rowIndex == 0 ? catColors.input : catColors.panel)
                     Divider().gridCellUnsizedAxes(.horizontal)
                 }
             }
@@ -184,7 +184,7 @@ import PDFKit
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 if block.hasPrefix("```") {
                     if block.hasPrefix("```mermaid") { FixtureDiagram() }
-                    else { ScrollView(.horizontal) { Text(block.replacingOccurrences(of: "```", with: "")).font(.system(.body, design: .monospaced)).textSelection(.enabled).padding(16) }.background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 12)) }
+                    else { ScrollView(.horizontal) { Text(block.replacingOccurrences(of: "```", with: "")).font(.system(.body, design: .monospaced)).textSelection(.enabled).padding(16) }.background(catColors.panel, in: RoundedRectangle(cornerRadius: 12)) }
                 } else if block.hasPrefix("|") {
                     let rows = block.split(separator: "\n").filter { !$0.contains("---") }.map { $0.split(separator: "|", omittingEmptySubsequences: true).map { String($0).trimmingCharacters(in: .whitespaces) } }
                     StringTable(rows: rows)
@@ -215,7 +215,7 @@ import PDFKit
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(ui("固定流程图示例 · 不支持任意 Mermaid 渲染")).font(.caption).foregroundStyle(.secondary)
-            ScrollView([.horizontal, .vertical]) { HStack { ForEach(["素材采集", "重点筛选", "感想共创", "内容检查", "成果审阅"], id: \.self) { step in Text(step).padding(12).overlay(RoundedRectangle(cornerRadius: 8).stroke(CatpawColors.green)); if step != "成果审阅" { Image(systemName: "arrow.right") } } }.padding().scaleEffect(zoom, anchor: .topLeading).frame(width: 760 * zoom, height: 110 * zoom, alignment: .topLeading) }.frame(height: 170).onTapGesture(count: 2) { zoom = zoom == 1 ? 1.5 : 1 }
+            ScrollView([.horizontal, .vertical]) { HStack { ForEach(["素材采集", "重点筛选", "感想共创", "内容检查", "成果审阅"], id: \.self) { step in Text(step).padding(12).overlay(RoundedRectangle(cornerRadius: 8).stroke(catColors.green)); if step != "成果审阅" { Image(systemName: "arrow.right") } } }.padding().scaleEffect(zoom, anchor: .topLeading).frame(width: 760 * zoom, height: 110 * zoom, alignment: .topLeading) }.frame(height: 170).onTapGesture(count: 2) { zoom = zoom == 1 ? 1.5 : 1 }
             HStack { Button(ui("放大")) { zoom = min(2, zoom + 0.25) }; Button(ui("缩小")) { zoom = max(0.5, zoom - 0.25) }; Button(ui("还原")) { zoom = 1 } }.buttonStyle(.bordered)
         }
     }

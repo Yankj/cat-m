@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 final class ConversationInboxTests:XCTestCase {
     private let reference=ConversationInboxReference(scope:Profiles.user,serverScopeID:UUID(),subjectID:UUID())

@@ -6,9 +6,9 @@ set -euo pipefail
 UDID="${1:?simulator udid}"; LABEL="${2:-run}"
 cd "$(dirname "$0")/.."
 DD="${DERIVED_DATA:-/tmp/catpaw-interaction-dd}"; OUT="/tmp/interaction-$LABEL"; mkdir -p "$OUT"
-xcodebuild -project CatpawM.xcodeproj -scheme CatpawM -configuration Debug -destination "id=$UDID" -derivedDataPath "$DD" \
-  -only-testing:CatpawMUITests/InteractionPolishPerfUITests${ONLY_SUFFIX:-} test > "$OUT/test.log" 2>&1 || { tail -40 "$OUT/test.log"; exit 1; }
-CONTAINER=$(xcrun simctl get_app_container "$UDID" com.example.CatpawM.ConversationFirst.Auth data)
+xcodebuild -project cat.xcodeproj -scheme cat -configuration Debug -destination "id=$UDID" -derivedDataPath "$DD" \
+  -only-testing:catUITests/InteractionPolishPerfUITests${ONLY_SUFFIX:-} test > "$OUT/test.log" 2>&1 || { tail -40 "$OUT/test.log"; exit 1; }
+CONTAINER=$(xcrun simctl get_app_container "$UDID" com.example.cat.ConversationFirst.Auth data)
 cp "$CONTAINER/Documents/interaction-probe.json" "$OUT/probe.json"
 grep -o 'PHASE [a-z]* [0-9.]*' "$OUT/test.log" > "$OUT/phases.txt"
 python3 - "$OUT" <<'PY'

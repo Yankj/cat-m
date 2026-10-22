@@ -32,39 +32,39 @@ struct PermissionDegradePayload: Codable, Sendable, Equatable {
             HStack(alignment: .top, spacing: 12) {
                 ZStack(alignment: .bottomTrailing) {
                     BrandMark(size: artSize, style: .fill).frame(width: artSize, height: artSize)
-                    Image(systemName: "xmark").font(.footnote.weight(.bold)).foregroundStyle(CatpawColors.onInk)
-                        .padding(5).background(CatpawColors.ink, in: Circle()).offset(x: 6, y: 6)
+                    Image(systemName: "xmark").font(.footnote.weight(.bold)).foregroundStyle(catColors.onInk)
+                        .padding(5).background(catColors.ink, in: Circle()).offset(x: 6, y: 6)
                 }.accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(ui("没有日历权限")).font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink)
+                    Text(ui("没有日历权限")).font(catTypography.Role.heading.font).foregroundStyle(catColors.ink)
                     Text(ui("小猫看不到你的会议，所以没法提前提醒出发。可以手动告诉小猫下一场会议，或去设置里打开日历权限。"))
-                        .font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+                        .font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
             if submitted {
                 Label(ui("已记下，小猫会按时提醒你"), systemImage: "checkmark.circle.fill")
-                    .font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).frame(minHeight: 44, alignment: .leading)
+                    .font(catTypography.Role.body.font).foregroundStyle(catColors.ink).frame(minHeight: 44, alignment: .leading)
                     .accessibilityIdentifier("chat.permissionDegrade.done")
             } else if showForm {
                 VStack(alignment: .leading, spacing: 10) {
                     TextField(ui("会议名称"), text: $title).textFieldStyle(.roundedBorder).accessibilityIdentifier("chat.permissionDegrade.title")
                     DatePicker(ui("开始时间"), selection: $start, in: Date.now..., displayedComponents: [.date, .hourAndMinute])
-                        .foregroundStyle(CatpawColors.ink).accessibilityIdentifier("chat.permissionDegrade.start")
+                        .foregroundStyle(catColors.ink).accessibilityIdentifier("chat.permissionDegrade.start")
                     TextField(ui("地点"), text: $place).textFieldStyle(.roundedBorder).accessibilityIdentifier("chat.permissionDegrade.place")
                     Button(ui("让小猫帮我盯着")) { submit() }
-                        .buttonStyle(CatpawPrimaryButtonStyle())
+                        .buttonStyle(catPrimaryButtonStyle())
                         .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                         .accessibilityIdentifier("chat.permissionDegrade.submit")
-                }.font(CatpawTypography.Role.body.font)
+                }.font(catTypography.Role.body.font)
             }
             if !submitted {
                 HStack(spacing: 10) {
                     if !showForm {
                         Button(ui("手动输入")) { showForm = true }
-                            .buttonStyle(CatpawPrimaryButtonStyle()).accessibilityIdentifier("chat.permissionDegrade.manual")
+                            .buttonStyle(catPrimaryButtonStyle()).accessibilityIdentifier("chat.permissionDegrade.manual")
                     }
                     Button(ui("去设置")) { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
-                        .font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).touchTarget()
+                        .font(catTypography.Role.body.font).foregroundStyle(catColors.ink).touchTarget()
                         .accessibilityIdentifier("chat.permissionDegrade.settings")
                 }
             }

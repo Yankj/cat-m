@@ -99,7 +99,7 @@ public actor ConversationTaskActionService {
             var (state,record)=try await load(reference);try ensure(epoch)
             if state.submissions[actionID]?.request==request {
                 if error is ConversationTaskActionDispatchFailure {state.submissions[actionID]?.state = .notSent;state.submissions[actionID]?.issue = .notSent}
-                else if case CatpawError.conflict=error {state.submissions[actionID]?.state = .rejected;state.submissions[actionID]?.issue = .rejected}
+                else if case catError.conflict=error {state.submissions[actionID]?.state = .rejected;state.submissions[actionID]?.issue = .rejected}
                 // Malformed/lost receipts and 404s are unknown, never an inferred rejection.
                 try await save(state,record:record,reference:reference,epoch:epoch)
             }
@@ -124,11 +124,11 @@ public actor ConversationTaskActionService {
         state.actions.sort{$0.id<$1.id}
     }
     private func load(_ reference:ConversationTaskActionReference) async throws -> (ConversationTaskActionLocalState,StoredRecord?) {
-        guard !invalidated,reference.scope==scope else {throw CatpawError.scopeMismatch}
+        guard !invalidated,reference.scope==scope else {throw catError.scopeMismatch}
         guard ConversationTaskActionValidation.uuid(reference.subjectID),reference.binding.grant_epoch>0 else {throw ConversationTaskActionError.invalidResponse}
         let conversation=try await repository.record(reference.binding.conversation_id,scope:scope);guard conversation.conversation != nil else {throw ConversationTaskActionError.invalidResponse}
         let record:StoredRecord
-        do {record=try await repository.record(stableID(key(reference)),scope:scope)}catch CatpawError.missing{return (.init(),nil)}
+        do {record=try await repository.record(stableID(key(reference)),scope:scope)}catch catError.missing{return (.init(),nil)}
         guard case .preference(let preference)=record.payload,preference.key==key(reference),preference.value.utf8.count<=1_048_576 else {throw ConversationTaskActionError.invalidResponse}
         let state=try JSONDecoder().decode(ConversationTaskActionLocalState.self,from:Data(preference.value.utf8))
         guard state.schemaVersion==1,state.actions.count<=32,Set(state.actions.map(\.id)).count==state.actions.count,state.submissions.count<=32 else {throw ConversationTaskActionError.invalidResponse}

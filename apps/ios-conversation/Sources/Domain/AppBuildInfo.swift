@@ -74,9 +74,9 @@ public struct AppBuildInfo: Equatable, Sendable {
     public var commitLabel: String? { gitSHA.map { $0 + (gitDirty ? "+dirty" : "") } }
 
     /// Single-line, language-neutral identity for bug reports and the copy action:
-    /// `Catpaw 1.1.0 (712) · 1a2b3c4d · 2026-10-17T23:30:00Z · DeviceTrial`.
+    /// `cat 1.1.0 (712) · 1a2b3c4d · 2026-10-17T23:30:00Z · DeviceTrial`.
     public var diagnosticText: String {
-        var parts = ["Catpaw \(version ?? "?") (\(build ?? "?"))"]
+        var parts = ["cat \(version ?? "?") (\(build ?? "?"))"]
         if let commitLabel { parts.append(commitLabel) }
         if let buildDate {
             let iso = ISO8601DateFormatter()

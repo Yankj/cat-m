@@ -15,7 +15,7 @@ struct StreamShimmerEllipsis: View {
                         let dist = min(abs(t - center), abs(t - center - 1), abs(t - center + 1))
                         let lit = max(0, 1 - dist * 4)
                         Circle()
-                            .fill(CatpawColors.ink.opacity(0.28 + 0.72 * lit))
+                            .fill(catColors.ink.opacity(0.28 + 0.72 * lit))
                             .frame(width: 5, height: 5)
                             .scaleEffect(0.85 + 0.25 * lit)
                     }
@@ -23,7 +23,7 @@ struct StreamShimmerEllipsis: View {
             }
             .accessibilityHidden(true)
         } else {
-            Text("…").font(CatpawTypography.Role.secondary.font.weight(.semibold)).foregroundStyle(CatpawColors.secondary)
+            Text("…").font(catTypography.Role.secondary.font.weight(.semibold)).foregroundStyle(catColors.secondary)
                 .accessibilityHidden(true)
         }
     }
@@ -37,7 +37,7 @@ struct BubbleShimmerSweep: View {
             LinearGradient(
                 stops: [
                     .init(color: .clear, location: max(0, t - 0.18)),
-                    .init(color: CatpawColors.ink.opacity(0.07), location: t),
+                    .init(color: catColors.ink.opacity(0.07), location: t),
                     .init(color: .clear, location: min(1, t + 0.18))
                 ],
                 startPoint: .leading, endPoint: .trailing
@@ -63,7 +63,7 @@ struct WorkingShimmer: ViewModifier {
                 content.overlay {
                     GeometryReader { g in
                         let w = g.size.width, band = max(40, w * 0.45)
-                        LinearGradient(colors: [.clear, CatpawColors.ink.opacity(0.85), .clear], startPoint: .leading, endPoint: .trailing)
+                        LinearGradient(colors: [.clear, catColors.ink.opacity(0.85), .clear], startPoint: .leading, endPoint: .trailing)
                             .frame(width: band).offset(x: -band + (w + band) * t)
                     }
                     .mask(content)
@@ -94,7 +94,7 @@ extension View { func workingShimmer(_ active: Bool = true) -> some View { modif
 @MainActor struct StatusShimmer: ViewModifier {
     var active: Bool
     var start: Date
-    var highlight: Color = CatpawColors.ink
+    var highlight: Color = catColors.ink
     static let sweep: Double = 1.3, pause: Double = 0.7
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
@@ -160,7 +160,7 @@ extension View { func workingShimmer(_ active: Bool = true) -> some View { modif
     private var calm: Bool { reduceMotion || lowPower.enabled }
     private var kind: StatusLinePhase.Kind { phase.kind }
     private var title: String { phase.title(en: en) + (suffix ?? "") }
-    private var textColor: Color { kind == .waiting ? CatpawColors.ink : CatpawColors.calmSecondary }
+    private var textColor: Color { kind == .waiting ? catColors.ink : catColors.calmSecondary }
 
     var body: some View {
         // Swift 6: the alignment-guide closure is @Sendable; read the main-actor @ScaledMetric here and capture the value.
@@ -172,7 +172,7 @@ extension View { func workingShimmer(_ active: Bool = true) -> some View { modif
                 .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + lineOneCentre }
             ZStack(alignment: .leading) {
                 Text(title)
-                    .font(CatpawTypography.Role.secondary.font.weight(kind == .waiting ? .medium : .regular))
+                    .font(catTypography.Role.secondary.font.weight(kind == .waiting ? .medium : .regular))
                     .foregroundStyle(textColor)
                     .lineLimit(dts.isAccessibilitySize ? 2 : 1).truncationMode(.tail)
                     .modifier(StatusShimmer(active: kind == .working, start: startedAt))
@@ -188,8 +188,8 @@ extension View { func workingShimmer(_ active: Bool = true) -> some View { modif
                 TimelineView(.periodic(from: .now, by: 1)) { ctx in
                     let secs = Int(ctx.date.timeIntervalSince(startedAt))
                     if secs >= 3 {
-                        Text("· \(secs)s").font(CatpawTypography.Role.secondary.font).monospacedDigit()
-                            .foregroundStyle(CatpawColors.calmSecondary).accessibilityHidden(true)
+                        Text("· \(secs)s").font(catTypography.Role.secondary.font).monospacedDigit()
+                            .foregroundStyle(catColors.calmSecondary).accessibilityHidden(true)
                     }
                 }
             }
@@ -258,7 +258,7 @@ enum StatusBadgeColors {
         switch t { case .waiting: return amber; case .failed: return red; case .neutral, .stopped: return neutralFill }
     }
     static func glyph(_ t: StatusLinePhase.BadgeTone) -> Color {
-        switch t { case .waiting: return onAmber; case .failed: return onRed; case .stopped: return CatpawColors.calmSecondary; case .neutral: return CatpawColors.ink }
+        switch t { case .waiting: return onAmber; case .failed: return onRed; case .stopped: return catColors.calmSecondary; case .neutral: return catColors.ink }
     }
 }
 
@@ -269,7 +269,7 @@ enum StatusBadgeColors {
     var nudge = 0
     var body: some View {
         ZStack {
-            Circle().fill(CatpawColors.background).frame(width: 14, height: 14)
+            Circle().fill(catColors.background).frame(width: 14, height: 14)
             Circle().fill(StatusBadgeColors.fill(tone)).frame(width: 12, height: 12)
                 .overlay {
                     if tone == .neutral || tone == .stopped { Circle().strokeBorder(StatusBadgeColors.hairline, lineWidth: 0.5) }

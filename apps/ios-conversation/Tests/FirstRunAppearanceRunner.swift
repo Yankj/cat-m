@@ -1,5 +1,5 @@
 // first-run-polish: portable checks for the splash/onboarding appearance contract (FirstRunAppearance.swift).
-// Contrast is computed against the REAL brand/semantic tokens, parsed from CatpawBrandTokens.swift and Components.swift,
+// Contrast is computed against the REAL brand/semantic tokens, parsed from catBrandTokens.swift and Components.swift,
 // in both light and dark (the splash follows the system scheme like chat). Run: Scripts/test-first-run-portable.sh
 import Foundation
 
@@ -8,7 +8,7 @@ struct Tokens {
     var brand: [String: UInt32] = [:]
     var adaptive: [String: (UInt32, UInt32)] = [:]
     init(root: String) {
-        let b = (try? String(contentsOfFile: root + "/Sources/DesignSystem/CatpawBrandTokens.swift", encoding: .utf8)) ?? ""
+        let b = (try? String(contentsOfFile: root + "/Sources/DesignSystem/catBrandTokens.swift", encoding: .utf8)) ?? ""
         for m in b.matches(of: #/static let (\w+): UInt32 = 0x([0-9A-Fa-f]{6})/#) { brand[String(m.1)] = UInt32(m.2, radix: 16)! }
         let c = (try? String(contentsOfFile: root + "/Sources/DesignSystem/Components.swift", encoding: .utf8)) ?? ""
         func v(_ s: Substring) -> UInt32 { s.hasPrefix("0x") ? UInt32(s.dropFirst(2), radix: 16)! : brand[String(s.split(separator: ".").last!)]! }
@@ -72,7 +72,7 @@ do {
 let storyboard = (try? String(contentsOfFile: root + "/Resources/Base.lproj/LaunchScreen.storyboard", encoding: .utf8)) ?? ""
 // launch-v2 (replaces the B2 96 pt tile and the older "no logo" rule): the launch screen HAS a logo — the LaunchGlyph cat
 // glyph 70×56 plus the system-font slogan, group centre at 0.61 H of the superview, on LaunchCanvas — identical to
-// CatpawLaunchStatic's first frame.
+// catLaunchStatic's first frame.
 check(storyboard.contains("<image") && storyboard.contains("image=\"LaunchGlyph\""), "launch screen draws the LaunchGlyph logo")
 check(storyboard.contains("name=\"LaunchCanvas\"") && storyboard.contains("name=\"LaunchSlogan\""), "launch screen on LaunchCanvas, slogan in LaunchSlogan")
 check(storyboard.contains("constant=\"70\"") && storyboard.contains("constant=\"56\"") && storyboard.contains("multiplier=\"1.22\""), "glyph 70×56, group centre at 0.61 H")
@@ -140,7 +140,7 @@ do {
     let login = (try? String(contentsOfFile: root + "/Sources/Features/NativeLoginView.swift", encoding: .utf8)) ?? ""
     check(login.contains("FirstRunPlushHero(") && !login.contains("CalmOrb("), "landing centre is the plush hero, not the orange orb")
     // §6 asset: derived eyes-closed Front frame, pixel-aligned with MascotFront.
-    let fm = FileManager.default, m = root + "/Resources/Assets.xcassets/CatpawBrand/Mascot/"
+    let fm = FileManager.default, m = root + "/Resources/Assets.xcassets/catBrand/Mascot/"
     check(["MascotFrontBlink.imageset/Contents.json", "MascotFrontBlink.imageset/MascotFrontBlink@2x.png", "MascotFrontBlink.imageset/MascotFrontBlink@3x.png"].allSatisfy { fm.fileExists(atPath: m + $0) }, "MascotFrontBlink imageset (@2x/@3x)")
 }
 print(failures == 0 ? "first-run appearance: all passed" : "first-run appearance: \(failures) failure(s)")

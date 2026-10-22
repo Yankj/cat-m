@@ -1,4 +1,4 @@
-// Catpaw-m iOS implementation contract v0.1, 2026-10-10.
+// cat iOS implementation contract v0.1, 2026-10-10.
 // Design reference only: no repository/provider/recording implementation is included.
 // Wire codecs must explicitly map snake_case, RFC3339 dates and schema enums.
 // A successful type check does not establish an iOS build, runtime or backend result.

@@ -1,6 +1,6 @@
 import XCTest
 import EventKit
-@testable import CatpawM
+@testable import cat
 
 /// Real DeviceToolRouter + real DeviceCallStore on the BE5C simulator (EventKit granted via simctl privacy).
 /// NoBug P1-5 dedupe, plus Codex p89b / p89c counter-examples on the REAL executor path (not FakeExecutor):
@@ -13,7 +13,7 @@ import EventKit
 
     private func need(_ type: EKEntityType) throws {
         guard EKEventStore.authorizationStatus(for: type) == .fullAccess else {
-            XCTFail("skip is a failure"); throw CatpawError.unavailable("EventKit \(type == .event ? "calendar" : "reminders") not granted; run `xcrun simctl privacy <udid> grant \(type == .event ? "calendar" : "reminders") <bundle>` first")
+            XCTFail("skip is a failure"); throw catError.unavailable("EventKit \(type == .event ? "calendar" : "reminders") not granted; run `xcrun simctl privacy <udid> grant \(type == .event ? "calendar" : "reminders") <bundle>` first")
         }
     }
 
@@ -368,7 +368,7 @@ import EventKit
         let first = await router.execute(call, credential: try XCTUnwrap(credential(call)))
         XCTAssertEqual(first.status, .ok); XCTAssertEqual(first.savedIdentity?.title, "p89h rem")
         let control = await router.lookup(call); XCTAssertNotNil(control, "control: single original is restorable")
-        let copy = EKReminder(eventStore: store); copy.title = "p89h rem"; copy.notes = "Catpaw · " + DeviceToolContract.callMarker(id)
+        let copy = EKReminder(eventStore: store); copy.title = "p89h rem"; copy.notes = "cat · " + DeviceToolContract.callMarker(id)
         copy.calendar = store.defaultCalendarForNewReminders(); try store.save(copy, commit: true)
         let restored = await router.lookup(call); XCTAssertNil(restored, "restore never picks one of several")
         var trace: [String] = []; DeviceToolRouter.trace = { trace.append($0) }
@@ -510,7 +510,7 @@ import EventKit
         store.reset(); try store.remove(try XCTUnwrap(store.event(withIdentifier: originalID)), span: .thisEvent, commit: true)
         let stA = try coldStore(with: a); XCTAssertTrue(stA.isInterrupted(a.call_id))
         await stA.resumeInterrupted(a.call_id)
-        XCTAssertNil(ledger.entry(callID: a.call_id), "the copy found by marker is not recorded as Catpaw's item")
+        XCTAssertNil(ledger.entry(callID: a.call_id), "the copy found by marker is not recorded as cat's item")
         switch stA.phase(a.call_id) {
         case .reportFailed(let r), .done(let r): XCTAssertNotEqual(r.status, .ok, "restore reported unknown, not success")
         default: XCTFail("restore did not finish")
@@ -716,7 +716,7 @@ actor WiringDeviceCallBackend: ConversationBackend {
         return stream
     }
     func cancelTurn(_ r: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt { .init(turnID: r.operationID, state: "failed", cancelled: true, alreadyTerminal: false) }
-    func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation { throw CatpawError.unavailable("wiring test") }
+    func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation { throw catError.unavailable("wiring test") }
 }
 
 final class LifecycleRecorder: @unchecked Sendable {
@@ -727,7 +727,7 @@ final class LifecycleRecorder: @unchecked Sendable {
 }
 
 actor CountingDemoBackend: ConversationBackend {
-    let inner = CatpawDemoConversationBackend()
+    let inner = catDemoConversationBackend()
     private(set) var uiSubmits = 0
     func connection(scope: DataScope) async -> ConversationConnection { await inner.connection(scope: scope) }
     func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { try await inner.reply(request) }
@@ -754,7 +754,7 @@ actor HeldStreamUIBackend: ConversationBackend {
         uiSubmits += 1; throw ConversationApprovalFailure.notFound
     }
     func cancelTurn(_ r: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt { .init(turnID: r.operationID, state: "failed", cancelled: true, alreadyTerminal: false) }
-    func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation { throw CatpawError.unavailable("held test") }
+    func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation { throw catError.unavailable("held test") }
 }
 
 @MainActor final class DeviceCallSharedEpochWiringTests: XCTestCase {

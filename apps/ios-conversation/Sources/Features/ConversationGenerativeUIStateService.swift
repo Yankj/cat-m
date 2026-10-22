@@ -31,7 +31,7 @@ public actor ConversationGenerativeUIStateService {
         try ensureActive()
         let observedGeneration = generation
         let conversation = try await repository.record(block.identity.conversationID, scope: scope)
-        guard conversation.conversation != nil else { throw CatpawError.missing }
+        guard conversation.conversation != nil else { throw catError.missing }
         let snapshot = await repository.read(scope: scope)
         try ensureActive(observedGeneration)
         let recordID = key.recordID
@@ -43,7 +43,7 @@ public actor ConversationGenerativeUIStateService {
         if entries[recordID] == nil {
             var entry = Entry(block: block, identity: key, state: .defaults(for: block))
             if let record = snapshot.records[recordID] {
-                guard record.header.deletedAt == nil else { throw CatpawError.missing }
+                guard record.header.deletedAt == nil else { throw catError.missing }
                 entry.revision = record.header.revision
                 do {
                     guard case .conversationUIState(let saved) = record.payload, saved.schemaVersion == 1,
@@ -106,7 +106,7 @@ public actor ConversationGenerativeUIStateService {
         guard var entry = entries[id], entry.dirty else { return }
         let observedGeneration = generation
         let conversation = try await repository.record(entry.identity.block.conversationID, scope: scope)
-        guard conversation.conversation != nil else { throw CatpawError.missing }
+        guard conversation.conversation != nil else { throw catError.missing }
         try ensureActive(observedGeneration)
         let payload = Payload.conversationUIState(CGUIStoredLocalState(identity: entry.identity, state: entry.state))
         let mutation: Mutation = entry.revision.map { .update(id, $0, payload) } ?? .create(id, payload)

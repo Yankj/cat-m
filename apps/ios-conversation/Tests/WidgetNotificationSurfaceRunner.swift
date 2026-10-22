@@ -17,7 +17,7 @@ enum LA {
 
     struct Failure: Error { let message: String }
 
-    static func snapshot(_ changes: [String: Any] = [:]) throws -> CatpawWidgetEntry {
+    static func snapshot(_ changes: [String: Any] = [:]) throws -> catWidgetEntry {
         var object: [String: Any] = [
             "version": 2, "updated_at": now.timeIntervalSince1970,
             "suggestion": ["id": "s1", "title": " Prepare notes ", "why": " Review starts soon "],
@@ -25,7 +25,7 @@ enum LA {
         ]
         object.merge(changes) { _, new in new }
         let data = try JSONSerialization.data(withJSONObject: object)
-        return AppGroupCatpawWidgetDataSource.decode(data, now: now)
+        return AppGroupcatWidgetDataSource.decode(data, now: now)
     }
 
     static func main() throws {
@@ -36,7 +36,7 @@ enum LA {
         try check(populated.expirations == [now.addingTimeInterval(3600), now.addingTimeInterval(24 * 3600)], "timeline includes start and freshness expiry in order")
 
         for data in [Data(), Data("{".utf8), Data("[]".utf8), Data(repeating: 32, count: 65_537)] {
-            let entry = AppGroupCatpawWidgetDataSource.decode(data, now: now)
+            let entry = AppGroupcatWidgetDataSource.decode(data, now: now)
             try check(entry.suggestion == nil && entry.meeting == nil && !entry.isPlaceholder, "missing/corrupt data stays empty")
         }
         for changes: [String: Any] in [
@@ -67,10 +67,10 @@ enum LA {
             "catpaw_proactive_due": now.addingTimeInterval(2700).timeIntervalSince1970,
             "catpaw_proactive_place": "Room 1",
         ]
-        let context = CatpawScheduledMeetingNotification(userInfo: info, defaultLeadMinutes: 10, now: now)
+        let context = catScheduledMeetingNotification(userInfo: info, defaultLeadMinutes: 10, now: now)
         try check(context?.due == now.addingTimeInterval(2700) && context?.place == "Room 1", "cold-start action retains the scheduled lead, even when the default changed")
         info.removeValue(forKey: "catpaw_proactive_due")
-        let legacy = CatpawScheduledMeetingNotification(userInfo: info, defaultLeadMinutes: 10, now: now)
+        let legacy = catScheduledMeetingNotification(userInfo: info, defaultLeadMinutes: 10, now: now)
         try check(legacy?.due == now.addingTimeInterval(3000), "legacy context uses bounded default lead")
 
         for (key, value): (String, Any) in [
@@ -85,9 +85,9 @@ enum LA {
         ] {
             var invalid = info
             invalid[key] = value
-            try check(CatpawScheduledMeetingNotification(userInfo: invalid, defaultLeadMinutes: 10, now: now) == nil, "malformed/expired notification context fails closed: \(key)")
+            try check(catScheduledMeetingNotification(userInfo: invalid, defaultLeadMinutes: 10, now: now) == nil, "malformed/expired notification context fails closed: \(key)")
         }
-        try check(CatpawScheduledMeetingNotification(userInfo: info, defaultLeadMinutes: 181, now: now) == nil, "invalid fallback lead is rejected")
+        try check(catScheduledMeetingNotification(userInfo: info, defaultLeadMinutes: 181, now: now) == nil, "invalid fallback lead is rejected")
         print("PASS widget snapshot decoding, expiry timelines, and scheduled-notification recovery metadata (\(checks) checks)")
     }
 }

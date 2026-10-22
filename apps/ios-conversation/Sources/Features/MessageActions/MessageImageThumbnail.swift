@@ -21,9 +21,9 @@ import UIKit
                     .onTapGesture { var t = Transaction(); t.disablesAnimations = true; withTransaction(t) { viewerOpen = true } }
                     .accessibilityAddTraits(.isImage).accessibilityLabel(Text(AppLanguage(locale: locale).ui("附带图片")))
             } else if loaded {
-                Label(AppLanguage(locale: locale).ui("附带图片"), systemImage: "photo").font(CatpawTypography.Role.caption.font)
+                Label(AppLanguage(locale: locale).ui("附带图片"), systemImage: "photo").font(catTypography.Role.caption.font)
             } else {
-                RoundedRectangle(cornerRadius: 16, style: .continuous).fill(CatpawColors.panel).frame(width: 120, height: 90)
+                RoundedRectangle(cornerRadius: 16, style: .continuous).fill(catColors.panel).frame(width: 120, height: 90)
             }
         }
         .accessibilityIdentifier("chat.message.image")

@@ -22,7 +22,7 @@ HERO = ROOT / "docs/refs/brand/01-icon-hero-3d.png"
 ICONSET = ROOT / "apps/ios-conversation/Resources/Assets.xcassets/AppIcon.appiconset"
 MARK = (
     ROOT
-    / "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMarkOnOrange.imageset/BrandMarkOnOrange@3x.png"
+    / "apps/ios-conversation/Resources/Assets.xcassets/catBrand/BrandMarkOnOrange.imageset/BrandMarkOnOrange@3x.png"
 )
 
 

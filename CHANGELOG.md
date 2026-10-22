@@ -9,6 +9,8 @@ CatpawM iOS 版本记录。格式参考 [Keep a Changelog](https://keepachangelo
 
 ## [Unreleased]
 
+- 品牌统一为小写 cat：原生界面与双语文案、工程/模块/文件名、Widget、后端助理身份和品牌演示材料同步更新；保留旧安装、存储、OAuth 与服务协议身份。
+
 ## [1.2.0] - 2026-10-18
 
 需要部署 `catpaw-api`（#104）后助理才会按能力清单回答并给出跳转按钮；未部署时 App 照常工作，只是不出现按钮。

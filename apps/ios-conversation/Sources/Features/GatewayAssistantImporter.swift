@@ -48,25 +48,25 @@ public struct GatewayAssistantImporter: Sendable {
     @discardableResult public func apply(_ data: Data, expectedScope: DataScope, environmentID: UUID) async throws -> Bool {
         let projection = try JSONDecoder().decode(GatewayAssistantProjection.self, from: data)
         guard projection.schema_version == 1, projection.mode == "local_synthetic", projection.scope.native == expectedScope,
-              expectedScope == Profiles.demo, projection.runs.allSatisfy({ $0.reality == .simulated }) else { throw CatpawError.scopeMismatch }
+              expectedScope == Profiles.demo, projection.runs.allSatisfy({ $0.reality == .simulated }) else { throw catError.scopeMismatch }
         let snapshot = await repository.read(scope: expectedScope)
         let environment = try await repository.record(environmentID, scope: expectedScope)
-        guard case .core(.environment) = environment.payload else { throw CatpawError.missing }
+        guard case .core(.environment) = environment.payload else { throw catError.missing }
         let cursorID = stableID("gateway-cursor-\(serverID)-\(expectedScope.workspaceID)")
         let fingerprint = bytesHash(data)
         var previousHashes: [String: String] = [:]
         if let record = snapshot.records[cursorID], case .preference(let previous) = record.payload {
             let checkpoint = try JSONDecoder().decode(Checkpoint.self, from: Data(previous.value.utf8))
             previousHashes = checkpoint.payloadHashes
-            guard checkpoint.cursor <= projection.sync_cursor else { throw CatpawError.conflict }
+            guard checkpoint.cursor <= projection.sync_cursor else { throw catError.conflict }
             if checkpoint.cursor == projection.sync_cursor {
-                guard checkpoint.fingerprint == fingerprint else { throw CatpawError.corrupt("Gateway cursor reused for different bytes.") }
+                guard checkpoint.fingerprint == fingerprint else { throw catError.corrupt("Gateway cursor reused for different bytes.") }
                 return false
             }
         }
         var desired: [UUID: Payload] = [:]
         func stage(_ id: UUID, _ payload: Payload) throws {
-            guard desired[id] == nil else { throw CatpawError.corrupt("Duplicate gateway entity ID.") }; desired[id] = payload
+            guard desired[id] == nil else { throw catError.corrupt("Duplicate gateway entity ID.") }; desired[id] = payload
         }
         for d in projection.delegations {
             let scopeJSON = try JSONEncoder().encode(DelegationRequirements(requirements: d.requirements))
@@ -89,15 +89,15 @@ public struct GatewayAssistantImporter: Sendable {
             let reference = artifact.current_reference
             guard reference.artifact_id == artifact.id, reference.version > 0,
                   artifact.versions.count == reference.version, artifact.versions.enumerated().allSatisfy({ $0.element.version == $0.offset + 1 }),
-                  artifact.versions.last?.content_hash == reference.content_hash else { throw CatpawError.corrupt("Invalid artifact version chain.") }
+                  artifact.versions.last?.content_hash == reference.content_hash else { throw catError.corrupt("Invalid artifact version chain.") }
             if let old = snapshot.records[artifact.document_id]?.document {
-                guard old.currentVersion <= reference.version else { throw CatpawError.conflict }
+                guard old.currentVersion <= reference.version else { throw catError.conflict }
             }
             for version in artifact.versions {
-                guard textHash(version.body) == version.content_hash else { throw CatpawError.corrupt("Artifact body hash mismatch.") }
+                guard textHash(version.body) == version.content_hash else { throw catError.corrupt("Artifact body hash mismatch.") }
                 let versionID = stableID("\(artifact.document_id)-v\(version.version)")
                 if let old = snapshot.records[versionID] {
-                    guard case .core(.documentVersion(let oldVersion)) = old.payload, oldVersion.contentHash == version.content_hash else { throw CatpawError.conflict }
+                    guard case .core(.documentVersion(let oldVersion)) = old.payload, oldVersion.contentHash == version.content_hash else { throw catError.conflict }
                 }
                 let blob = try blobs.stage(Data(version.body.utf8))
                 try stage(versionID, .core(.documentVersion(DocumentVersion(documentID: artifact.document_id, version: version.version,
@@ -112,10 +112,10 @@ public struct GatewayAssistantImporter: Sendable {
         let artifactsByID = Dictionary(uniqueKeysWithValues: projection.artifacts.map { ($0.id, $0) })
         for run in projection.runs {
             let refs = try run.artifact_ids.map { id -> DocumentReference in
-                guard let a = artifactsByID[id] else { throw CatpawError.corrupt("Missing run artifact.") }
+                guard let a = artifactsByID[id] else { throw catError.corrupt("Missing run artifact.") }
                 // The run keeps its exact original reference even after later runs or user edits.
                 guard let reference = run.result_reference, reference.artifact_id == id,
-                      let v = a.versions.first(where: { $0.version == reference.version && $0.content_hash == reference.content_hash }) else { throw CatpawError.corrupt("Missing frozen run result version.") }
+                      let v = a.versions.first(where: { $0.version == reference.version && $0.content_hash == reference.content_hash }) else { throw catError.corrupt("Missing frozen run result version.") }
                 return DocumentReference(documentID: a.document_id, version: v.version, contentHash: v.content_hash)
             }
             try stage(run.conversation_id, .core(.conversation(Conversation(title: "Gateway 模拟准备", projectID: nil, expertID: nil, skillIDs: [], environmentID: environmentID, archivedAt: nil, draftText: ""))))
@@ -133,9 +133,9 @@ public struct GatewayAssistantImporter: Sendable {
         for id in desired.keys.sorted(by: { $0.uuidString < $1.uuidString }) {
             let payload = desired[id]!
             if let previous = snapshot.records[id] {
-                guard previous.header.deletedAt == nil, previous.payload.kind == payload.kind else { throw CatpawError.conflict }
+                guard previous.header.deletedAt == nil, previous.payload.kind == payload.kind else { throw catError.conflict }
                 if id != cursorID {
-                    guard previousHashes[id.uuidString] == bytesHash(try encoder.encode(previous.payload)) else { throw CatpawError.conflict }
+                    guard previousHashes[id.uuidString] == bytesHash(try encoder.encode(previous.payload)) else { throw catError.conflict }
                 }
                 if try encoder.encode(previous.payload) != encoder.encode(payload) { mutations.append(.update(id, previous.header.revision, payload)) }
                 else { mutations.append(.requireRevision(id, previous.header.revision)) }
