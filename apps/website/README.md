@@ -50,3 +50,9 @@ npm run preview
 简约、暖白与橙色的现有品牌；系统字体；深浅主题；减少动态偏好；视频按需加载。素材来源与哈希见 `ASSETS.md`。页面是原生 HTML 内容，不是整页截图。
 
 `npm run check` 检查页面、资源、锚点、语言与原始媒体尺寸；它不替代真实浏览器视觉和交互验证。网站中的交互案例只解释提醒时间推算，不访问账户或写入系统日历。
+
+## Vercel（mimi.heydusk.com）
+
+Vercel 项目 `mimi-site`，Git 连接 `Yankj/mimi`，Root Directory 为 `apps/website`，构建配置见 `vercel.json`（`npm run build` → `dist`）。分支推送生成 Preview；`main` 合并后才生成 Production。
+
+域名：在 Vercel 项目里添加 `mimi.heydusk.com`，再在 Cloudflare 的 heydusk.com 区域添加 `CNAME mimi → cname.vercel-dns.com`（代理状态设为 DNS only / 灰云）。
