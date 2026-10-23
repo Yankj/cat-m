@@ -231,3 +231,55 @@ test('untrusted provider failure details cannot persist or log source material',
  const canary='PROVIDER_ERROR_SOURCE_'+randomUUID(),logs=[],oldLog=console.info;console.info=(...parts)=>logs.push(parts.join(' '));
  try{const f=await fixture({stream:async function*(){throw new ApiError(503,canary,{reconciliation:true});}}),p=await f.prepare();const {turn}=await f.sendIntake(p);assert.equal(turn.state,'outcome_unknown');assert.equal(turn.error.code,'parenting_intake_failed');assert.equal(JSON.stringify(f.repository.snapshot()).includes(canary),false);assert.equal(logs.join('\n').includes(canary),false);}finally{console.info=oldLog;}
 });
+
+
+for(const failFinalRead of [false,true])test(failFinalRead
+ ? 'intake finalizer read failure still clears source and releases lease after DELETE'
+ : 'DELETE between admission commit and runtime registration leaves no settled source or live lease',
+ {timeout:5000},async t=>{
+ const f=await fixture(),p=await f.prepare(),chat=f.runtime.chat,sourceCanary='FINALIZER_SOURCE_'+randomUUID();
+ p.body.message.text=JSON.stringify({request_id:p.tid,source_text:sourceCanary});
+ const committed=deferred(),resume=deferred(),transaction=f.repository.transaction.bind(f.repository);
+ const execute=chat.execute,executeHeld=chat.executeHeld;
+ let gateUsed=false,heldSettled=false,finalReadFaults=0,post=null,execution=null,response=null;
+ t.after(async()=>{
+  // Release the admission boundary and remove faults BEFORE awaiting outstanding work.
+  resume.resolve();f.repository.transaction=transaction;chat.execute=execute;chat.executeHeld=executeHeld;
+  const result=post?await Promise.allSettled([post]):[];
+  const pendingResponse=response??(result[0]?.status==='fulfilled'?result[0].value:null);
+  try{await pendingResponse?.body?.cancel();}catch{}
+  if(execution)await Promise.allSettled([execution]);
+  for(const entry of chat.intakeRuntime.values())entry.drop();
+  await f.runtime.worker.stop();
+ });
+ chat.executeHeld=async function(env){try{return await executeHeld.call(this,env);}finally{if(env.turn.id===p.tid)heldSettled=true;}};
+ chat.execute=function(env){const pending=execute.call(this,env);if(env.turn.id===p.tid)execution=pending;return pending;};
+ f.repository.transaction=async(...args)=>{
+  // Only the outer execute finalizer's read can fault: DELETE has already returned,
+  // executeHeld has settled, and ordinary observer transactions have a different caller.
+  const finalizerRead=heldSettled&&/\bat (?:async )?ChatService\.execute\b/.test(new Error().stack??'');
+  if(failFinalRead&&finalizerRead&&finalReadFaults===0){finalReadFaults++;throw Error('synthetic_intake_finalizer_read_failure');}
+  const value=await transaction(...args);
+  // This is AFTER the real admission transaction committed and released its locks,
+  // but BEFORE startTurn receives its result and can register any transient content.
+  if(!gateUsed&&value?.turn?.id===p.tid&&value.replayed===false){gateUsed=true;committed.resolve();await resume.promise;}
+  return value;
+ };
+ post=f.req(p.path+'/turns',p.body);await committed.promise;
+ assert.equal(chat.intakeRuntime.size,0);assert.equal(f.calls.length,0);
+ const deleted=await purge(f,p);assert.equal(deleted.status,200);assert.equal((await deleted.json()).purge.purged,true);
+ resume.resolve();response=await post;
+ // A deleted admission may close/error its original observation stream; neither is completion evidence.
+ try{await response.text();}catch{}
+ assert.ok(execution);await Promise.allSettled([execution]);
+ assert.equal(finalReadFaults,failFinalRead?1:0);assert.equal(f.calls.length,0);
+ for(const entry of chat.intakeRuntime.values()){
+  assert.equal(entry.input?.includes(sourceCanary)??false,false,'settled runtime source must be cleared even when its final read failed');
+  assert.equal(JSON.stringify([...entry.events.values()]).includes(sourceCanary),false);
+ }
+ assert.equal(JSON.stringify(f.repository.snapshot()).includes(sourceCanary),false);
+ const owner=chat.facade.owner(f.scope),lease=await transaction(tx=>tx.get(owner,'native-chat-runtime-leases','runtime'));
+ assert.ok(!lease||Date.parse(lease.lease_until)<=Date.now(),'the execution hold must be released despite a finalizer read failure');
+ const tombstone=await transaction(tx=>tx.get(owner,'native-chat-turns',p.tid));
+ assert.equal(tombstone.intake_purged,true);assert.equal(tombstone.state,'failed');
+});
