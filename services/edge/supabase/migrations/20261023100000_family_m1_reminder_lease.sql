@@ -1,7 +1,8 @@
 -- M1 REM-01/02: reminder occurrence claims become leases. A 'claimed' occurrence older than 15 minutes
 -- (worker lost after claim) is claimable again; 'generated' occurrences are final. Expired leases are
 -- considered before the limit, so an abandoned batch cannot starve later due rows.
--- Deploy review (live catpaw-tick v16 / proactive v10 run this function unchanged):
+-- Deploy review (live callers run this function unchanged: catpaw-proactive v10 and catpaw-api POST /scheduler/tick,
+-- both through proactive/service.mjs tick() -> pg-store claimDue):
 --  * lease = 15 min, far above the longest possible in-flight fire: the tick runs inside one Edge Function
 --    invocation (wall clock <= 400 s, paid plan; 150 s free), so a live worker can never lose its lease mid-fire.
 --  * even after a re-claim, a reminder is delivered at most once: fire() inserts reminder_due with
