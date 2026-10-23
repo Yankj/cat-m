@@ -467,8 +467,12 @@ import Combine
                     HStack {
                         Text(ui("成长目标")).font(.title3.weight(.semibold)).accessibilityAddTraits(.isHeader)
                         Spacer()
-                        Button(ui("添加目标"), systemImage: "plus") { sheet = .newGoal(child.id) }
-                            .font(.subheadline).frame(minHeight: 44).disabled(model.busy)
+                        Button { sheet = .newGoal(child.id) } label: {
+                            Label(ui("添加目标"), systemImage: "plus")
+                                .font(.subheadline).frame(minWidth: 44, minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                            .buttonStyle(.plain).disabled(model.busy)
                             .accessibilityIdentifier("parenting.addGoal")
                     }
                     if childGoals.isEmpty {
