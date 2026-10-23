@@ -102,5 +102,13 @@ env -u CATPAW_SUPABASE_PROJECT_URL -u CATPAW_SUPABASE_PUBLISHABLE_KEY \
     -only-testing:catTests/ParentingIntakeTests \
     -only-testing:catTests/ParentingInlineIntakeTests \
     -only-testing:catTests/ParentingAccountLifecycleTests \
+    -only-testing:catTests/NativeAuthApplicationLifecycleTests/testActiveKnownRotationRecoversAutomaticallyInSameLocalChat \
+    -only-testing:catTests/NativeAuthApplicationLifecycleTests/testWorkspace503RetriesSilentlyAndCoalescesUntilSuccess \
+    -only-testing:catTests/NativeAuthApplicationLifecycleTests/testReturningLocalChatStaysReadableAndForegroundWakesRetryInPlace \
+    -only-testing:catTests/NativeAuthApplicationLifecycleTests/testReachabilityAndLogoutFenceWorkspaceResolution \
+    -only-testing:catTests/NativeAuthApplicationLifecycleTests/testLogoutDuringFirstLocalReadNeverAttachesOldChat \
+    -only-testing:catTests/NativeAuthApplicationLifecycleTests/testLogoutCancelsOfflineRecoveryTaskBeforeNetworkReturns \
+    -only-testing:catTests/NativeAuthApplicationLifecycleTests/testLogoutClosesAuthorityBeforeLocalDrainAndLaterLoginStillOpens \
+    -only-testing:catTests/NativeAuthApplicationLifecycleTests/testColdValidationRetriesSafelyWithoutCreatingAnotherIdentity \
     -only-testing:catUITests/ParentingWorkspaceUITests \
     test-without-building "${parenting_signing[@]}"

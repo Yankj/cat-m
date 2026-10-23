@@ -284,13 +284,17 @@ import Combine
                 if items.isEmpty { Text(ui("还没有完成的安排。" )).font(.subheadline).foregroundStyle(catColors.calmSecondary).padding(.top, 12) }
                 ForEach(Array(items)) { item in arrangementCard(item).padding(.top, 10) }
             } label: { Label(ui("已完成的安排"), systemImage: "checkmark.circle").font(.subheadline.weight(.medium)) }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("parenting.completedHistory")
             DisclosureGroup(isExpanded: $cancelledExpanded) {
                 let items = arrangements.filter { $0.state == .cancelled }.reversed()
                 if items.isEmpty { Text(ui("还没有取消的安排。" )).font(.subheadline).foregroundStyle(catColors.calmSecondary).padding(.top, 12) }
                 ForEach(Array(items)) { item in arrangementCard(item).padding(.top, 10) }
             } label: { Label(ui("已取消的安排"), systemImage: "minus.circle").font(.subheadline.weight(.medium)) }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("parenting.cancelledHistory")
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("parenting.arrangementHistory")
     }
 
@@ -319,6 +323,7 @@ import Combine
                 } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
                 .disabled(model.busy)
                 .accessibilityLabel(ui("安排操作"))
+                .accessibilityIdentifier("parenting.arrangement.menu.\(item.id)")
             }
             DisclosureGroup(ui("查看原始记录与时间")) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -356,6 +361,7 @@ import Combine
                 }
             } else {
                 Text(ui("已取消 · 不会作为待办或完成记录")).font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                    .accessibilityIdentifier("parenting.arrangement.cancelled.\(item.id)")
                 Button(ui("另记一件事")) { sheet = .newArrangement(item.childID, item.goalID) }
                     .font(.subheadline).frame(minHeight: 44).disabled(model.busy)
             }
@@ -493,6 +499,7 @@ import Combine
             Button { sheet = .newObservation(child.id, selectedGoal?.id) } label: {
                 Label(ui("记下观察"), systemImage: "square.and.pencil").frame(maxWidth: .infinity)
             }.buttonStyle(ParentingSecondaryButtonStyle()).disabled(model.busy)
+                .accessibilityIdentifier("parenting.addObservation.forGoal")
         }
     }
 
@@ -547,6 +554,7 @@ import Combine
                     Button(ui("删除记录"), systemImage: "trash", role: .destructive) { deletion = .record(record.id) }
                 } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
                 .accessibilityLabel(ui("记录操作")).disabled(model.busy)
+                .accessibilityIdentifier("parenting.record.menu.\(record.id)")
             }
             Text(verbatim: record.text).font(.body).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                 .accessibilityIdentifier("parenting.record.body.\(record.id)")
@@ -569,13 +577,19 @@ import Combine
                     Text(ui(record.kind == .observation ? "来源：家长观察" : "来源：家长标记完成" )).font(catTypography.Role.caption.font)
                     if record.sourceText.isEmpty {
                         Text(ui("家长确认完成，未填写补充说明。" )).font(.subheadline)
-                    } else { Text(verbatim: record.sourceText).font(.subheadline).textSelection(.enabled) }
+                    } else {
+                        Text(verbatim: record.sourceText).font(.subheadline).textSelection(.enabled)
+                            .accessibilityIdentifier("parenting.record.source.\(record.id)")
+                    }
                     if record.updatedAt != record.createdAt {
                         Text(verbatim: ui("更正时间") + " · " + record.updatedAt.formatted(date: .abbreviated, time: .shortened)).font(catTypography.Role.caption.font)
+                            .accessibilityIdentifier("parenting.record.correctedAt.\(record.id)")
                     } else { Text(ui("尚未更正" )).font(catTypography.Role.caption.font) }
                 }
                 .foregroundStyle(catColors.calmSecondary).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
             }.font(catTypography.Role.caption.font).tint(catColors.calmSecondary)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("parenting.record.provenance.\(record.id)")
         }
         .parentingCard()
         .accessibilityElement(children: .contain)
@@ -1226,6 +1240,7 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
                     .disabled(cleanupRunning || saving || model.busy || intakeCallID != nil)
                     .accessibilityIdentifier("parenting.inline.retryCleanup")
                 }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("parenting.inline.cleanupPending")
             } else if intake.recoveryAvailable || intake.candidate != nil {
                 Button(ui("删除本次整理记录"), role: .destructive) { deleteIntakeRecord() }
@@ -1268,7 +1283,8 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
             .disabled(!matchesCurrentCandidate(candidate) || intakeCallID != nil || saving || model.busy)
             .accessibilityIdentifier("parenting.inline.adopt")
         }
-        .padding(.vertical, 8).accessibilityIdentifier("parenting.inline.candidate")
+        .padding(.vertical, 8).accessibilityElement(children: .contain)
+        .accessibilityIdentifier("parenting.inline.candidate")
     }
 
     private func fillCandidate(_ candidate: ParentingIntakeDraft) {

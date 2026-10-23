@@ -234,6 +234,207 @@ final class ParentingWorkspaceUITests: XCTestCase {
         capture(app, "dark-accessibility5-discarded-no-draft")
     }
 
+    func testSyntheticPlannedCancellationPersistsAcrossColdRelaunch() {
+        let app = launch("p0-ui-parenting-success")
+        let title = "Synthetic arrangement to cancel"
+        assertEmpty(app)
+        addChild(app, name: "Synthetic Cancellation Child")
+        tap(app, app.buttons["parenting.addArrangement"])
+        enter(app, id: "parenting.arrangement.source", text: "Synthetic parent intention that can be explicitly cancelled.")
+        enter(app, id: "parenting.arrangement.title", text: title)
+        chooseExplicitTime(app)
+        tap(app, app.buttons["parenting.arrangement.save"])
+        wait { !self.inputExists(app, "parenting.arrangement.source") }
+        let confirm = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.confirm.")).firstMatch
+        reveal(app, confirm)
+        let arrangementID = String(confirm.identifier.dropFirst("parenting.confirm.".count))
+        XCTAssertNotNil(UUID(uuidString: arrangementID))
+        let boundary = element(app, "parenting.storageBoundary")
+        reveal(app, boundary)
+        XCTAssertTrue(boundary.label.contains("Local arrangements send no reminders"), app.debugDescription)
+        capture(app, "cancellation-before-confirmation-no-reminder-disclosure")
+        tap(app, confirm)
+        let complete = app.buttons["parenting.complete." + arrangementID]
+        wait { complete.exists && complete.isEnabled }
+        let plannedTime = arrangementTime(app, arrangementID: arrangementID)
+        tap(app, app.buttons["parenting.arrangement.menu." + arrangementID])
+        chooseMenuAction(app, "Cancel this arrangement")
+        wait { !complete.exists }
+        let cancelledState = assertCancelledArrangement(app, arrangementID: arrangementID, title: title, time: plannedTime)
+        capture(app, "cancellation-original-planned-arrangement-cancelled")
+        tab(app, "records")
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.record.body.")).count, 0,
+                       "Cancelling a saved arrangement must not generate a completion record.")
+        app.terminate()
+        app.launch()
+        ready(app)
+        XCTAssertEqual(assertCancelledArrangement(app, arrangementID: arrangementID, title: title, time: plannedTime), cancelledState)
+        capture(app, "cancellation-cold-relaunch-same-arrangement-time-and-state")
+        tab(app, "records")
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.record.body.")).count, 0)
+    }
+
+    func testSyntheticIndependentObservationEditDeleteAcrossColdReads() {
+        let app = launch("p0-ui-parenting-success")
+        let child = "Synthetic Observation Child"
+        let goal = "Synthetic everyday observation goal"
+        let original = "Synthetic parent noticed a question during a story."
+        assertEmpty(app)
+        addChild(app, name: child)
+        tab(app, "growth")
+        tap(app, app.buttons["parenting.addGoal"])
+        enter(app, id: "parenting.goal.title", text: goal)
+        tap(app, app.buttons["parenting.name.save"])
+        wait { !self.inputExists(app, "parenting.goal.title") }
+        let goalButton = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.goal.")).firstMatch
+        reveal(app, goalButton)
+        let goalIdentifier = goalButton.identifier
+        tap(app, goalButton)
+        tap(app, app.buttons["parenting.addObservation.forGoal"])
+        enter(app, id: "parenting.record.text", text: original)
+        tap(app, app.buttons["parenting.record.save"])
+        wait { !self.inputExists(app, "parenting.record.text") }
+        let body = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.record.body.")).firstMatch
+        reveal(app, body)
+        XCTAssertEqual(body.label, original)
+        let recordID = String(body.identifier.dropFirst("parenting.record.body.".count))
+        XCTAssertNotNil(UUID(uuidString: recordID))
+        assertRecordGoal(app, recordID: recordID, goal: goal)
+        assertNoArrangement(app)
+        capture(app, "observation-independent-created-with-goal-no-arrangement")
+        tap(app, app.buttons["parenting.record.menu." + recordID])
+        chooseMenuAction(app, "Edit record")
+        let editor = input(app, "parenting.record.text")
+        XCTAssertEqual(editor.value as? String, original)
+        editor.tap()
+        editor.typeText(" Corrected after checking.")
+        let corrected = editor.value as? String ?? ""
+        XCTAssertTrue(corrected != original && corrected.contains("Corrected after checking."))
+        tap(app, app.buttons["parenting.record.save"])
+        wait { !self.inputExists(app, "parenting.record.text") }
+        reveal(app, app.staticTexts["parenting.record.body." + recordID])
+        XCTAssertEqual(app.staticTexts["parenting.record.body." + recordID].label, corrected)
+        let correctedAt = observationSourceAndEditTime(app, recordID: recordID, original: original)
+        capture(app, "observation-corrected-body-original-source-retained")
+        app.terminate()
+        app.launch()
+        ready(app)
+        tab(app, "records")
+        let reopened = app.staticTexts["parenting.record.body." + recordID]
+        reveal(app, reopened)
+        XCTAssertEqual(reopened.label, corrected)
+        assertRecordGoal(app, recordID: recordID, goal: goal)
+        XCTAssertEqual(observationSourceAndEditTime(app, recordID: recordID, original: original), correctedAt)
+        assertNoArrangement(app)
+        capture(app, "observation-cold-read-same-record-goal-source-and-edit-time")
+        tap(app, app.buttons["parenting.record.menu." + recordID])
+        chooseMenuAction(app, "Delete record")
+        let delete = app.alerts.buttons["Delete"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5), app.debugDescription)
+        delete.tap()
+        wait { !reopened.exists }
+        capture(app, "observation-explicit-delete")
+        app.terminate()
+        app.launch()
+        ready(app)
+        tab(app, "records")
+        XCTAssertFalse(app.staticTexts["parenting.record.body." + recordID].exists)
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.record.body.")).count, 0)
+        tab(app, "growth")
+        XCTAssertTrue(app.staticTexts[child].exists, app.debugDescription)
+        reveal(app, app.buttons[goalIdentifier])
+        XCTAssertTrue(app.buttons[goalIdentifier].exists)
+        assertNoArrangement(app)
+        capture(app, "observation-cold-read-deletion-persists-child-and-goal-retained")
+    }
+
+    func testSyntheticSwiftDataRollbackRetainsInputRetriesAndColdReadsOneChild() {
+        let app = launch("p0-ui-parenting-save-rollback")
+        let name = "Synthetic Rollback Child"
+        assertEmpty(app)
+        tap(app, app.buttons["parenting.firstChild"])
+        enter(app, id: "parenting.child.name", text: name)
+        tap(app, app.buttons["parenting.name.save"])
+        let issue = element(app, "parenting.form.error")
+        wait { issue.exists }
+        XCTAssertTrue(issue.label.contains("injected_swiftdata_save_failure"),
+                      "Expected the real SwiftData rollback seam, not a substitute save result.\n" + app.debugDescription)
+        let nameField = input(app, "parenting.child.name")
+        XCTAssertEqual(nameField.value as? String, name)
+        let retrySave = app.buttons["parenting.name.save"]
+        wait { retrySave.isEnabled }
+        capture(app, "save-rollback-error-original-input-retained")
+        tap(app, retrySave)
+        wait { !self.inputExists(app, "parenting.child.name") }
+        XCTAssertFalse(element(app, "parenting.form.error").exists, app.debugDescription)
+        XCTAssertTrue(app.buttons["parenting.addArrangement"].exists, app.debugDescription)
+        assertNoArrangement(app)
+        capture(app, "save-rollback-original-form-retry-succeeded")
+        let store = app.launchEnvironment["CF_UI_TEST_STORE"]
+        XCTAssertNotNil(store)
+        app.terminate()
+        // Keep the exact same UUID/scope/subject, but do not arm another first-save failure in the new process.
+        app.launchEnvironment["CF_UI_TEST_SCENARIO"] = "p0-ui-parenting-success"
+        XCTAssertEqual(app.launchEnvironment["CF_UI_TEST_STORE"], store)
+        app.launch()
+        ready(app)
+        XCTAssertFalse(app.buttons["parenting.firstChild"].exists)
+        tap(app, element(app, "parenting.childFilter"))
+        let choices = app.buttons.matching(NSPredicate(format: "label == %@", name))
+        XCTAssertTrue(choices.firstMatch.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertEqual(choices.count, 1, "The real cold-read child picker must contain exactly one child from the failed-then-retried form.")
+        choices.firstMatch.tap()
+        assertNoArrangement(app)
+        capture(app, "save-rollback-cold-read-single-child")
+    }
+
+    func testSyntheticUnknownIntakeRequiresOriginalRequestReadback() {
+        let app = launch("p0-ui-parenting-unknown-readback")
+        let source = "Synthetic story request whose first response is lost after submission."
+        assertEmpty(app)
+        addChild(app, name: "Synthetic Unknown Child")
+        tap(app, app.buttons["parenting.addArrangement"])
+        enter(app, id: "parenting.arrangement.source", text: source)
+        requestAndAllowConsent(app)
+        let reconcile = app.buttons["parenting.inline.reconcile"]
+        reveal(app, reconcile)
+        wait { reconcile.exists && reconcile.isEnabled }
+        XCTAssertFalse(element(app, "parenting.inline.loading").exists)
+        XCTAssertFalse(element(app, "parenting.inline.candidate").exists)
+        XCTAssertFalse(app.buttons["parenting.inline.adopt"].exists)
+        XCTAssertFalse(app.buttons["parenting.arrangement.aiIntake"].exists,
+                       "An unknown request must offer original-request readback rather than a new submission.")
+        XCTAssertFalse(app.buttons["parenting.inline.retry"].exists)
+        XCTAssertFalse(app.buttons["parenting.inline.freshAttempt"].exists)
+        XCTAssertEqual(input(app, "parenting.arrangement.source").value as? String, source)
+        assertSaveDisabled(app)
+        reveal(app, reconcile)
+        capture(app, "unknown-original-request-awaits-explicit-readback")
+        tap(app, reconcile)
+        let adopt = app.buttons["parenting.inline.adopt"]
+        reveal(app, adopt)
+        XCTAssertTrue(adopt.exists, app.debugDescription)
+        XCTAssertTrue(element(app, "parenting.inline.candidate").exists, app.debugDescription)
+        // The injected backend rejects mismatched reads and permanently rejects readback after any second reply call.
+        // Reaching this real parsed candidate therefore requires only the original cid/op/epoch submission.
+        XCTAssertFalse(input(app, "parenting.arrangement.title").value as? String == "Synthetic reading together")
+        XCTAssertEqual(input(app, "parenting.arrangement.source").value as? String, source)
+        assertSaveDisabled(app)
+        reveal(app, adopt)
+        capture(app, "unknown-original-readback-candidate-not-applied")
+        tap(app, adopt)
+        let title = input(app, "parenting.arrangement.title")
+        XCTAssertEqual(title.value as? String, "Synthetic reading together")
+        title.tap()
+        title.typeText(" revised after readback")
+        XCTAssertTrue((title.value as? String ?? "").contains("revised after readback"))
+        XCTAssertEqual(input(app, "parenting.arrangement.source").value as? String, source)
+        assertSaveDisabled(app)
+        capture(app, "unknown-explicitly-adopted-editable-review-still-unsaved")
+        closeUnsavedArrangement(app)
+        assertNoArrangement(app)
+    }
+
     private func launch(_ scenario: String, display: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication(bundleIdentifier: "com.example.CatpawM.ConversationFirst.Auth")
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
@@ -273,18 +474,20 @@ final class ParentingWorkspaceUITests: XCTestCase {
         let button = app.buttons["parenting.tab." + name]
         XCTAssertTrue(button.waitForExistence(timeout: 5), app.debugDescription)
         button.tap()
-        // The tabs share one real ScrollView. Return it to the header before locating a new section.
-        for _ in 0..<3 { drag(app, towardBottom: false) }
+        // reveal() locates the next target without pulling the refreshable Home past its top edge.
     }
     private func requestAndAllow(_ app: XCUIApplication) {
+        requestAndAllowConsent(app)
+        reveal(app, app.buttons["parenting.inline.adopt"])
+        XCTAssertTrue(app.buttons["parenting.inline.adopt"].exists, app.debugDescription)
+    }
+    private func requestAndAllowConsent(_ app: XCUIApplication) {
         tap(app, app.buttons["parenting.arrangement.aiIntake"])
         let allow = app.buttons["chat.modelConsent.allow"]
         XCTAssertTrue(allow.waitForExistence(timeout: 12), app.debugDescription)
         XCTAssertEqual(app.staticTexts["chat.modelConsent.title"].label, "Synthetic parenting UI consent")
         wait { allow.isEnabled }
         allow.tap()
-        reveal(app, app.buttons["parenting.inline.adopt"])
-        XCTAssertTrue(app.buttons["parenting.inline.adopt"].exists, app.debugDescription)
     }
     private func chooseExplicitTime(_ app: XCUIApplication) {
         tap(app, app.buttons["parenting.arrangement.time"])
@@ -308,6 +511,38 @@ final class ParentingWorkspaceUITests: XCTestCase {
         XCTAssertTrue(discard.waitForExistence(timeout: 5), app.debugDescription)
         discard.tap()
         wait { !self.inputExists(app, "parenting.arrangement.source") }
+    }
+    private func chooseMenuAction(_ app: XCUIApplication, _ label: String) {
+        let action = app.buttons[label]
+        XCTAssertTrue(action.waitForExistence(timeout: 5), app.debugDescription)
+        wait { action.isEnabled && action.isHittable }
+        action.tap()
+    }
+    private func assertCancelledArrangement(_ app: XCUIApplication, arrangementID: String, title: String, time: String) -> String {
+        // Each call starts with the actual cancelled-history disclosure collapsed, including after a cold launch.
+        tap(app, element(app, "parenting.cancelledHistory"))
+        let card = element(app, "parenting.arrangement." + arrangementID)
+        reveal(app, card)
+        XCTAssertTrue(card.exists && card.staticTexts[title].exists, app.debugDescription)
+        XCTAssertEqual(arrangementTime(app, arrangementID: arrangementID), time)
+        let state = element(app, "parenting.arrangement.cancelled." + arrangementID)
+        reveal(app, state)
+        XCTAssertFalse(state.label.isEmpty)
+        XCTAssertFalse(app.buttons["parenting.confirm." + arrangementID].exists)
+        XCTAssertFalse(app.buttons["parenting.complete." + arrangementID].exists)
+        XCTAssertFalse(app.buttons["parenting.adjust." + arrangementID].exists)
+        XCTAssertEqual(card.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.completionRecord.")).count, 0)
+        return state.label
+    }
+    private func observationSourceAndEditTime(_ app: XCUIApplication, recordID: String, original: String) -> String {
+        tap(app, element(app, "parenting.record.provenance." + recordID))
+        let source = app.staticTexts["parenting.record.source." + recordID]
+        reveal(app, source)
+        XCTAssertEqual(source.label, original, "Correcting the visible body must preserve the parent's original observation.")
+        let timestamp = app.staticTexts["parenting.record.correctedAt." + recordID]
+        reveal(app, timestamp)
+        XCTAssertFalse(timestamp.label.isEmpty)
+        return timestamp.label
     }
     private func showCompletedArrangement(_ app: XCUIApplication, arrangementID: String) -> XCUIElement {
         // Both calls start from a fresh, collapsed history (after completion, then after a cold launch).
@@ -356,9 +591,9 @@ final class ParentingWorkspaceUITests: XCTestCase {
     private func element(_ app: XCUIApplication, _ id: String) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: id).firstMatch
     }
-    private func tap(_ app: XCUIApplication, _ target: XCUIElement) {
-        reveal(app, target)
-        wait { target.exists && target.isEnabled && target.isHittable }
+    private func tap(_ app: XCUIApplication, _ target: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+        reveal(app, target, file: file, line: line)
+        wait({ target.exists && target.isEnabled && target.isHittable }, file: file, line: line)
         target.tap()
     }
     private func wait(_ condition: () -> Bool, file: StaticString = #filePath, line: UInt = #line) {
@@ -369,38 +604,69 @@ final class ParentingWorkspaceUITests: XCTestCase {
         }
         XCTFail("Synthetic native UI condition timed out\n" + (currentApp?.debugDescription ?? "No active synthetic application"), file: file, line: line)
     }
+    /// Visibility is separate from tappability: disabled Save and noninteractive groups must remain inspectable.
     private func reveal(_ app: XCUIApplication, _ target: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
-        for _ in 0..<16 {
-            let bars = app.navigationBars.allElementsBoundByIndex.filter { $0.isHittable }.map { $0.frame }
-            let top = bars.map { $0.maxY }.max() ?? app.frame.minY + 90
-            let keyboard = app.keyboards.firstMatch
-            let tabTop = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.tab.")).allElementsBoundByIndex
-                .filter { $0.isHittable }.map { $0.frame.minY }.min() ?? app.frame.maxY - 20
-            let bottom = min(tabTop, keyboard.exists ? keyboard.frame.minY : app.frame.maxY - 20) - 5
-            if target.exists && target.isHittable {
+        for attempt in 0..<16 {
+            let scroll = scrollingElement(app)
+            let viewport = visibleScrollFrame(app, scroll: scroll)
+            var targetFrame: CGRect?
+            if target.exists {
                 let rect = target.frame
-                let inToolbar = bars.contains { $0.contains(CGPoint(x: rect.midX, y: rect.midY)) }
-                if inToolbar || (rect.midY > top + 4 && rect.midY < bottom) { return }
+                targetFrame = rect
+                let toolbar = app.navigationBars.allElementsBoundByIndex.contains { bar in
+                    bar.isHittable && bar.frame.contains(CGPoint(x: rect.midX, y: rect.midY))
+                }
+                if !rect.isEmpty && (toolbar || viewport.contains(CGPoint(x: rect.midX, y: rect.midY))) { return }
             }
-            let above = target.exists && target.frame.midY < top + 20
-            drag(app, towardBottom: !above)
+            // Form rows can be virtualized. Search both directions rather than repeatedly pushing into one end.
+            let towardBottom = targetFrame.map { $0.midY >= viewport.minY } ?? (attempt < 8)
+            drag(app, towardBottom: towardBottom, scroll: scroll)
         }
-        XCTFail("Synthetic native UI target is unreachable: \(target.identifier)\n" + app.debugDescription, file: file, line: line)
+        // Reading identifier/frame on a nonexistent target throws before XCTest can print our useful hierarchy.
+        XCTFail("Synthetic native UI target is unreachable\n" + app.debugDescription, file: file, line: line)
     }
-    private func drag(_ app: XCUIApplication, towardBottom: Bool) {
-        let frame = app.frame
-        let navigationBottom = app.navigationBars.allElementsBoundByIndex.filter { $0.isHittable }.map { $0.frame.maxY }.max() ?? frame.minY + 90
-        let top = max(frame.minY + 90, navigationBottom) + 18
-        let tabTop = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.tab.")).allElementsBoundByIndex
-            .filter { $0.isHittable }.map { $0.frame.minY }.min() ?? frame.maxY - 24
+    private func scrollingElement(_ app: XCUIApplication) -> XCUIElement {
+        let lists = app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex
+        if let list = largestUsableScroll(app, candidates: lists) { return list }
+        return largestUsableScroll(app, candidates: app.scrollViews.allElementsBoundByIndex) ?? app
+    }
+    private func largestUsableScroll(_ app: XCUIApplication, candidates: [XCUIElement]) -> XCUIElement? {
+        var selected: XCUIElement?
+        var selectedArea: CGFloat = 0
+        var visibleFallback: XCUIElement?
+        var fallbackArea: CGFloat = 0
+        for candidate in candidates where candidate.exists {
+            let rect = visibleScrollFrame(app, scroll: candidate)
+            let area = rect.width * rect.height
+            guard rect.height > 80, rect.width > 80 else { continue }
+            if area >= fallbackArea { visibleFallback = candidate; fallbackArea = area }
+            if candidate.isHittable && area >= selectedArea { selected = candidate; selectedArea = area }
+        }
+        // A keyboard can cover the container's hit point while leaving a usable upper viewport.
+        return selected ?? visibleFallback
+    }
+    private func visibleScrollFrame(_ app: XCUIApplication, scroll: XCUIElement) -> CGRect {
+        let frame = scroll.frame.intersection(app.frame)
+        let navigationBottom = app.navigationBars.allElementsBoundByIndex.filter { $0.isHittable }
+            .map { $0.frame.maxY }.max() ?? frame.minY
         let keyboard = app.keyboards.firstMatch
-        let bottom = min(tabTop - 12, keyboard.exists ? keyboard.frame.minY - 12 : frame.maxY - 30)
-        guard bottom - top > 80 else { return }
-        let x = frame.minX + 14
-        let startY = towardBottom ? bottom - 10 : top + 10
-        let endY = towardBottom ? top + 10 : bottom - 10
-        let start = app.coordinate(withNormalizedOffset: .init(dx: x / frame.width, dy: startY / frame.height))
-        let end = app.coordinate(withNormalizedOffset: .init(dx: x / frame.width, dy: endY / frame.height))
+        let tabTop = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.tab."))
+            .allElementsBoundByIndex.filter { $0.isHittable }.map { $0.frame.minY }.min() ?? frame.maxY
+        let top = max(frame.minY, navigationBottom) + 12
+        let bottom = min(frame.maxY, tabTop, keyboard.exists ? keyboard.frame.minY : frame.maxY) - 12
+        return CGRect(x: frame.minX + 12, y: top, width: max(0, frame.width - 24), height: max(0, bottom - top))
+    }
+    private func drag(_ app: XCUIApplication, towardBottom: Bool, scroll supplied: XCUIElement? = nil) {
+        let scroll = supplied ?? scrollingElement(app)
+        let frame = scroll.frame
+        let viewport = visibleScrollFrame(app, scroll: scroll)
+        guard viewport.height > 80, frame.width > 0, frame.height > 0 else { return }
+        // Gesture inside the actual Form/ScrollView, away from the presentation's inert outside gutter.
+        let x = viewport.minX + viewport.width * 0.85
+        let startY = towardBottom ? viewport.maxY - 10 : viewport.minY + 10
+        let endY = towardBottom ? viewport.minY + 10 : viewport.maxY - 10
+        let start = scroll.coordinate(withNormalizedOffset: .init(dx: (x - frame.minX) / frame.width, dy: (startY - frame.minY) / frame.height))
+        let end = scroll.coordinate(withNormalizedOffset: .init(dx: (x - frame.minX) / frame.width, dy: (endY - frame.minY) / frame.height))
         start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.2)
     }
     private func capture(_ app: XCUIApplication, _ stage: String) {
