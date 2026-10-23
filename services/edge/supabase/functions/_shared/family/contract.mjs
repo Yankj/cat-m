@@ -66,6 +66,8 @@ export function validateCommand(cmd, { householdFromPath = null } = {}) {
   if (!cmd || typeof cmd !== 'object' || Array.isArray(cmd)) throw new FamilyError(422, 'command_invalid');
   for (const k of ['command_id', 'household_id']) if (typeof cmd[k] !== 'string' || !UUID_RE.test(cmd[k])) throw new FamilyError(422, 'command_invalid');
   if (typeof cmd.type !== 'string' || !/^[a-z]+\.[a-z_]+$/.test(cmd.type)) throw new FamilyError(422, 'command_invalid');
+  // v0.4 deploy review: shared read-only access (household grants) is out of scope; refuse before dispatch.
+  if (cmd.type.startsWith('grant.')) throw new FamilyError(422, 'command_invalid');
   for (const k of ['target_id', 'proposal_id']) if (cmd[k] != null && (typeof cmd[k] !== 'string' || !UUID_RE.test(cmd[k]))) throw new FamilyError(422, 'command_invalid');
   if (cmd.expected_revision != null && (!Number.isSafeInteger(cmd.expected_revision) || cmd.expected_revision < 1)) throw new FamilyError(422, 'command_invalid');
   if (cmd.payload != null && (typeof cmd.payload !== 'object' || Array.isArray(cmd.payload))) throw new FamilyError(422, 'command_invalid');

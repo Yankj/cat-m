@@ -1,6 +1,7 @@
 // v0.2 text loop end-to-end on REAL Postgres: HTTP handler -> pg-store -> family.apply_command (all migrations applied).
 // Run: PGHOST=/tmp PGPORT=55432 PGUSER=postgres bash scripts/pg-all-migrations-local.sh test/family-v02-pg.test.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
+import { runtimeOf } from './support/pg-runtime.mjs';
 import postgres from 'npm:postgres@3.4.7';
 import { createPgFamilyStore } from '../supabase/functions/_shared/family/pg-store.mjs';
 import { createFamilyService } from '../supabase/functions/_shared/family/service.mjs';
@@ -11,7 +12,7 @@ const U = () => crypto.randomUUID();
 const SRC = { source_kind: 'user_text', source_ref: 'turn:t1', captured_at: '2026-10-23T08:00:00+08:00' };
 
 async function rig(sql, opts = {}) {
-  const svc = createFamilyService({ store: createPgFamilyStore(sql), extraRoutes: [createCaptureRoute(opts.capture ?? {})], now: () => Date.parse('2026-10-23T09:00:00+08:00'), verifyUser: async a => { const m = /^Bearer (.+)$/.exec(a); return m ? { sub: m[1] } : null; } });
+  const svc = createFamilyService({ store: createPgFamilyStore(runtimeOf(sql)), extraRoutes: [createCaptureRoute(opts.capture ?? {})], now: () => Date.parse('2026-10-23T09:00:00+08:00'), verifyUser: async a => { const m = /^Bearer (.+)$/.exec(a); return m ? { sub: m[1] } : null; } });
   const mk = async () => { const id = U(); await sql`insert into auth.users(id) values(${id})`; return id; };
   const call = async (who, method, path, body, raw) => {
     const r = await svc.handle(new Request('https://x/functions/v1/catpaw-api/catpaw/family/v1' + path, { method, headers: { authorization: who ? 'Bearer ' + who : '', 'content-type': 'application/json' }, body: raw ?? (body ? JSON.stringify(body) : undefined) }));
