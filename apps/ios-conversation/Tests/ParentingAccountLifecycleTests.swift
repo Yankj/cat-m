@@ -226,7 +226,7 @@ final class ParentingAccountLifecycleTests: XCTestCase {
     @MainActor func testLateLegacyReceiptCannotStealCanonicalWorkspaceOpening() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("parenting-scope-opening-race-" + UUID().uuidString, isDirectory: true)
         let legacyScope = UUID(), canonicalScope = UUID(), subject = UUID(), child = UUID()
-        let configuration = try configuration(scope: nil)
+        let configuration = try configuration(scope: legacyScope)
         let remote = NativeAuthBoundaryRemote(issuer: configuration.issuer, subject: subject)
         let credential = await remote.candidate()
         let storage = AuthTestStorage(), cipher = ParentingTestCipher()
