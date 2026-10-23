@@ -6,7 +6,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
     private var currentApp: XCUIApplication?
     override func setUp() { continueAfterFailure = false }
     override func tearDown() {
-        if testRun?.hasSucceeded == false, let app = currentApp { capture(app, "failure") }
+        if let app = currentApp { capture(app, "end-of-case") }
         currentApp?.terminate()
         currentApp = nil
         super.tearDown()
@@ -625,43 +625,54 @@ final class ParentingWorkspaceUITests: XCTestCase {
         }
         XCTFail("Synthetic native UI condition timed out\n" + (currentApp?.debugDescription ?? "No active synthetic application"), file: file, line: line)
     }
+    /// One iteration's clipping geometry; refresh after every drag and never share between reveal calls.
+    private struct ViewportBounds {
+        let appFrame: CGRect
+        let navigationFrames: [CGRect]
+        let tabTop: CGFloat?
+        let inputPanelTop: CGFloat
+    }
     /// Visibility is separate from tappability: disabled Save and noninteractive groups must remain inspectable.
     private func reveal(_ app: XCUIApplication, _ target: XCUIElement, searchTowardBottom: Bool = true,
                         file: StaticString = #filePath, line: UInt = #line) {
         for _ in 0..<16 {
+            let navigationFrames = app.navigationBars.allElementsBoundByIndex.filter { $0.isHittable }.map { $0.frame }
             var targetFrame: CGRect?
             if target.exists {
                 let rect = target.frame
                 if !rect.isEmpty {
                     targetFrame = rect
-                    let toolbar = app.navigationBars.allElementsBoundByIndex.contains { bar in
-                        bar.isHittable && bar.frame.contains(CGPoint(x: rect.midX, y: rect.midY))
-                    }
-                    if toolbar { return }
+                    if navigationFrames.contains(where: { $0.contains(CGPoint(x: rect.midX, y: rect.midY)) }) { return }
                 }
             }
-            let scroll = scrollingElement(app)
-            let viewport = visibleScrollFrame(app, scroll: scroll)
+            let appFrame = app.frame
+            let tabTop = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.tab."))
+                .allElementsBoundByIndex.filter { $0.isHittable }.map { $0.frame.minY }.min()
+            let bounds = ViewportBounds(appFrame: appFrame, navigationFrames: navigationFrames,
+                                        tabTop: tabTop, inputPanelTop: inputPanelTop(app, appFrame: appFrame))
+            let scroll = scrollingElement(app, bounds: bounds)
+            let scrollFrame = scroll.frame
+            let viewport = visibleScrollFrame(scrollFrame, bounds: bounds)
             if let rect = targetFrame, viewport.contains(CGPoint(x: rect.midX, y: rect.midY)) { return }
             // With no usable geometry, use the field's known direction instead of reversing an unrelated search.
             let towardBottom = targetFrame.map { $0.midY >= viewport.minY } ?? searchTowardBottom
-            drag(app, towardBottom: towardBottom, scroll: scroll)
+            drag(scroll, frame: scrollFrame, viewport: viewport, towardBottom: towardBottom)
         }
         // Reading identifier/frame on a nonexistent target throws before XCTest can print our useful hierarchy.
         XCTFail("Synthetic native UI target is unreachable\n" + app.debugDescription, file: file, line: line)
     }
-    private func scrollingElement(_ app: XCUIApplication) -> XCUIElement {
+    private func scrollingElement(_ app: XCUIApplication, bounds: ViewportBounds) -> XCUIElement {
         let lists = app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex
-        if let list = largestUsableScroll(app, candidates: lists) { return list }
-        return largestUsableScroll(app, candidates: app.scrollViews.allElementsBoundByIndex) ?? app
+        if let list = largestUsableScroll(candidates: lists, bounds: bounds) { return list }
+        return largestUsableScroll(candidates: app.scrollViews.allElementsBoundByIndex, bounds: bounds) ?? app
     }
-    private func largestUsableScroll(_ app: XCUIApplication, candidates: [XCUIElement]) -> XCUIElement? {
+    private func largestUsableScroll(candidates: [XCUIElement], bounds: ViewportBounds) -> XCUIElement? {
         var selected: XCUIElement?
         var selectedArea: CGFloat = 0
         var visibleFallback: XCUIElement?
         var fallbackArea: CGFloat = 0
         for candidate in candidates where candidate.exists {
-            let rect = visibleScrollFrame(app, scroll: candidate)
+            let rect = visibleScrollFrame(candidate.frame, bounds: bounds)
             let area = rect.width * rect.height
             guard rect.height > 80, rect.width > 80 else { continue }
             if area >= fallbackArea { visibleFallback = candidate; fallbackArea = area }
@@ -670,30 +681,25 @@ final class ParentingWorkspaceUITests: XCTestCase {
         // A keyboard can cover the container's hit point while leaving a usable upper viewport.
         return selected ?? visibleFallback
     }
-    private func visibleScrollFrame(_ app: XCUIApplication, scroll: XCUIElement) -> CGRect {
-        let frame = scroll.frame.intersection(app.frame)
-        let navigationBottom = app.navigationBars.allElementsBoundByIndex.filter { $0.isHittable }
-            .map { $0.frame.maxY }.max() ?? frame.minY
-        let tabTop = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.tab."))
-            .allElementsBoundByIndex.filter { $0.isHittable }.map { $0.frame.minY }.min() ?? frame.maxY
+    private func visibleScrollFrame(_ scrollFrame: CGRect, bounds: ViewportBounds) -> CGRect {
+        let frame = scrollFrame.intersection(bounds.appFrame)
+        let navigationBottom = bounds.navigationFrames.map { $0.maxY }.max() ?? frame.minY
         let top = max(frame.minY, navigationBottom) + 12
-        let bottom = min(frame.maxY, tabTop, inputPanelTop(app)) - 12
+        let bottom = min(frame.maxY, bounds.tabTop ?? frame.maxY, bounds.inputPanelTop) - 12
         return CGRect(x: frame.minX + 12, y: top, width: max(0, frame.width - 24), height: max(0, bottom - top))
     }
-    private func inputPanelTop(_ app: XCUIApplication) -> CGFloat {
+    private func inputPanelTop(_ app: XCUIApplication, appFrame suppliedFrame: CGRect? = nil) -> CGFloat {
+        let appFrame = suppliedFrame ?? app.frame
         let keyboard = app.keyboards.firstMatch
-        var top = keyboard.exists ? keyboard.frame.minY : app.frame.maxY
+        var top = keyboard.exists ? keyboard.frame.minY : appFrame.maxY
         let accessories = app.otherElements.matching(NSPredicate(format: "identifier == %@ OR identifier == %@", "inputView", "SystemInputAssistantView"))
         for accessory in accessories.allElementsBoundByIndex where accessory.exists {
-            let rect = accessory.frame.intersection(app.frame)
+            let rect = accessory.frame.intersection(appFrame)
             if !rect.isEmpty { top = min(top, rect.minY) }
         }
         return top
     }
-    private func drag(_ app: XCUIApplication, towardBottom: Bool, scroll supplied: XCUIElement? = nil) {
-        let scroll = supplied ?? scrollingElement(app)
-        let frame = scroll.frame
-        let viewport = visibleScrollFrame(app, scroll: scroll)
+    private func drag(_ scroll: XCUIElement, frame: CGRect, viewport: CGRect, towardBottom: Bool) {
         guard viewport.height > 80, frame.width > 0, frame.height > 0 else { return }
         // The observed Form cell starts at x20, its TextEditor at x40. Pan inside the cell's padding,
         // outside nested text/calendar scrollers, and away from the bottom safe area and input accessories.
