@@ -20,7 +20,7 @@
 
 ## 历史与归属
 
-冻结 App、部署快照、上游源/版权、受控补丁、原验收报告和截图保持其真实身份。美团 CatPaw 面试作业名称属于第三方背景，保留。历史 `catpaw-*` 规格/样机路径继续作为稳定引用；编辑后的样机文字不追溯修改原截图或原验收结论。
+冻结 App、部署快照、上游源/版权、受控补丁、原验收报告和截图保持其真实身份。历史 `catpaw-*` 规格/样机路径继续作为稳定引用；编辑后的样机文字不追溯修改原截图或原验收结论。内部 `catpaw*` 标识符的保留原因见 [docs/internal-identifiers.md](../internal-identifiers.md)。
 
 `docs/refs/landing-capability-hub.png` 和 `launch-splash-keyframes.png` 是旧 paw 图标方案的历史设计输入，不是当前 UI、当前图标或新版验收证据。当前视觉以 `docs/brand-theme.md` 与猫头资源为准。`slide-04` 的旧规格文件名、`slide-11` 的线上函数名属于真实引用/兼容服务名。
 
