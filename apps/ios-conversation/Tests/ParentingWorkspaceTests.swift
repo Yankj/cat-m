@@ -55,6 +55,30 @@ private struct ParentingEpochChangingCipher: ParentingWorkspaceCipher {
 }
 
 final class ParentingWorkspaceTests: XCTestCase {
+    /// Unlike the synthetic codec matrix below, this exercises the production Keychain/AES path
+    /// and a fresh SwiftData repository. A simulator signing/Keychain failure must remain a failure.
+    func testPersistentCipherAndSwiftDataSaveFirstChildAndColdRead() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("parenting-real-cipher-" + UUID().uuidString)
+        let subject = UUID(), child = UUID()
+        let scope = AuthenticatedLocalPartition(issuer: "https://parenting-cipher.example.invalid", subject: subject, serverScopeID: UUID()).scope
+        let epoch = AccountEpoch(account: subject.uuidString)
+        let url = root.appendingPathComponent("local.store")
+        let repository = try Repository(persistence: SwiftDataPersistence(url: url))
+        let store = ParentingWorkspaceStore(repository: repository, scope: scope, subjectID: subject, epoch: epoch, cipher: ParentingPersistentCipher())
+        let saved: ParentingWorkspace
+        do { saved = try await store.apply(.addChild(id: child, name: "Synthetic persistent cipher child"), expectedRevision: 0) }
+        catch {
+            // Preserve an associated Keychain OSStatus that localizedDescription would hide.
+            XCTFail("Production parenting cipher/SwiftData first save: \(String(reflecting: error))")
+            throw error
+        }
+        XCTAssertEqual(saved.children.map(\.id), [child])
+        let coldRepository = try Repository(persistence: SwiftDataPersistence(url: url))
+        let coldStore = ParentingWorkspaceStore(repository: coldRepository, scope: scope, subjectID: subject, epoch: epoch, cipher: ParentingPersistentCipher())
+        let cold = try await coldStore.load()
+        XCTAssertEqual(cold, saved)
+    }
+
     private let now = Date(timeIntervalSince1970: 1_792_756_800) // 2026-10-23T12:00:00Z
     private let subject = UUID(uuidString: "C1000000-0000-4000-8000-000000000001")!
     private let childID = UUID(uuidString: "C2000000-0000-4000-8000-000000000001")!

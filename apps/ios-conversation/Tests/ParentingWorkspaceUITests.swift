@@ -72,6 +72,10 @@ final class ParentingWorkspaceUITests: XCTestCase {
         let complete = app.buttons["parenting.complete." + arrangementID]
         wait { complete.exists && complete.isEnabled }
         XCTAssertFalse(app.buttons["parenting.confirm." + arrangementID].exists)
+        let confirmedTime = arrangementTime(app, arrangementID: arrangementID)
+        XCTAssertFalse(confirmedTime.isEmpty)
+        XCTAssertTrue(complete.exists, "The original draft must now expose its planned-state completion action.")
+        capture(app, "success-original-arrangement-confirmed-with-visible-time")
         tap(app, app.buttons["parenting.adjust." + arrangementID])
         let adjusted = input(app, "parenting.arrangement.title")
         reveal(app, adjusted)
@@ -85,12 +89,28 @@ final class ParentingWorkspaceUITests: XCTestCase {
         wait { !self.inputExists(app, "parenting.arrangement.title") }
         reveal(app, complete)
         XCTAssertTrue(app.staticTexts[adjustedTitle].exists, app.debugDescription)
+        let adjustedTime = arrangementTime(app, arrangementID: arrangementID)
+        XCTAssertFalse(adjustedTime.isEmpty)
         capture(app, "success-today-confirmed-and-adjusted")
         tap(app, complete)
         enter(app, id: "parenting.record.text", text: note)
         tap(app, app.buttons["parenting.record.save"])
         wait { !self.inputExists(app, "parenting.record.text") }
         XCTAssertFalse(app.buttons["parenting.complete." + arrangementID].exists)
+        let completedCard = showCompletedArrangement(app, arrangementID: arrangementID)
+        XCTAssertTrue(completedCard.staticTexts[adjustedTitle].exists, app.debugDescription)
+        XCTAssertEqual(arrangementTime(app, arrangementID: arrangementID), adjustedTime,
+                       "Marking complete must retain the original arrangement's time.")
+        let completedState = element(app, "parenting.arrangement.completed." + arrangementID)
+        reveal(app, completedState)
+        let completedStateLabel = completedState.label
+        XCTAssertFalse(completedStateLabel.isEmpty)
+        assertArrangementGoal(app, arrangementID: arrangementID, goal: goal)
+        let completionLink = completedCard.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.completionRecord.")).firstMatch
+        reveal(app, completionLink)
+        let linkedRecordID = String(completionLink.identifier.dropFirst("parenting.completionRecord.".count))
+        XCTAssertNotNil(UUID(uuidString: linkedRecordID))
+        capture(app, "success-original-arrangement-completed-time-and-record-link")
 
         tab(app, "records")
         let recordBody = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.record.body.")).firstMatch
@@ -98,6 +118,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
         XCTAssertEqual(recordBody.label, note)
         let recordID = String(recordBody.identifier.dropFirst("parenting.record.body.".count))
         XCTAssertNotNil(UUID(uuidString: recordID))
+        XCTAssertEqual(recordID, linkedRecordID, "The record list must show the exact record linked by the completed arrangement.")
         assertRecordGoal(app, recordID: recordID, goal: goal)
         capture(app, "success-completion-record-and-goal-link")
         tab(app, "growth")
@@ -114,7 +135,19 @@ final class ParentingWorkspaceUITests: XCTestCase {
         app.launch()
         ready(app)
         XCTAssertFalse(app.buttons["parenting.firstChild"].exists)
-        tab(app, "records")
+        let reopenedArrangement = showCompletedArrangement(app, arrangementID: arrangementID)
+        XCTAssertTrue(reopenedArrangement.staticTexts[adjustedTitle].exists, app.debugDescription)
+        XCTAssertEqual(arrangementTime(app, arrangementID: arrangementID), adjustedTime,
+                       "Cold reopening must retain the visible time of the same saved arrangement UUID.")
+        let reopenedState = element(app, "parenting.arrangement.completed." + arrangementID)
+        reveal(app, reopenedState)
+        XCTAssertEqual(reopenedState.label, completedStateLabel)
+        XCTAssertFalse(app.buttons["parenting.confirm." + arrangementID].exists)
+        XCTAssertFalse(app.buttons["parenting.complete." + arrangementID].exists)
+        XCTAssertFalse(app.buttons["parenting.adjust." + arrangementID].exists)
+        assertArrangementGoal(app, arrangementID: arrangementID, goal: goal)
+        let reopenedLink = reopenedArrangement.buttons["parenting.completionRecord." + recordID]
+        tap(app, reopenedLink)
         let reopenedBody = app.staticTexts["parenting.record.body." + recordID]
         reveal(app, reopenedBody)
         XCTAssertEqual(reopenedBody.label, note)
@@ -150,9 +183,30 @@ final class ParentingWorkspaceUITests: XCTestCase {
         XCTAssertTrue(pending.exists, app.debugDescription)
         XCTAssertFalse(app.buttons["parenting.arrangement.aiIntake"].isEnabled)
         capture(app, "failure-reopened-cleanup-pending")
-        tap(app, app.buttons["parenting.inline.retryCleanup"])
-        wait { !pending.exists }
+        let isolatedStore = app.launchEnvironment["CF_UI_TEST_STORE"]
+        XCTAssertNotNil(isolatedStore)
+        app.terminate()
+        // Remove only the next process's injected one-shot refusal; never replace its scope, subject or stored bytes.
+        app.launchEnvironment["CF_UI_TEST_SCENARIO"] = "p0-ui-parenting-success"
+        XCTAssertEqual(app.launchEnvironment["CF_UI_TEST_STORE"], isolatedStore)
+        app.launch()
+        ready(app)
+        XCTAssertFalse(app.buttons["parenting.firstChild"].exists)
+        assertNoArrangement(app)
+        tap(app, app.buttons["parenting.addArrangement"])
+        let coldPending = element(app, "parenting.inline.cleanupPending")
+        reveal(app, coldPending)
+        XCTAssertTrue(coldPending.exists, "The encrypted pending-cleanup reference must survive actual process termination.")
         enter(app, id: "parenting.arrangement.source", text: "Synthetic new request after explicit cleanup.")
+        let blockedAI = app.buttons["parenting.arrangement.aiIntake"]
+        reveal(app, blockedAI)
+        XCTAssertTrue(blockedAI.exists, app.debugDescription)
+        XCTAssertFalse(blockedAI.isEnabled, "Pending cleanup must block a new request even with valid new source text.")
+        capture(app, "failure-cold-relaunch-pending-blocks-new-request")
+        tap(app, app.buttons["parenting.inline.retryCleanup"])
+        wait { !coldPending.exists }
+        reveal(app, blockedAI)
+        wait { blockedAI.isEnabled }
         requestAndAllow(app)
         tap(app, app.buttons["parenting.inline.adopt"])
         XCTAssertEqual(input(app, "parenting.arrangement.title").value as? String, "Synthetic reading together")
@@ -209,7 +263,10 @@ final class ParentingWorkspaceUITests: XCTestCase {
         tap(app, app.buttons["parenting.firstChild"])
         enter(app, id: "parenting.child.name", text: name)
         tap(app, app.buttons["parenting.name.save"])
-        wait { !self.inputExists(app, "parenting.child.name") }
+        wait { !self.inputExists(app, "parenting.child.name") || self.element(app, "parenting.form.error").exists }
+        let issue = element(app, "parenting.form.error")
+        XCTAssertFalse(issue.exists, "Saving the first child failed: \(issue.exists ? issue.label : "no form error")\n" + app.debugDescription)
+        XCTAssertFalse(inputExists(app, "parenting.child.name"), app.debugDescription)
         XCTAssertTrue(app.buttons["parenting.addArrangement"].exists, app.debugDescription)
     }
     private func tab(_ app: XCUIApplication, _ name: String) {
@@ -251,6 +308,26 @@ final class ParentingWorkspaceUITests: XCTestCase {
         XCTAssertTrue(discard.waitForExistence(timeout: 5), app.debugDescription)
         discard.tap()
         wait { !self.inputExists(app, "parenting.arrangement.source") }
+    }
+    private func showCompletedArrangement(_ app: XCUIApplication, arrangementID: String) -> XCUIElement {
+        // Both calls start from a fresh, collapsed history (after completion, then after a cold launch).
+        tap(app, element(app, "parenting.completedHistory"))
+        let card = element(app, "parenting.arrangement." + arrangementID)
+        reveal(app, card)
+        XCTAssertTrue(card.exists, "The original arrangement UUID must remain in completed history.")
+        XCTAssertTrue(element(app, "parenting.arrangement.completed." + arrangementID).exists)
+        return card
+    }
+    private func arrangementTime(_ app: XCUIApplication, arrangementID: String) -> String {
+        let time = app.staticTexts["parenting.arrangement.time." + arrangementID]
+        reveal(app, time)
+        XCTAssertFalse(time.label.isEmpty, app.debugDescription)
+        return time.label
+    }
+    private func assertArrangementGoal(_ app: XCUIApplication, arrangementID: String, goal: String) {
+        let label = element(app, "parenting.arrangement.goal." + arrangementID)
+        reveal(app, label)
+        XCTAssertTrue(label.label.contains(goal), app.debugDescription)
     }
     private func assertRecordGoal(_ app: XCUIApplication, recordID: String, goal: String) {
         let label = element(app, "parenting.record.goal." + recordID)

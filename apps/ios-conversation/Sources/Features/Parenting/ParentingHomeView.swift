@@ -284,6 +284,7 @@ import Combine
                 if items.isEmpty { Text(ui("还没有完成的安排。" )).font(.subheadline).foregroundStyle(catColors.calmSecondary).padding(.top, 12) }
                 ForEach(Array(items)) { item in arrangementCard(item).padding(.top, 10) }
             } label: { Label(ui("已完成的安排"), systemImage: "checkmark.circle").font(.subheadline.weight(.medium)) }
+            .accessibilityIdentifier("parenting.completedHistory")
             DisclosureGroup(isExpanded: $cancelledExpanded) {
                 let items = arrangements.filter { $0.state == .cancelled }.reversed()
                 if items.isEmpty { Text(ui("还没有取消的安排。" )).font(.subheadline).foregroundStyle(catColors.calmSecondary).padding(.top, 12) }
@@ -300,9 +301,11 @@ import Combine
                     Text(verbatim: item.title).font(.headline).fixedSize(horizontal: false, vertical: true)
                     Text(verbatim: childName(item.childID) + " · " + item.dueAt.formatted(date: .abbreviated, time: .shortened))
                         .font(.subheadline).foregroundStyle(catColors.calmSecondary)
+                        .accessibilityIdentifier("parenting.arrangement.time.\(item.id)")
                     if let goal = goalTitle(item.goalID) {
                         Label { Text(verbatim: goal) } icon: { Image(systemName: "leaf") }
                             .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                            .accessibilityIdentifier("parenting.arrangement.goal.\(item.id)")
                     }
                 }
                 Spacer(minLength: 4)
@@ -342,6 +345,7 @@ import Combine
                 }
             } else if item.state == .completed {
                 Label(ui("家长已标记完成"), systemImage: "checkmark.circle").font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                    .accessibilityIdentifier("parenting.arrangement.completed.\(item.id)")
                 if let record = workspace.records.first(where: { $0.arrangementID == item.id }) {
                     Button(ui("查看完成记录")) { tab = .records; selectedChildID = item.childID; recordFilter = .completion }
                         .font(.subheadline).frame(minHeight: 44)
