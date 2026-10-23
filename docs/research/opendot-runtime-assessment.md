@@ -1,4 +1,4 @@
-# OpenDot runtime assessment for cat
+# OpenDot runtime assessment for mimi
 
 2026-10-13 identity clarification: the user has now explicitly named **CopilotKit/OpenDots**. Use the [pinned OpenDots code review](opendots-code-review-2026-10-13.md) and [four-repository decision update](copilotkit-four-repo-decision-update-2026-10-13.md) for current decisions. The original dated assessment below is retained as a historical review of other same-name candidates; its licensing and implementation claims do not describe CopilotKit/OpenDots.
 
@@ -35,7 +35,7 @@ Memory is simple, explicit CRUD: per-dot short text records, plus named skills w
 
 ### Tools, approvals and security
 
-Tool definitions combine schema, execution function, action description, optional precheck, default decision, and pause behavior. The same conceptual interface could fit cat well. Local host commands ask by default; isolated cloud/Docker commands default to allow. Browser clicks use a text-based risk heuristic; typing defaults to allow. These are prototype policies, not sufficient evidence of comprehensive protection. [Tool definitions](https://github.com/composio-community/open-dot/blob/main/src/server/agent/tools.ts)
+Tool definitions combine schema, execution function, action description, optional precheck, default decision, and pause behavior. The same conceptual interface could fit mimi well. Local host commands ask by default; isolated cloud/Docker commands default to allow. Browser clicks use a text-based risk heuristic; typing defaults to allow. These are prototype policies, not sufficient evidence of comprehensive protection. [Tool definitions](https://github.com/composio-community/open-dot/blob/main/src/server/agent/tools.ts)
 
 A separate model matches actions to rules. Code resolves matched rules in the order never, ask, allow. Reviewer failures preserve allow defaults, while other defaults become ask, so it is not globally fail-closed. [Reviewer](https://github.com/composio-community/open-dot/blob/main/src/server/agent/review.ts)
 
@@ -47,7 +47,7 @@ The application runs a local Next.js server inside Electron, with SQLite/files o
 
 **Reuse license is unverified.** The observed root listing contains no LICENSE file; `package.json` is private and has no license field. The README calling it open source is not enough to select a license. Confirm upstream licensing before copying or distributing its code. [Root listing](https://github.com/composio-community/open-dot), [package metadata](https://github.com/composio-community/open-dot/blob/main/package.json)
 
-## What cat should take from this
+## What mimi should take from this
 
 Recommendation (architecture inference): keep SwiftUI, Supabase Auth/Postgres and the existing bounded OpenRouter loop. Study these application patterns rather than replacing the stack wholesale:
 
@@ -57,10 +57,10 @@ Recommendation (architecture inference): keep SwiftUI, Supabase Auth/Postgres an
 4. Browser/computer adapters isolated from orchestration.
 5. Explicit pause, cancel, timeout, and budget states visible to the client.
 
-For genuinely durable work, implement or adopt a separate execution layer: transactionally enqueue jobs with the initiating message; claim work with leases; checkpoint steps; persist wait conditions and approval decisions; maintain an effects ledger with idempotency keys; recover expired leases; reconcile uncertain external writes instead of replaying blindly. Do not keep a single Edge Function request alive as the durability mechanism. These are proposed requirements for cat, not features verified in this OpenDot implementation.
+For genuinely durable work, implement or adopt a separate execution layer: transactionally enqueue jobs with the initiating message; claim work with leases; checkpoint steps; persist wait conditions and approval decisions; maintain an effects ledger with idempotency keys; recover expired leases; reconcile uncertain external writes instead of replaying blindly. Do not keep a single Edge Function request alive as the durability mechanism. These are proposed requirements for mimi, not features verified in this OpenDot implementation.
 
 ## Alternate candidate worth checking: thinkwee/OpenDot
 
 Upstream describes FastAPI + SQLite + LiteLLM, a custom per-agent loop, helper delegation, readable file-based memory and a Gatekeeper. Its design specifically describes atomic message/job insertion, recovery of interrupted jobs younger than six hours, stored approvals and an effects ledger to avoid blind repeated outward actions. It also explicitly warns that a local command guard is a safety net rather than strong isolation; Docker/bubblewrap are preferred. [Official design](https://github.com/thinkwee/OpenDot/blob/master/docs/DESIGN.md)
 
-Those durability patterns align more closely with cat's missing layer. However, in this pass direct fetches of `durable.py` failed, so these are **documented upstream claims, not source-code-verified guarantees**. The repository identity and actual implementation must be confirmed before recommending adoption. [Repository and MIT indication](https://github.com/thinkwee/OpenDot)
+Those durability patterns align more closely with mimi's missing layer. However, in this pass direct fetches of `durable.py` failed, so these are **documented upstream claims, not source-code-verified guarantees**. The repository identity and actual implementation must be confirmed before recommending adoption. [Repository and MIT indication](https://github.com/thinkwee/OpenDot)

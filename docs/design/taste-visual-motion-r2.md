@@ -1,4 +1,4 @@
-# cat 视觉、交互与动效 R2
+# 小咪视觉、交互与动效 R2
 
 2026-10-13；UX-1 的视觉实施附录，设计身份 `UX-1-R2`。产品行为仍由 FINAL-1、UX-1 和 CGUI-1 管理；不建立新 Goal 或第二份状态。当前交付状态只见 [master-plan](../status/master-plan.md)。[可点按提案](prototypes/catpaw-taste/index.html)、[机器参数](taste-visual-motion-r2.json)、[原12项验收](../acceptance/ios-codex-experience-acceptance.md)。此前 R1 提案与日期证据保留。
 
@@ -51,7 +51,7 @@
 | 侧栏 | min(320pt,86%屏宽)；搜索/新对话、条件优先行、最近对话、活动、可展开管理、底部设置；不用全卡片导航 |
 | 跟进/记忆 | 原生行与详情；先约定/原因，再控制；编辑不因静默切换丢值；删除/结束保留适用的历史与来源 |
 
-Spacing使用4/8/12/16/20/24/28；卡20、控件14、composer24，按钮圆形只用于独立图标动作。主阅读背景稳定不透明，玻璃仅系统导航/控件，低版本继续现有材质。Apple 把 Liquid Glass 组织为导航和控件层，强调内容与可读性；具体参数是 cat 决定。[Apple Meet Liquid Glass](https://developer.apple.com/videos/play/wwdc2025/219/)
+Spacing使用4/8/12/16/20/24/28；卡20、控件14、composer24，按钮圆形只用于独立图标动作。主阅读背景稳定不透明，玻璃仅系统导航/控件，低版本继续现有材质。Apple 把 Liquid Glass 组织为导航和控件层，强调内容与可读性；具体参数是小咪决定。[Apple Meet Liquid Glass](https://developer.apple.com/videos/play/wwdc2025/219/)
 
 ## 动效与触觉合同
 

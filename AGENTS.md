@@ -1,4 +1,4 @@
-# cat workspace instructions
+# mimi workspace instructions
 
 - Brand name is lowercase `cat`. See [brand compatibility](docs/development/cat-brand-migration.md) before changing installation IDs, storage or wire names. Historical evidence and upstream copyright retain their original identity.
 
