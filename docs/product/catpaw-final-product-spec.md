@@ -22,7 +22,7 @@ AF-G5 是 FINAL-G1 的基础放行门，基础完成不自动关闭 FINAL-G2/G3�
 
 ## 2. 如何综合两套设计
 
-Grok 固定分支为 [`38c44457…`](https://github.com/Yankj/catpaw-m/tree/38c44457cb3f360beed9ee0dab5ab87b001db0c9)，17文件身份见[manifest](../research/grok-companion-source-manifest-2026-10-13.json)，采纳决策见[核读报告](../research/grok-companion-integration-review-2026-10-13.md)。
+Grok 固定分支为 [`38c44457…`](https://github.com/Yankj/cat-m/tree/38c44457cb3f360beed9ee0dab5ab87b001db0c9)，17文件身份见[manifest](../research/grok-companion-source-manifest-2026-10-13.json)，采纳决策见[核读报告](../research/grok-companion-integration-review-2026-10-13.md)。
 
 | 输入 | 终版采用 | 终版修正 |
 |---|---|---|
@@ -31,7 +31,7 @@ Grok 固定分支为 [`38c44457…`](https://github.com/Yankj/catpaw-m/tree/38c4
 | 本地：对话、持久工作、审批、成果、记忆、跟进 | 一个工作身份贯通所有入口；版本与故障恢复作为产品行为 | 将抽象六卡合同细化到流中可操作、暂停点、参数更改、过期、未知和结果交付 |
 | 四仓：执行、版本编辑、审批恢复、受控渲染 | 逐模块移植 schema、状态算法和故障用例 | 不整仓混合；Swift保持主交互，Supabase为领域权威，runtime/SDK 采纳先证明收益 |
 
-分支 [AssistantView](https://github.com/Yankj/catpaw-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Features/Assistant/AssistantView.swift) 返回固定文本，[AppStore](https://github.com/Yankj/catpaw-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Core/Stores/AppStore.swift) 只修改内存；它是设计骨架，不是更完整的执行底座。文档中的竞品强弱排名、4–6周估算和未验证云能力不进入终版承诺。
+分支 [AssistantView](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Features/Assistant/AssistantView.swift) 返回固定文本，[AppStore](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Core/Stores/AppStore.swift) 只修改内存；它是设计骨架，不是更完整的执行底座。文档中的竞品强弱排名、4–6周估算和未验证云能力不进入终版承诺。
 
 ## 3. 竞争方向：形成完整手机工作循环
 

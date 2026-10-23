@@ -19,7 +19,7 @@
 ![Deno](https://img.shields.io/badge/Deno-tests-000000?logo=deno&logoColor=white)
 ![Backend](https://img.shields.io/badge/catpaw--api-v55%20(prod)-3ECF8E)
 ![App](https://img.shields.io/badge/App-v1.2.0%20on%20main-brightgreen)
-[![下载](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Releases-2EA44F?logo=github&logoColor=white)](https://github.com/Yankj/catpaw-m/releases/latest)
+[![下载](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Releases-2EA44F?logo=github&logoColor=white)](https://github.com/Yankj/cat-m/releases/latest)
 ![License](https://img.shields.io/badge/license-TBD-lightgrey)
 
 <img src="docs/assets/slides/slide-01.png" alt="cat 介绍图" width="720">
@@ -31,7 +31,7 @@
 </div>
 
 > [!NOTE]
-> **版本状态（2026-10-18）**：iOS **v1.2.0**（2026-10-18）已发布，见 [Releases](https://github.com/Yankj/catpaw-m/releases/latest)，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。线上后端为 `catpaw-api` **v55**（#104）、`catpaw-proactive` **v10**（#101）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
+> **版本状态（2026-10-18）**：iOS **v1.2.0**（2026-10-18）已发布，见 [Releases](https://github.com/Yankj/cat-m/releases/latest)，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。线上后端为 `catpaw-api` **v55**（#104）、`catpaw-proactive` **v10**（#101）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
 
 <details>
 <summary><b>目录</b></summary>
@@ -56,11 +56,13 @@
 </details>
 
 <!-- CATPAW-WEBSITE:START -->
+> Internal `catpaw*` identifiers are kept on purpose. See [docs/internal-identifiers.md](docs/internal-identifiers.md). License: All Rights Reserved, see [LICENSE](LICENSE).
+
 ## 产品官网
 
 **先你一步，把事办妥。** 一个住在 iPhone 里的贴心助理。记住你的偏好，在合适的时候提醒你，确认后把事情办好。
 
-[浏览官网](https://catpaw-product.kunjie-yan.chatgpt.site/) · [观看产品视频](https://catpaw-product.kunjie-yan.chatgpt.site/#film) · [25 页产品介绍](https://catpaw-product.kunjie-yan.chatgpt.site/assets/catpaw-product-deck.pdf) · [安全与隐私](https://catpaw-product.kunjie-yan.chatgpt.site/trust.html) · [技术设计](https://catpaw-product.kunjie-yan.chatgpt.site/technology.html)
+官网源码见 [apps/website](apps/website)；公网站点待部署（计划挂到公司域名）。本地可 `cd apps/website && npm run build` 预览。
 
 - **主动**：到点之前，先来找你。
 - **有记忆**：记住偏好，也真正用上。
@@ -79,7 +81,7 @@
 - **人在回路**：任何会改变外部世界的动作都先以审批卡片呈现，确认后才执行；结果未知时按原决定核对，不重复执行。
 - **账号隔离、可恢复**：会话、任务、成果与账号绑定；切换账号时自动停放并在重新登录时恢复，网络中断后按原 turn 续上。
 
-本仓库同时是美团 CatPaw 面试大作业的交付仓：架构文档、可运行 App、后端源码、README 与演示材料。
+本仓库包含产品架构文档、可运行的 iOS App、后端源码与演示材料。
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
 
@@ -131,7 +133,7 @@
 **步骤**
 
 ```sh
-git clone https://github.com/Yankj/catpaw-m.git cat
+git clone https://github.com/Yankj/cat-m.git cat
 cd cat
 open apps/ios-conversation/cat.xcodeproj
 ```
@@ -146,10 +148,10 @@ open apps/ios-conversation/cat.xcodeproj
 
 ## 下载与安装
 
-> **操作指南（How-to）**：安装已打包的构建。所有构建都在 [Releases](https://github.com/Yankj/catpaw-m/releases/latest) 页面；仓库目前是私有的，需要有仓库访问权限才能下载。
+> **操作指南（How-to）**：安装已打包的构建。所有构建都在 [Releases](https://github.com/Yankj/cat-m/releases/latest) 页面；仓库目前是私有的，需要有仓库访问权限才能下载。
 
 > [!TIP]
-> 最新版本：[cat 1.2.0](https://github.com/Yankj/catpaw-m/releases/tag/v1.2.0)（2026-10-18），文件为 `Catpaw-1.2.0-simulator.zip` 和 `Catpaw-1.2.0.ipa`（历史发行物，保留原名）。
+> 最新版本：[cat 1.2.0](https://github.com/Yankj/cat-m/releases/tag/v1.2.0)（2026-10-18），文件为 `Catpaw-1.2.0-simulator.zip` 和 `Catpaw-1.2.0.ipa`（历史发行物，保留原名）。
 
 | 方式 | 文件 | 适合 | 限制 |
 |---|---|---|---|

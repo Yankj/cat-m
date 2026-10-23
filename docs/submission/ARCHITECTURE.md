@@ -1,7 +1,7 @@
 # cat 主动式个人助理：架构（NoBug B 核对）
 
 > 作业：cat 主动式个人助理（iOS Swift Demo）
-> 仓库：`github.com/Yankj/catpaw-m`，分支 `feat/ios-mvp-integration-v2`
+> 仓库：`github.com/Yankj/cat-m`，分支 `feat/ios-mvp-integration-v2`
 > **本文核对到冻结 tip `f8e86d8`**（2026-10-16 18:30 北京时间）
 > iOS：`apps/ios-conversation/cat.xcodeproj` · 服务端：`services/edge`
 > 演示场景：**会议出发助理（leave_at）** — 不含电话/购物链

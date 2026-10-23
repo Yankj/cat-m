@@ -2,7 +2,7 @@
 
 ## What exists (read-only check, 2026-10-15 23:5x CST)
 
-- `list_branches` (project `dbyklgxdvjbutxzsjeth`, catpaw-m, us-east-1): **no branches**.
+- `list_branches` (project `<your-project-ref>`, catpaw-m, us-east-1): **no branches**.
 - Organization plan: **free**. Supabase branching requires a paid (Pro) plan, so a branch is not possible today
   without upgrading the organization.
 - `get_cost(branch)`: **$0.01344 per hour** (≈ $9.8 per month if left running), on top of the Pro plan.

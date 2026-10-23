@@ -1,10 +1,10 @@
-# OpenMuse 源码核验：Catpaw-m 可复用的运行时与边界
+# OpenMuse 源码核验：cat 可复用的运行时与边界
 
 核验日期：2026-10-12。实际读取公开仓库源码，固定版本：[1ac68f3909f2478ab6280883f1ab5ea65eb5719d](https://github.com/CopilotKit/openmuse/tree/1ac68f3909f2478ab6280883f1ab5ea65eb5719d)。本文是静态源码核验，未在本次研究中运行其测试或接入真实模型、Google、Intelligence 账户。
 
 ## 结论
 
-可以且值得复用 OpenMuse；它提供了真实的后台任务实现，而不只是聊天 UI。但对于 SwiftUI + Supabase + OpenRouter 的 Catpaw-m，最合适的是复用后台任务状态机、工具执行与审批模式，以及客户端协议设计；不是把 `apps/mobile` 整体嵌入 SwiftUI，也不是误以为 CopilotKit 一项依赖已经包含完整持久运行系统。
+可以且值得复用 OpenMuse；它提供了真实的后台任务实现，而不只是聊天 UI。但对于 SwiftUI + Supabase + OpenRouter 的 cat，最合适的是复用后台任务状态机、工具执行与审批模式，以及客户端协议设计；不是把 `apps/mobile` 整体嵌入 SwiftUI，也不是误以为 CopilotKit 一项依赖已经包含完整持久运行系统。
 
 OpenMuse 实际分成三个层次：CopilotKit/AG-UI 聊天运行时；OpenMuse 自己实现的 SQL 持久任务 worker；独立配置的 CopilotKit Intelligence 对话存储服务。后两者不是同一套持久化。
 
@@ -44,7 +44,7 @@ OpenMuse 实际分成三个层次：CopilotKit/AG-UI 聊天运行时；OpenMuse 
 
 部分操作按工具名 + 参数的 SHA-256 缓存结果，模型工具通过串行队列保护 checkpoint 顺序。任务还保存 plan、browserId、actionId、approvalResult 等。开放式任务单次最多 16 步，5 分钟 timeout。没有显式完成或等待结果时，进入 waiting_input，请用户继续；它不是无上限自行运行的 agent。
 
-缓存也不是所有工具和所有副作用的 exactly-once 保证；例如 computer tools 走自己的命令与 receipt 路径。Catpaw-m 应保留“结果未知”的状态，而不是把过期 lease 等同于可安全重复外部操作。
+缓存也不是所有工具和所有副作用的 exactly-once 保证；例如 computer tools 走自己的命令与 receipt 路径。cat 应保留“结果未知”的状态，而不是把过期 lease 等同于可安全重复外部操作。
 
 邮件/日历工具只 prepare，单独审批后执行。服务器重启时，原处于 executing 的 action 被改为 outcome_unknown，要求核实第三方结果，不会静默重发。
 
@@ -56,7 +56,7 @@ OpenMuse 实际分成三个层次：CopilotKit/AG-UI 聊天运行时；OpenMuse 
 - **任务与业务数据**：PGlite 或普通 PostgreSQL 的 records 表，用 owner/kind/id 和 JSONB data 保存任务、run、事件、操作、产物、通知等。
 - **对话线程**：CopilotKit Intelligence 单独持久化和 replay。当前启动配置要求 `CPK_INTELLIGENCE_API_KEY`，不是仅可选的云增强。其服务没有包含在 OpenMuse 仓库 MIT 授权中。
 
-SwiftUI 可以自行读取任务/审批 API，自己实现消息和工具卡片；若保留 CopilotKit threads，就需要适配相应客户端协议和服务。如果 Catpaw-m 要把所有对话放进 Supabase，则需要替换当前 Intelligence 集成，而不只是修改数据库连接串。
+SwiftUI 可以自行读取任务/审批 API，自己实现消息和工具卡片；若保留 CopilotKit threads，就需要适配相应客户端协议和服务。如果 cat 要把所有对话放进 Supabase，则需要替换当前 Intelligence 集成，而不只是修改数据库连接串。
 
 源码：[memory API](https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/engine/routes.ts)、[model context](https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/engine/model.ts)、[Rich Threads 文档](https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/docs/RICH-THREADS.md)、[config.ts](https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/config.ts)。
 
@@ -68,11 +68,11 @@ SwiftUI 可以自行读取任务/审批 API，自己实现消息和工具卡片�
 
 源码：[agent-workspace.tsx](https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/mobile/src/agent-workspace.tsx)、[background-updates.tsx](https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/mobile/src/background-updates.tsx)、[Rich Threads 队列说明](https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/docs/RICH-THREADS.md)。
 
-## 6. 对 Catpaw-m 的复用建议（工程判断）
+## 6. 对 cat 的复用建议（工程判断）
 
 1. 保留 SwiftUI 客户端；参考 `packages/domain` 的任务、审批、通知、产物模型，重写对应 Swift Codable 和 UI，而不引入 RN 全套 UI。
 2. 优先抽取/改造 `engine/worker.ts`、任务状态机、checkpoint、lease fencing、action review 与 outcome_unknown 处理。配合现有自建 JS worker，而非再次从零设计。
-3. PostgreSQL 层可对接 Supabase Postgres，但 auth.ts 当前是共享 access key + 固定 local-user 的单用户身份，不能直接当作多租户系统；替换成经验证的 Supabase 用户身份并落实租户隔离。records JSONB 存储可作为原型，也可以映射到 Catpaw 的规范表。
+3. PostgreSQL 层可对接 Supabase Postgres，但 auth.ts 当前是共享 access key + 固定 local-user 的单用户身份，不能直接当作多租户系统；替换成经验证的 Supabase 用户身份并落实租户隔离。records JSONB 存储可作为原型，也可以映射到 cat 的规范表。
 4. OpenRouter 不是这里命名的一等 provider；代码支持 OpenAI-compatible base URL 和 Chat Completions 开关。可基于该适配点接入，但应对具体模型的工具调用、streaming、错误和取消做测试，不宣称已验证直连成功。
 5. 长任务使用长期运行的 Node worker；OpenMuse 自身是 Node/Hono、定时 poll/heartbeat、文件系统及独立 browser worker 架构。把整套原样塞入 Supabase Edge Functions 不是无改造迁移。Edge Functions 可以保留为鉴权/API/短操作入口，这是架构建议，而非本次核验过的部署结果。
 6. 明确选择对话持久化：接入 Intelligence，或保留 Supabase 消息/event store 并实现 replay/reconnect。不要同时以两套数据都作为无约束的权威来源。

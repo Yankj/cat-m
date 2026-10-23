@@ -14,13 +14,13 @@
 | ActivityKit | `CatpawWorkAttributes`、`CatpawLeaveAttributes` | APNs 与系统运行时按属性类型识别 Live Activity，保留真实结构名；周围的宿主、文件、组件代码已用 cat |
 | 外部配置 | `CATPAW_*`、`CatpawBackendOrigin` 等 Info.plist 键、外部项目 ID | 保留既有本地与部署配置接线；没有复制配置、变更凭据或线上权限 |
 | 构建诊断与测试开关 | `CatpawBuildDate`、`CatpawGitSHA`、`-CatpawDemoBackend` 等 | 兼容已有构建诊断/本地验收工具；它们不是品牌显示名 |
-| 仓库与旧发行物 | `Yankj/catpaw-m` URL、历史 `Catpaw-1.2.0.*` 下载名 | 本次不改 GitHub 仓库名，也不伪造已存在的发行物名字 |
+| 仓库与旧发行物 | `Yankj/cat-m` URL、历史 `Catpaw-1.2.0.*` 下载名 | 本次不改 GitHub 仓库名，也不伪造已存在的发行物名字 |
 
 `python3 scripts/check-brand-migration.py` 对比迁移前源码，检查显示名、Bundle ID、entitlement、关键字符串、数据库与部署快照。当前检验 472 项兼容约束；这是源码检查，不代替真实旧安装升级验收。
 
 ## 历史与归属
 
-冻结 App、部署快照、上游源/版权、受控补丁、原验收报告和截图保持其真实身份。美团 CatPaw 面试作业名称属于第三方背景，保留。历史 `catpaw-*` 规格/样机路径继续作为稳定引用；编辑后的样机文字不追溯修改原截图或原验收结论。
+冻结 App、部署快照、上游源/版权、受控补丁、原验收报告和截图保持其真实身份。历史 `catpaw-*` 规格/样机路径继续作为稳定引用；编辑后的样机文字不追溯修改原截图或原验收结论。内部 `catpaw*` 标识符的保留原因见 [docs/internal-identifiers.md](../internal-identifiers.md)。
 
 `docs/refs/landing-capability-hub.png` 和 `launch-splash-keyframes.png` 是旧 paw 图标方案的历史设计输入，不是当前 UI、当前图标或新版验收证据。当前视觉以 `docs/brand-theme.md` 与猫头资源为准。`slide-04` 的旧规格文件名、`slide-11` 的线上函数名属于真实引用/兼容服务名。
 

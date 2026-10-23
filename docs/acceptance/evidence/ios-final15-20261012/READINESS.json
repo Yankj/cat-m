@@ -1,6 +1,6 @@
 {
   "observed_at_utc": "2026-10-12T15:37:14.415897+00:00",
-  "url": "https://dbyklgxdvjbutxzsjeth.supabase.co/functions/v1/catpaw-api/readyz",
+  "url": "https://<your-project-ref>.supabase.co/functions/v1/catpaw-api/readyz",
   "status": 200,
   "ready": true,
   "root_vision_contract_present": false,

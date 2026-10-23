@@ -20,7 +20,7 @@
 flowchart LR
   UI[SwiftUI v1] --> Repo[Repository / SwiftData / BlobStore]
   UI --> Provider[Fixture / local Gateway provider]
-  Demo[OpenMuse native demo r3] -->|HTTP JSON| Facade[Catpaw façade r2]
+  Demo[OpenMuse native demo r3] -->|HTTP JSON| Facade[cat façade r2]
   Facade --> Fence[scope / grant / revision / epoch fences]
   Fence --> Worker[patched pinned TaskWorker]
   Fence --> Action[patched pinned ActionService]
@@ -30,7 +30,7 @@ flowchart LR
 
 v1 UI 写同一 Repository；成功事件只能在持久化事务成功后发出，失败保留草稿和旧 scope。provider 请求冻结模型/项目/安全/技能 revision，重试使用原 operation 身份与请求，旧 attempt 的迟到结果拒绝发布。内容文件按 hash 校验，成果版本不可覆盖。SwiftData driver 的当前实现以交付源码和已跑原生测试为准；Foundation 检查不代表 SwiftData 宏或执行器验证。
 
-历史façade Task/ActionProposal 是r2执行/审批权威；Catpaw 表保存冻结工作约定、稳定业务 Run、operation 关联、不可变成果版本与核验投影。业务 Run、Task、Worker lease attempt 与 AG-UI run 分别有身份。断连停止观察，不据此取消服务任务；404/回执丢失不自动重发。目标PG领域事务将成为持久单权威，OpenMuse为执行adapter；当前内存/FileStore不能称已具备该目标。
+历史façade Task/ActionProposal 是r2执行/审批权威；cat 表保存冻结工作约定、稳定业务 Run、operation 关联、不可变成果版本与核验投影。业务 Run、Task、Worker lease attempt 与 AG-UI run 分别有身份。断连停止观察，不据此取消服务任务；404/回执丢失不自动重发。目标PG领域事务将成为持久单权威，OpenMuse为执行adapter；当前内存/FileStore不能称已具备该目标。
 
 | 决策 | 原因与影响 | 当前限制 |
 |---|---|---|

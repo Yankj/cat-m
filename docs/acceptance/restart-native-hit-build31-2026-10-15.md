@@ -1,6 +1,6 @@
 # 原生许可与抽屉 build31 · 2026-10-15
 
-候选 `AF-UX-HIT-DRAWER-20261015-31`，**0.3.0(31)**。本记录为日期快照；当前进度只见 [master-plan](../status/master-plan.md)。**build31 未交付用户，固定“Catpaw 最新体验”仍为 build29；抽屉专项失败，UX 门未关闭。** 后续 build32 修复不能改写或继承本轮结果。
+候选 `AF-UX-HIT-DRAWER-20261015-31`，**0.3.0(31)**。本记录为日期快照；当前进度只见 [master-plan](../status/master-plan.md)。**build31 未交付用户，固定“cat 最新体验”仍为 build29；抽屉专项失败，UX 门未关闭。** 后续 build32 修复不能改写或继承本轮结果。
 
 冻结本地源码 `205c7377bd087799d40d2902d23c5887d3af3061`；选择性发布远端 `cecf20b9ecf473c57db23d23f48a45a1f0c78301`，tree `0f8121aa48f2c49b2c7620227836be538d650c05`。415 项输入见 ignored `build/native-hit-drawer31-20261015/source-snapshot-r2.json`，SHA-256 `d85750169f596a3cc5b354b5d7977dd88ed3a53669356e6b5fe67aee167074d6`；原 `source-snapshot.json` 保留。r2 仅新增第三条只读选择 UI 用例，产品源码未变，不把后续工作区当作冻结 build31。
 

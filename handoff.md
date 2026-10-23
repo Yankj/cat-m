@@ -1,4 +1,4 @@
-# Catpaw-m 接手交接
+# cat 接手交接
 
 交接快照：2026-10-15 18:44（Asia/Shanghai）。用户中断开发后要求整理交接；本次只核对、保存文档和同步代码，不继续模型检查、部署、安装或系统动作。实时进度唯一维护在 [master-plan](docs/status/master-plan.md)；本文与[机器快照](docs/status/handoff-snapshot-2026-10-15.json)是日期快照。
 
@@ -7,7 +7,7 @@
 - **FINAL-G3 Goal 已读回 PAUSED。** 不重建、不替换、不自动恢复；用户恢复原 Goal 后再开发。AF-G5、FINAL-G1/G2/G3 均未完成。
 - **线上为 catpaw-api 22 / tick 8。** r8 精确55文件包已获用户直接批准、部署并逐文件SHA256读回一致；默认模型/图片与tick保持原字节。不是39维护后台整包上线。
 - **r8模型发送次数为0。** 已正常刷新同一匿名身份一次，并创建固定空检查会话；许可未提交、turn未发送。中断前的prepare进程已返回成功，禁止再创建会话或身份。
-- **体验设备仍是同一台“Catpaw 最新体验”，0.3.0(38)。** 39已构建冻结但未安装。38是明确离线体验；原6小时审查期限已到，不自动续期。手机最后已知仍16，本次未连接或安装。
+- **体验设备仍是同一台“cat 最新体验”，0.3.0(38)。** 39已构建冻结但未安装。38是明确离线体验；原6小时审查期限已到，不自动续期。手机最后已知仍16，本次未连接或安装。
 - **S06设备日程新接线只完成方案，零文件落盘。** 三位Agent已停止，无遗留测试/实现进程。不要把拟定的registry、v2 producer或同步OS gate算成已有功能。
 - 主目录与managed源码还未整合为同一发布候选；用户看到的Simulator、GitHub短分支、云端函数和手机包各自有独立身份，不能混称“最新版已验收”。
 
@@ -39,7 +39,7 @@ r8 backend本地7534a9d→远端aafd6db，client本地371be02→远端bb02476；
 
 38共用许可presenter按真实dismiss衔接、绑定原review token；主决定区与图片确认独立，允许全文多行可达。侧栏是**底层揭示＋全宽对话整体平移**；每轮过程收敛成稳定可展开事实摘要；普通无环境冷启动可恢复明确离线审查配置，期限不续。R11同包57单元、6实际UI及最大系统字号重复许可通过；原29按钮症状仍NOT_REPRODUCED，旧失败保留，不宣称已证明唯一根因。图标精致度、连续动作和真实流观感仍需用户复验，不能凭静态截图关闭全部UX门。
 
-- 用户设备：BE5C60E0-B415-4BF4-8F36-8975FB5314AA；固定名称“Catpaw 最新体验”，bundle com.example.CatpawM.ConversationFirst.Auth；交接只读包Info.plist再核为0.3.0(38)。
+- 用户设备：BE5C60E0-B415-4BF4-8F36-8975FB5314AA；固定名称“cat 最新体验”，bundle com.example.CatpawM.ConversationFirst.Auth；交接只读包Info.plist再核为0.3.0(38)。
 - 38包指纹：872197b49d39f94299b6f1b73d4e3e13bd05308e216bb306fcacb752f410f855；见 [38验收](docs/acceptance/restart-native-consent-build38-2026-10-15.md)。
 - 39包：managed内 build/trigger-device-20261015/r3/CatpawM.app；指纹 a0fe18f8590ef327ab56f2eb1aafc0f3c7938f6db2175638d16a96c3b6f088ed；**未安装**。见 [39验收](docs/acceptance/restart-trigger-device-image-build39-2026-10-15.md)。
 - QA复用9A4BC49A-CCE4-45D6-A1DC-6F072236DAB6（iPhone18Pro），当前仍Booted，不新增模拟器或与体验设备并发抢状态。
@@ -111,4 +111,4 @@ Projects/catpaw-m经只读核对是独立旧仓（integration/local-fixed-direct
 
 ## 交接发布读回（19:03补充）
 
-[PR #19](https://github.com/Yankj/catpaw-m/pull/19)已创建并附到当前任务；公开候选6aef9fe85823a9674b7af16ee501e0a319863cc7，tree 12a64186300e79751de642d6069129f1714aea49。远端main仍515f98f1b91a7485e246b4928e9065b60ef4e2c3；尚未合并，本地main也未同步。自动审批拒绝立即合并，理由是当前可信用户指令仅明确整理handoff，未明确覆盖63文件主干更新；已向用户请求直接确认，不通过其他工具或线程绕过。后续仅在确认后合并并核对完整SHA；当前候选与主干不可混称。此补充仅更新交接事实，不改变冻结产品源码、包或授权。
+[PR #19](https://github.com/Yankj/cat-m/pull/19)已创建并附到当前任务；公开候选6aef9fe85823a9674b7af16ee501e0a319863cc7，tree 12a64186300e79751de642d6069129f1714aea49。远端main仍515f98f1b91a7485e246b4928e9065b60ef4e2c3；尚未合并，本地main也未同步。自动审批拒绝立即合并，理由是当前可信用户指令仅明确整理handoff，未明确覆盖63文件主干更新；已向用户请求直接确认，不通过其他工具或线程绕过。后续仅在确认后合并并核对完整SHA；当前候选与主干不可混称。此补充仅更新交接事实，不改变冻结产品源码、包或授权。
