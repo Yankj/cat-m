@@ -1,4 +1,4 @@
-# cat 通用主动 Agent 底座 spec
+# 小咪通用主动 Agent 底座 spec
 
 版本：AF-1，2026-10-13。当前交付进展仅在[主计划](../status/master-plan.md)，判定规则仅在[验收标准](../acceptance/agent-foundation-acceptance.md)。本 spec 替代旧单场景 Demo 的产品范围；v1 文字与 v2 图片 HTTP 合同、历史验收和上游来源保持其原有身份。
 

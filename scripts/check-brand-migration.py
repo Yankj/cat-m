@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Check cat display identity and unchanged install/data/wire identity against the pre-brand source."""
+"""Check mimi / 小咪 display identity and unchanged install/data/wire identity against the pre-brand source."""
 from pathlib import Path
 import json, plistlib, re, subprocess
 ROOT=Path(__file__).resolve().parents[1]
-BASE='cb3bc90a6f35d93e9ad57a6c01c7dc83291d06ee'
+BASE='66478f165b6563b679a0b27b9e0a9a4d14baef80'
 def old(path):return subprocess.check_output(['git','show',f'{BASE}:{path}'],cwd=ROOT)
 def renamed(path):return path.replace('CatpawM.xcodeproj','cat.xcodeproj').replace('CatpawM.entitlements','cat.entitlements').replace('Catpaw','cat').replace('CatPaw','cat')
 paths=subprocess.check_output(['git','ls-tree','-r','--name-only',BASE],cwd=ROOT,text=True).splitlines()
 checks=0
 for name in ['Resources/Info.plist','Configuration/DeviceTrial.Info.plist','Widgets/CatpawWidgets/Info.plist']:
  p='apps/ios-conversation/'+name;a=plistlib.loads(old(p));b=plistlib.loads((ROOT/renamed(p)).read_bytes())
- assert b['CFBundleDisplayName' if 'CFBundleDisplayName' in b else 'CFBundleName']=='cat',p
+ assert b.get('CFBundleDisplayName')=='小咪' and b.get('CFBundleName')=='mimi',p
  for k,v in a.items():
   if k not in {'CFBundleDisplayName','CFBundleName'} and not k.startswith('NS'):
    assert b[k]==v,(p,k);checks+=1
@@ -36,8 +36,10 @@ for base in ['apps/ios-conversation','packages']:
   if any(x.startswith('.build') or x=='build' for x in p.parts):continue
   assert not re.search('catpaw',p.name,re.I),p
 ui=(ROOT/'apps/ios-conversation/Resources/UIStrings.json').read_text()
-assert not re.search('catpaw|cat-m|猫爪',ui,re.I)
+assert not re.search(r'catpaw|cat-m|猫爪|\bcat\b(?![.\-_])',ui,re.I),'old brand in UIStrings'
+for lang,name in [('en','mimi'),('zh-Hans','小咪')]:
+ assert f'"CFBundleDisplayName" = "{name}";' in (ROOT/f'apps/ios-conversation/Resources/{lang}.lproj/InfoPlist.strings').read_text(),lang
 assert 'name: "catNavigation"' in (ROOT/'packages/ios-navigation/Package.swift').read_text()
 assert 'name: "catImageComposer"' in (ROOT/'packages/ios-image-composer/Package.swift').read_text()
-print(f'PASS cat brand identity and {checks} install/data/wire/frozen-backend compatibility checks')
+print(f'PASS mimi brand identity and {checks} install/data/wire/frozen-backend compatibility checks')
 print('LIMIT source invariants only; no installed-data upgrade, OAuth, live APNs, production model or database execution')

@@ -1,8 +1,8 @@
-# cat 产品官网设计与来源
+# 小咪产品官网设计与来源
 
 2026-10-19 的网站实现记录，不替代产品实时状态或真机验收。
 
-官网位于 `apps/website/`，是独立构建的静态营销网站。采用用户指定的目录职责，与原生 App、Edge 后端分开部署。设计判断：面向个人用户的简约产品介绍；现有暖白、炭黑、橙色品牌；系统字体；少量解释性动效；明暗主题；减少动态偏好。设计参数为 6 / 4 / 3（布局变化 / 动效 / 信息密度）。
+官网源码已迁至 **`Yankj/heydusk-site/apps/mimi/`**，部署域名为 **mimi.heydusk.com**（与公司站 heydusk.com 同仓分目录；公司站仅外链至此，不内嵌产品页）。本仓库 `Yankj/heydusk-site/apps/mimi/` 仅保留迁出说明。采用用户指定的目录职责，与原生 App、Edge 后端分开部署。设计判断：面向个人用户的简约产品介绍；现有暖白、炭黑、橙色品牌；系统字体；少量解释性动效；明暗主题；减少动态偏好。设计参数为 6 / 4 / 3（布局变化 / 动效 / 信息密度）。
 
 ## 信息覆盖
 
@@ -46,4 +46,4 @@
 - [Manus](https://manus.im/)：功能、资料、下载与信任入口分层。
 - [ChatGPT Pulse](https://openai.com/index/introducing-chatgpt-pulse/)、[Gemini Live](https://gemini.google/overview/gemini-live/)、[Apple Intelligence](https://www.apple.com/apple-intelligence/)、[Now Brief](https://www.samsung.com/sg/support/mobile-devices/how-to-set-up-and-use-now-brief-on-your-samsung-galaxy-device/)：官网结构与定位参考，不据此作功能优劣排名。
 
-研究只提取结构，不复用第三方品牌图像、用户评价、客户标识、定价或未经依据的数字。素材来源及固定媒体哈希见 `apps/website/ASSETS.md`。
+研究只提取结构，不复用第三方品牌图像、用户评价、客户标识、定价或未经依据的数字。素材来源及固定媒体哈希见 `Yankj/heydusk-site/apps/mimi/ASSETS.md`。

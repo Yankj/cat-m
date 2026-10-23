@@ -75,7 +75,7 @@ extension WorkspaceService {
         let runID = UUID(), taskID = UUID(), docID = UUID(), artifactID = UUID(), conversationID = UUID()
         let env = environmentID(Profiles.inEnvironment(.cloud, profile: scope) == scope ? .cloud : Profiles.inEnvironment(.computer, profile: scope) == scope ? .computer : .local, scope)
         let c = Conversation(title: d.title, projectID: nil, expertID: nil, skillIDs: [], environmentID: env, archivedAt: nil, draftText: "")
-        let body = "# \(d.title)\n\n【模拟准备 · cat Fixture v1】\n\n本次目标：\(d.goal)\n\n这是供改稿和流程验证的本地短稿。真实资料读取、研究与云调度尚未接通。\n\n工作边界：持续执行交给云 worker；受理、完成和未知分开记录；修改后重新确认具体版本与目的地。\n\n本次记忆快照：\n\(memories.map { $0.title }.joined(separator: "\n"))\n\n允许的来源配置（未读取）：\n\(sources.compactMap { if case .source(let s) = $0.payload { return s.url }; return nil }.joined(separator: "\n"))"
+        let body = "# \(d.title)\n\n【模拟准备 · mimi Fixture v1】\n\n本次目标：\(d.goal)\n\n这是供改稿和流程验证的本地短稿。真实资料读取、研究与云调度尚未接通。\n\n工作边界：持续执行交给云 worker；受理、完成和未知分开记录；修改后重新确认具体版本与目的地。\n\n本次记忆快照：\n\(memories.map { $0.title }.joined(separator: "\n"))\n\n允许的来源配置（未读取）：\n\(sources.compactMap { if case .source(let s) = $0.payload { return s.url }; return nil }.joined(separator: "\n"))"
         let frozenBody = body + "\n\n本次要求：\n\(DelegationRequirements.decode(d.scopeJSON).requirements)\n\n本次停止条件：\n\(d.stopConditions.joined(separator: "\n"))"
         let hash = try blobs.stage(Data(frozenBody.utf8))
         let reference = DocumentReference(documentID: docID, version: 1, contentHash: hash)

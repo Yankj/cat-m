@@ -124,7 +124,7 @@ final class catWorkContentStateCompatibilityTests: XCTestCase {
         XCTAssertNil(s.startedAt); XCTAssertNil(s.endedAt); XCTAssertNil(s.step); XCTAssertNil(s.tool); XCTAssertNil(s.summary)
     }
     func testNewPayloadRoundTripsAndStaysSmall() throws {
-        let s = CatpawWorkAttributes.ContentState(title: "cat 正在工作", body: "正在查日历", kind: "tool", taskID: UUID().uuidString,
+        let s = CatpawWorkAttributes.ContentState(title: "小咪正在工作", body: "正在查日历", kind: "tool", taskID: UUID().uuidString,
                                                   startedAt: Date(timeIntervalSince1970: 1_800_000_000), endedAt: nil, step: 2, tool: "calendar_list", summary: "评审会加进日历")
         let data = try JSONEncoder().encode(s)
         XCTAssertLessThan(data.count, 4096)
@@ -1402,7 +1402,7 @@ final class LiveTextWireTests: XCTestCase {
         XCTAssertEqual(ConversationFirstView.principalTitleMaxWidth(barWidth: 200), 120)
         let f = catTypography.font(.body, size: .large)
         XCTAssertEqual(ConversationFirstView.titleTextWidth("明天上午 10 点提醒我给客户回电话", barWidth: 393, font: f), 393 - 136 - 120, "long title is capped")
-        XCTAssertLessThan(ConversationFirstView.titleTextWidth("cat", barWidth: 393, font: f)!, 80, "short title keeps its natural width")
+        XCTAssertLessThan(ConversationFirstView.titleTextWidth("mimi", barWidth: 393, font: f)!, 80, "short title keeps its natural width")
     }
 }
 

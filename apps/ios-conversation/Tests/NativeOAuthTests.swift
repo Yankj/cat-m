@@ -136,7 +136,7 @@ final class AccountMenuStructureTests: XCTestCase {
     }
     func testChatHeaderMenuHasNoSettingsItem() throws {
         let view = try source("Sources/Features/ConversationFirstView.swift")
-        let menu = try slice(view, from: "private var conversationTitleMenu", to: "Soft-3D header cat")
+        let menu = try slice(view, from: "private var conversationTitleMenu", to: "Soft-3D header mimi")
         XCTAssertFalse(menu.contains("chat.settings"))
         XCTAssertFalse(menu.contains("path.append(.settings)"))
         XCTAssertTrue(menu.contains("Section(ui(\"模型\"))"), "model picker stays")

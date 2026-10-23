@@ -12,7 +12,7 @@
 
 ## 基线与集成
 
-- 产品源码基线：`789ad4feceb0680b8e2e5913083c5b834dc63db1`，远端 `Yankj/cat-m` 的 `main`，本轮 fetch 与 ls-remote 一致。
+- 产品源码基线：`789ad4feceb0680b8e2e5913083c5b834dc63db1`，远端 `Yankj/mimi` 的 `main`，本轮 fetch 与 ls-remote 一致。
 - 规划输入：`2419db9b98e2e3bc0e8c850da62418d216fd3bb8`，`docs/family-product-plan`；相对产品基线没有 native/functions 源码差异。
 - 本地总协调/唯一集成人使用 `docs/family-m0`，QA 使用 `test/family-m0`，用例编制使用 `test/family-memory-cases`，另设 `docs/family-source-audit` 只读来源审计；共四份独立 managed worktree。主目录、旧工作树、已安装 App 与用户数据保留。
 - 新实现从当时重新核对的 `origin/main` 建短分支，登记 base SHA 和明确路径。不能将旧 local history 合入或推送；只接纳审阅的字节及 provenance。生产变更、推送、PR、合并或分发不能由本文件自动授权。

@@ -48,7 +48,7 @@ struct catLaunchMark: View {
         .ignoresSafeArea()                                            // centre in the full screen, like the storyboard
         .allowsHitTesting(!markOut)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(verbatim: "cat 正在启动"))
+        .accessibilityLabel(Text(verbatim: "小咪正在启动"))
         .accessibilityAddTraits(.updatesFrequently)
         .onAppear {
             guard appearedAt == nil else { return }

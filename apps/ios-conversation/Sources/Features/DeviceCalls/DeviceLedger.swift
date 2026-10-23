@@ -417,7 +417,7 @@ enum DeviceEventKitRule {
                     .accessibilityElement(children: .contain).accessibilityIdentifier("tasks.device." + entry.id)
                     if failed == entry.id { Text(ui("撤销未完成，请在系统 App 中删除。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention) }
                 }
-            } header: { Text(ui("cat 在本机创建的")) }
+            } header: { Text(ui("小咪在本机创建的")) }
             .modifier(DeviceUndoDecision(candidates: $candidates, needsPermission: $needsPermission, callID: choosing, ledger: ledger) { o in if !o.removed { failed = choosing } })
         }
     }
@@ -435,11 +435,11 @@ enum DeviceEventKitRule {
     private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
     private func label(_ c: DeviceUndoCandidate) -> String {
         let when = c.start.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? ui("无时间")
-        return ui("删除") + "「\(c.title)」\(when)" + (c.isRecorded ? ui("（cat 记录的那一个）") : "")
+        return ui("删除") + "「\(c.title)」\(when)" + (c.isRecorded ? ui("（小咪记录的那一个）") : "")
     }
     func body(content: Content) -> some View {
         content
-            .confirmationDialog(ui("无法确认哪一个是 cat 创建的"), isPresented: Binding(get: { !candidates.isEmpty }, set: { if !$0 && !candidates.isEmpty { ledger.keepAll(callID: callID); candidates = [] } }), titleVisibility: .visible) {
+            .confirmationDialog(ui("无法确认哪一个是小咪创建的"), isPresented: Binding(get: { !candidates.isEmpty }, set: { if !$0 && !candidates.isEmpty { ledger.keepAll(callID: callID); candidates = [] } }), titleVisibility: .visible) {
                 ForEach(candidates) { c in
                     Button(label(c), role: .destructive) { candidates = []; done(ledger.undoChosen(callID: callID, itemID: c.id)) }
                 }
@@ -448,7 +448,7 @@ enum DeviceEventKitRule {
             .alert(ui("没有日历或提醒事项权限"), isPresented: $needsPermission) {
                 Button(ui("去设置")) { DeviceLedger.log("undo \(callID): user → settings"); if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } }
                 Button(ui("先不处理"), role: .cancel) { DeviceLedger.log("undo \(callID): user left it") }
-            } message: { Text(ui("权限已关闭，cat 不会删除任何内容。开启后可再次撤销。")) }
+            } message: { Text(ui("权限已关闭，小咪不会删除任何内容。开启后可再次撤销。")) }
     }
 }
 
@@ -476,7 +476,7 @@ enum DeviceEventKitRule {
                         }
                         .accessibilityIdentifier("parked." + item.id)
                     }
-                } footer: { Text(ui("这些是 cat 在本机日历、提醒事项里创建的内容。保留：留在系统里；撤销：仅删除能确认是 cat 创建的那一项，无法确认的会保留。")) }
+                } footer: { Text(ui("这些是小咪在本机日历、提醒事项里创建的内容。保留：留在系统里；撤销：仅删除能确认是小咪创建的那一项，无法确认的会保留。")) }
             }
             .navigationTitle(ui("要保留本机日程和提醒吗？")).navigationBarTitleDisplayMode(.inline)
             .toolbar {

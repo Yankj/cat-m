@@ -1,4 +1,4 @@
-# cat R5 移动端对话视觉与过程设计
+# mimi R5 移动端对话视觉与过程设计
 
 2026-10-13–14。根据用户提供的10张手机截图，更新[UX-1](ios-codex-experience-spec.md)的当前视觉和对话细节；[R5可操作样机](prototypes/catpaw-mobile-reference-r5/index.html)与[机器参数](mobile-conversation-reference-r5.json)用于审阅。R4的连续机制、R3完整对象状态、原12项UX及所有产品门槛继续适用；当前状态只在[master-plan](../status/master-plan.md)。R4.1与此前日期证据保留，不覆盖。
 

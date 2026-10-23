@@ -10,7 +10,7 @@
 | 文字、语音、图片可交互 | 首期技术建议语音采用既有听写；实时通话不是已确认实现范围 |
 | 长期点滴理解、主动分析、温暖陪伴 | 记忆必须可见可纠正，主动建议允许静默/关闭，避免无依据催促 |
 | 延续仓库现有色系与基础风格 | 源码 token 优先；旧柔绿稿归档为探索，当前 v0.2 概念待评审 |
-| 本地项目与 GitHub 同步，资产入仓库 | 源项目暂复用 ai-work/catpaw-m，目标 ai-workspace/cat-m 待正确主机授权；仅 docs 分支资产提交推送；不改应用代码、不直接写 main、不合并/部署 |
+| 本地项目与 GitHub 同步，资产入仓库 | 源项目暂复用 ai-work/catpaw-m，目标 ai-workspace/mimi 待正确主机授权；仅 docs 分支资产提交推送；不改应用代码、不直接写 main、不合并/部署 |
 
 ## 本轮方案采用的工程方向
 
@@ -32,9 +32,9 @@
 
 2026-10-22 归档前重新读取 GitHub 并 fetch：main 为 `789ad4feceb0680b8e2e5913083c5b834dc63db1`；#112 已合并，#110 closed/unmerged。新增差异为官网/IPA 发布等，原生与后端源码相对旧审计 head 无新增变化。工作树干净后新建 `docs/family-product-plan`，原分支/worktree 保留。
 
-新增明确决定：GitHub / 项目名称改为 cat-m，App 品牌仍 cat。GitHub 新旧名 repository ID 相同，已改 origin；目标机目录迁移是独立阻塞，不影响文档分支同步。温馨 UI 细节沿用现有 token、SF Symbols 和真实回执边界。
+新增明确决定：GitHub / 项目名称改为 mimi，App 品牌仍小咪。GitHub 新旧名 repository ID 相同，已改 origin；目标机目录迁移是独立阻塞，不影响文档分支同步。温馨 UI 细节沿用现有 token、SF Symbols 和真实回执边界。
 
-仓库改名接线：本地 pre-push 的精确目标名单从旧名改为 Yankj/cat-m 三种既有 URL 格式；禁止 main、错误目标、legacy remote、非快进与无关历史的规则保留。已验证新目标通过，旧/错误目标、main、legacy 被拒绝，没有绕过 hook。
+仓库改名接线：本地 pre-push 的精确目标名单从旧名改为 Yankj/mimi 三种既有 URL 格式；禁止 main、错误目标、legacy remote、非快进与无关历史的规则保留。已验证新目标通过，旧/错误目标、main、legacy 被拒绝，没有绕过 hook。
 
 ## 2026-10-23 用户已确认：定位 v1
 

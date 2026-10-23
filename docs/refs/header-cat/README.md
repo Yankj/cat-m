@@ -1,4 +1,4 @@
-# Header cat (soft 3D)
+# Header mimi (soft 3D)
 
 Source: `six-states.png` — six poses left → right:
 

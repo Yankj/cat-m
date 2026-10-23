@@ -1,4 +1,4 @@
-# cat brand & theme
+# mimi brand & theme
 
 Single source of truth for palette and logo. Brand sheet refs live in `docs/refs/brand/`.
 
