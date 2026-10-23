@@ -5,6 +5,7 @@
 // Run: PGHOST=/tmp PGPORT=55432 PGUSER=postgres bash scripts/pg-all-migrations-local.sh test/family-m3-gate-pg.test.mjs
 // Writes M3_GATE_OUT (default /tmp/family-m3-gate.json).
 import test from 'node:test'; import assert from 'node:assert/strict';
+import { runtimeOf } from './support/pg-runtime.mjs';
 import postgres from 'npm:postgres@3.4.7';
 import { createPgFamilyStore } from '../supabase/functions/_shared/family/pg-store.mjs';
 import { createFamilyService } from '../supabase/functions/_shared/family/service.mjs';
@@ -410,7 +411,7 @@ function score(c, r) {
 
 test('M3 gate FULL: recall@6, hard assertions (clarification, disposition, dispatch, outcomes, pre/post, final states), safety (100 cases)', { skip: !url }, async () => {
   const sql = postgres(url, { max: 6, prepare: false, onnotice: () => {} });
-  const svc = createFamilyService({ store: createPgFamilyStore(sql), extraRoutes: [createMemoryRoute(), createCaptureRoute()], verifyUser: async a => { const m = /^Bearer (.+)$/.exec(a); return m ? { sub: m[1] } : null; } });
+  const svc = createFamilyService({ store: createPgFamilyStore(runtimeOf(sql)), extraRoutes: [createMemoryRoute(), createCaptureRoute()], verifyUser: async a => { const m = /^Bearer (.+)$/.exec(a); return m ? { sub: m[1] } : null; } });
   const call = async (who, method, path, body) => { const r = await svc.handle(new Request('https://x/catpaw/family/v1' + path, { method, headers: { authorization: 'Bearer ' + who, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })); return { status: r.status, body: await r.json() }; };
   const out = { corpus: corpus.dataset_id, cases: [], at: new Date().toISOString() };
   try {

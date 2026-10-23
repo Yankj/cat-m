@@ -1,6 +1,7 @@
 // v0.1 wrap: M1 migrations 20261023100000 / 20261023100100 + pg-store changes on REAL Postgres.
 // Run: PGHOST=/tmp PGPORT=55432 PGUSER=postgres bash scripts/pg-all-migrations-local.sh test/family-m1-pg.test.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
+import { runtimeOf } from './support/pg-runtime.mjs';
 import postgres from 'npm:postgres@3.4.7';
 import { createPgStore } from '../supabase/functions/_shared/proactive/pg-store.mjs';
 import { createPgAgentMemoryStore } from '../supabase/functions/_shared/agent-memory/pg-store.mjs';
@@ -58,7 +59,7 @@ test('pg REM-03/04: release keeps due; reminder_due only while task open and occ
 
 test('pg MEM-01: correction CAS on updated_at returns conflict for a late write', { skip: !url }, async () => {
   const sql = conn(); try {
-    const m = createPgAgentMemoryStore(sql), u = await user(sql), now = new Date().toISOString();
+    const m = createPgAgentMemoryStore(runtimeOf(sql)), u = await user(sql), now = new Date().toISOString();
     const { row } = await m.insert(u, { id: crypto.randomUUID(), kind: 'fact', content: 'v1', operation_id: 'op-' + crypto.randomUUID(), created_by: 'user', created_at: now, updated_at: now, pinned: false, embedding: null, expires_at: null, source_conversation_id: null, source_turn_id: null, undo_token_hash: null, undo_expires_at: null });
     const v0 = row.updated_at;
     const r1 = await m.update(u, row.id, { content: 'v2', updated_at: new Date(Date.now() + 1000).toISOString() }, { expectVersion: v0 });
@@ -70,7 +71,7 @@ test('pg MEM-01: correction CAS on updated_at returns conflict for a late write'
 
 test('pg MEM-03/04: clear generation fences writes; tombstone operation_id blocks replay', { skip: !url }, async () => {
   const sql = conn(); try {
-    const m = createPgAgentMemoryStore(sql), u = await user(sql), now = new Date().toISOString(), op = 'op-' + crypto.randomUUID();
+    const m = createPgAgentMemoryStore(runtimeOf(sql)), u = await user(sql), now = new Date().toISOString(), op = 'op-' + crypto.randomUUID();
     const rec = () => ({ id: crypto.randomUUID(), kind: 'fact', content: 'x', operation_id: op, created_by: 'user', created_at: now, updated_at: now, pinned: false, embedding: null, expires_at: null, source_conversation_id: null, source_turn_id: null, undo_token_hash: null, undo_expires_at: null });
     const { row } = await m.insert(u, rec());
     assert.equal(await m.remove(u, [row.id]), 1);
