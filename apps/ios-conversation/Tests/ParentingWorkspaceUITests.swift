@@ -27,7 +27,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
         capture(app, "success-empty")
         addChild(app, name: child)
         tab(app, "growth")
-        tap(app, app.buttons["parenting.addGoal"])
+        openGoalEditor(app)
         enter(app, id: "parenting.goal.title", text: goal)
         tap(app, app.buttons["parenting.name.save"])
         wait { !self.inputExists(app, "parenting.goal.title") }
@@ -176,7 +176,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
         assertEmpty(app)
         addChild(app, name: child)
         tab(app, "growth")
-        tap(app, app.buttons["parenting.addGoal"])
+        openGoalEditor(app)
         enter(app, id: "parenting.goal.title", text: goal)
         tap(app, app.buttons["parenting.name.save"])
         wait { !self.inputExists(app, "parenting.goal.title") }
@@ -391,7 +391,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
         assertEmpty(app)
         addChild(app, name: child)
         tab(app, "growth")
-        tap(app, app.buttons["parenting.addGoal"])
+        openGoalEditor(app)
         enter(app, id: "parenting.goal.title", text: goal)
         tap(app, app.buttons["parenting.name.save"])
         wait { !self.inputExists(app, "parenting.goal.title") }
@@ -581,6 +581,14 @@ final class ParentingWorkspaceUITests: XCTestCase {
         XCTAssertFalse(issue.exists, "Saving the first child failed: \(issue.exists ? issue.label : "no form error")\n" + app.debugDescription)
         XCTAssertFalse(inputExists(app, "parenting.child.name"), app.debugDescription)
         XCTAssertTrue(app.buttons["parenting.addArrangement"].exists, app.debugDescription)
+    }
+    private func openGoalEditor(_ app: XCUIApplication) {
+        let add = app.buttons["parenting.addGoal"]
+        reveal(app, add)
+        XCTAssertGreaterThanOrEqual(add.frame.height, 44, "The target must include the full accessible label hit area.\n" + app.debugDescription)
+        tap(app, add)
+        // A missing sheet is a presentation failure, not a field to find by scrolling the Home screen.
+        wait { app.textFields["parenting.goal.title"].exists }
     }
     private func tab(_ app: XCUIApplication, _ name: String) {
         let button = app.buttons["parenting.tab." + name]

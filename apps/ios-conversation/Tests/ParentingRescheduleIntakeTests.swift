@@ -212,6 +212,7 @@ private final class ParentingRescheduleIDs: @unchecked Sendable {
             ("America/New_York", "2026-11-01 01:30", "2026-11-01T05:30:00Z"),
             ("Australia/Lord_Howe", "2026-10-04 02:15", "2026-10-03T15:45:00Z"),
             ("Australia/Lord_Howe", "2026-04-05 01:45", "2026-04-04T14:45:00Z"),
+            ("Australia/Lord_Howe", "2026-04-05 01:45", "2026-04-04T15:15:00Z"),
             ("Europe/Berlin", "2026-10-25 02:30", "2026-10-25T00:30:00Z"),
             ("Pacific/Apia", "2011-12-30 12:00", "2011-12-30T22:00:00Z")]
         for (zone, text, proposed) in cases {
@@ -220,6 +221,23 @@ private final class ParentingRescheduleIDs: @unchecked Sendable {
         }
         let skipped = try request("明天12:00", target: target(), zone: "Pacific/Apia", now: "2011-12-29T22:00:00Z")
         XCTAssertNil(try parse(skipped, due: "2011-12-30T22:00:00Z", evidence: "明天12:00").dueAt)
+        // The two real instants have different offsets but the same wall clock; neither is an unambiguous suggestion.
+        let lordHowe = try XCTUnwrap(TimeZone(identifier: "Australia/Lord_Howe"))
+        XCTAssertEqual(lordHowe.secondsFromGMT(for: try instant("2026-04-04T14:45:00Z")), 11 * 3600)
+        XCTAssertEqual(lordHowe.secondsFromGMT(for: try instant("2026-04-04T15:15:00Z")), 10 * 3600 + 30 * 60)
+        let uniqueTimes = [("2026-04-05 01:15", "2026-04-04T14:15:00Z"),
+                           ("2026-04-05 02:15", "2026-04-04T15:45:00Z"),
+                           ("2026-10-04 02:30", "2026-10-03T15:30:00Z")]
+        for (text, proposed) in uniqueTimes {
+            let draft = try parse(request(text, target: target(), zone: "Australia/Lord_Howe"), due: proposed, evidence: text)
+            XCTAssertEqual(draft.dueAt, try instant(proposed), text)
+            XCTAssertNil(draft.clarification, text)
+        }
+        for (text, proposed) in [("2026-04-05T01:45:00+11:00", "2026-04-04T14:45:00Z"),
+                                 ("2026-04-05T01:45:00+10:30", "2026-04-04T15:15:00Z")] {
+            let draft = try parse(request(text, target: target(), zone: "Australia/Lord_Howe"), due: proposed, evidence: text)
+            XCTAssertEqual(draft.dueAt, try instant(proposed), "An explicit offset disambiguates the repeated wall clock")
+        }
     }
 
     private struct Entry { let url: URL; let repository: Repository }

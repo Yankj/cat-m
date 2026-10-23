@@ -145,15 +145,36 @@ enum ParentingRescheduleTime {
         let calendar = gregorian(zone)
         let fields = DateComponents(year: year, month: month, day: day, hour: hour, minute: minute, second: second)
         let units: Set<Calendar.Component> = [.year, .month, .day, .hour, .minute, .second]
-        func exact(_ date: Date) -> Bool {
+        func exact(_ date: Date, in calendar: Calendar) -> Bool {
             let actual = calendar.dateComponents(units, from: date)
             return actual.year == year && actual.month == month && actual.day == day && actual.hour == hour && actual.minute == minute && actual.second == second
         }
-        guard let seed = calendar.date(from: fields), exact(seed), let dayInterval = calendar.dateInterval(of: .day, for: seed) else { return nil }
-        let anchor = dayInterval.start.addingTimeInterval(-1)
-        guard let first = calendar.nextDate(after: anchor, matching: fields, matchingPolicy: .strict, repeatedTimePolicy: .first),
-              let last = calendar.nextDate(after: anchor, matching: fields, matchingPolicy: .strict, repeatedTimePolicy: .last),
-              exact(first), exact(last), first == last else { return nil }
-        return first
+        let utc = gregorian(TimeZone(secondsFromGMT: 0)!)
+        guard let wall = utc.date(from: fields), exact(wall, in: utc) else { return nil }
+        // Calendar's first/last matching policies can both select the first instant of a half-hour fold.
+        // Enumerate actual GMT offsets instead: instant = civil fields interpreted as UTC - offset.
+        // This window covers system IANA/fixed offsets; it is not an assumed DST step.
+        let radius: TimeInterval = 48 * 60 * 60
+        let start = wall.addingTimeInterval(-radius), end = wall.addingTimeInterval(radius)
+        var offsets: Set<Int> = [zone.secondsFromGMT(for: start), zone.secondsFromGMT(for: end)]
+        var cursor = start
+        var transitionCount = 0
+        while let transition = zone.nextDaylightSavingTimeTransition(after: cursor), transition <= end {
+            // Fail closed if the system cannot enumerate a bounded, strictly advancing transition list.
+            guard transition > cursor, transitionCount < 16 else { return nil }
+            offsets.insert(zone.secondsFromGMT(for: transition.addingTimeInterval(-1)))
+            offsets.insert(zone.secondsFromGMT(for: transition))
+            offsets.insert(zone.secondsFromGMT(for: transition.addingTimeInterval(1)))
+            cursor = transition
+            transitionCount += 1
+        }
+        var candidates = Set<Date>()
+        for offset in offsets {
+            guard abs(TimeInterval(offset)) < radius else { return nil }
+            let candidate = wall.addingTimeInterval(-TimeInterval(offset))
+            if zone.secondsFromGMT(for: candidate) == offset, exact(candidate, in: calendar) { candidates.insert(candidate) }
+        }
+        guard candidates.count == 1 else { return nil } // No instant is a gap; multiple instants are a fold.
+        return candidates.first
     }
 }
