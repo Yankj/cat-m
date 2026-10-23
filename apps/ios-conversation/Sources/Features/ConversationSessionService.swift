@@ -70,6 +70,11 @@ public actor ConversationSessionService {
     public func allowImageConsent(scope:DataScope,consent:ConversationImageConsent,nonSensitiveConfirmed:Bool) async throws -> Int {try await backend.allowImageConsent(scope:scope,consent:consent,nonSensitiveConfirmed:nonSensitiveConfirmed)}
     public func modelConsent(scope: DataScope, conversationID: UUID) async throws -> ConversationModelConsent? { try await backend.modelConsent(scope:scope,conversationID:conversationID) }
     public func allowModelConsent(scope: DataScope, consent: ConversationModelConsent) async throws { try await backend.allowModelConsent(scope:scope,consent:consent) }
+    /// Dedicated intake cleanup only. Normal chat backends cannot erase through this port.
+    public func deleteParentingIntake(scope: DataScope, conversationID: UUID) async throws {
+        guard let deleting = backend as? any ParentingIntakeDataDeleting else { throw ParentingInlineIntakeError.unavailable }
+        try await deleting.deleteIntake(scope: scope, conversationID: conversationID)
+    }
     public func openLatest(scope: DataScope) async throws -> UUID {
         let snapshot = await repository.read(scope: scope)
         let eligible = snapshot.list("conversation", scope: scope).filter { snapshot.records[Self.journalID($0.id)] != nil }
@@ -246,7 +251,7 @@ public actor ConversationSessionService {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.utf16.count <= 8000 else { throw catError.invalid("请输入不超过 8000 字符的内容。") }
         if plainSend, !offline {
             do { try await syncServerTranscript(scope: scope, conversationID: conversationID) }
-            catch { sendDiagnostic("catpaw.send transcript sync skipped: \(String(describing: error))") }
+            catch { sendDiagnostic("catpaw.send transcript sync skipped") }
         }
         var (session, journalRevision) = try await readVersioned(scope: scope, conversationID: conversationID)
         var request: ConversationTurnRequest
@@ -348,7 +353,7 @@ public actor ConversationSessionService {
                     try Task.checkCancellation()
                     guard active[conversationID] == observationToken else { throw CancellationError() }
                     if Self.isLivePreview(event.payload) { forwardLivePreview(event, request: request); continue }   // never journaled
-                    observeLog.info("pump event seq=\(event.sequence, privacy: .public) \(String(describing: event.payload).prefix(60), privacy: .public)")
+                    observeLog.info("pump event seq=\(event.sequence, privacy: .public)")
                     try await apply(event, request: request, observationToken: observationToken)
                     if attempt > 0 { attempt = 0; await resilience?.resumed() }
                     let saved = try await read(scope: scope, conversationID: conversationID)
@@ -681,7 +686,7 @@ public actor ConversationSessionService {
                 let stream = try await backend.resumeEvents(turn.request, afterSequence: turn.lastSequence)
                 for try await event in stream {
                     if Self.isLivePreview(event.payload) { guard active[conversationID] == observationToken else { throw CancellationError() }; forwardLivePreview(event, request: turn.request); continue }
-                    observeLog.info("observe event seq=\(event.sequence, privacy: .public) \(String(describing: event.payload).prefix(80), privacy: .public)")
+                    observeLog.info("observe event seq=\(event.sequence, privacy: .public)")
                     guard active[conversationID] == observationToken else { throw CancellationError() }
                     try await apply(event, request: turn.request, observing: true, observationToken: observationToken)
                     let current = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == turn.id })
@@ -692,7 +697,7 @@ public actor ConversationSessionService {
                     if case .suspended = event.payload, current?.awaitingApproval == true { break }
                 }
             } catch is CancellationError { await resilience?.settled(); throw CancellationError() }
-            catch { observeLog.info("observe stream error \(String(describing: error).prefix(120), privacy: .public)") /* fall back to the snapshot read below */ }
+            catch { observeLog.info("observe stream interrupted; reconciling snapshot") /* fall back to the snapshot read below */ }
             await resilience?.settled()
         }
         let observation: ConversationObservation

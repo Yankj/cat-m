@@ -26,7 +26,7 @@
 - Verify the existing model route before discussing a switch; do not change providers or paid fallback on your own. The user freshly approved the frozen a905b47 build 16 update on the existing iPhone and at most two short text checks through normal App consent. Later packages or expanded checks need concrete approval; preserve existing data.
 
 - Read README, docs/status/master-plan.md and the applicable acceptance record before claiming completion. Maintain current progress only in the master plan; indexes link to it.
-- Conversation-first is the current product direction. Historical v1/r2/r3 synthetic tests and repository preparation do not prove current product acceptance. Preserve the chosen A1 icon; peripheral r4 work is paused.
+- The latest user direction is parenting first: today's child arrangements, parent-defined growth goals and sourced observations lead the App. Conversation and multimodal input assist these actions. Earlier conversation-first specifications remain historical inputs and cannot override this direction. Preserve execution/consent boundaries and the chosen warm orange/cream A1 identity. Synthetic tests and repository preparation do not prove current product acceptance.
 - Preserve delivered v1 and frozen spec/HTTP contract identity. Never overwrite an active independent client checkout.
 - Keep synthetic results distinct from real model, cloud, SQL multi-instance and device verification.
 - Preserve upstream MIT notices, the pinned source manifest and the exact controlled patch.

@@ -24,6 +24,8 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private var discardComposerOnSuspend=false
     let repository: Repository
     let service: ConversationSessionService
+    /// A separately scoped, read-only intake service; never reuses this chat's queue or transcript.
+    let parentingIntakeFactory: ParentingIntakeServiceFactory?
     let taskPlanService:ConversationTaskPlanService
     let artifactEditService:ConversationArtifactEditService
     let taskControlService:ConversationTaskControlService
@@ -164,8 +166,9 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private var taskControlDeliveryTask:Task<Void,Never>?
     private var taskControlDeliveryToken:UUID?
     private var taskControlDeliveryGeneration=0
-    init(repository:Repository,service:ConversationSessionService,scope:DataScope = Profiles.user,imageStore:any ConversationImageByteStore = MemoryConversationImageByteStore(),taskPlanService:ConversationTaskPlanService?=nil,artifactEditService:ConversationArtifactEditService?=nil,taskActionService:ConversationTaskActionService?=nil,taskControlService:ConversationTaskControlService?=nil,memoryService:ConversationMemoryService?=nil,inboxService:ConversationInboxService?=nil,subjectID:UUID?=nil) {
+    init(repository:Repository,service:ConversationSessionService,scope:DataScope = Profiles.user,imageStore:any ConversationImageByteStore = MemoryConversationImageByteStore(),taskPlanService:ConversationTaskPlanService?=nil,artifactEditService:ConversationArtifactEditService?=nil,taskActionService:ConversationTaskActionService?=nil,taskControlService:ConversationTaskControlService?=nil,memoryService:ConversationMemoryService?=nil,inboxService:ConversationInboxService?=nil,subjectID:UUID?=nil,parentingIntakeFactory:ParentingIntakeServiceFactory?=nil) {
         self.repository=repository;self.service=service;self.scope=scope;self.imageStore=imageStore
+        self.parentingIntakeFactory=parentingIntakeFactory
         self.taskPlansConfigured=taskPlanService != nil
         self.taskPlanService=taskPlanService ?? ConversationTaskPlanService(repository:repository,scope:scope)
         self.artifactEditService=artifactEditService ?? ConversationArtifactEditService(repository:repository,scope:scope)

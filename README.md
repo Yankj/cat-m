@@ -4,13 +4,15 @@
 
 # mimi
 
+本次育儿核心改造以“今天的孩子安排、家长自定小目标、成长记录”为主入口，聊天辅助整理具体事情。设计与状态约定见 [育儿核心规格](docs/design/family-companion/parenting-core.md)，当前实现与验收边界见 [主计划](docs/status/master-plan.md)。本机加密账本与既有云端 Agent 任务分开；保存本机安排不代表云同步、日历写入或通知成功。
+
 本地品牌迁移与保留身份见 [兼容说明](docs/development/cat-brand-migration.md)，验证范围见 [本地记录](docs/acceptance/cat-brand-2026-10-22.md)。
 
 家庭成长助理入口：[主计划与当前范围](docs/status/master-plan.md) · [本地与云端总交接](docs/acceptance/family-companion/handoff-2026-10-23.md) · [独立官网候选及验证说明](https://github.com/Yankj/mimi/tree/7ca0c4535dbfb6419a5000eab8275d08be051ceb/apps/website/family)。
 
-**先你一步，把事办妥。** · *A step ahead. Things handled.*
+**把今天安排好，把成长点滴留下。**
 
-对话优先的主动式个人助理 iOS App：自然对话 → 可审批的计划与设备动作 → 可恢复的任务与成果，人始终在回路中。
+面向宝妈育儿与孩子长期成长的 iOS App：交代一件事 → 整理可编辑草稿 → 明确确认安排 → 今天调整与完成 → 关联目标回顾。聊天和多模态输入服务具体事情；本轮候选与已发布版本的能力边界分别记录。
 
 ![Swift 5](https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white)
 ![iOS 17+](https://img.shields.io/badge/iOS-17%2B-000000?logo=apple&logoColor=white)
