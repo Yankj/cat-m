@@ -9,7 +9,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>zh-Hans</string>
 	<key>CFBundleDisplayName</key>
-	<string>cat</string>
+	<string>小咪</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -17,7 +17,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>cat</string>
+	<string>mimi</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -74,7 +74,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>仅在你主动选择相册图片时将该图片保存到当前本地项目；不会自动上传相册内容。</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
-	<string>cat 在你确认后把提醒写入“提醒事项”，不会自动修改。</string>
+	<string>小咪在你确认后把提醒写入“提醒事项”，不会自动修改。</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>仅在你主动听写或打开语音对话时将语音转成文字。语音对话只使用设备上的本地识别；听写在设备不支持本地识别时可能使用 Apple 的语音识别服务。</string>
 	<key>NSSupportsLiveActivities</key>

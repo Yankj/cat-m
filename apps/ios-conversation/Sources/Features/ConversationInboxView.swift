@@ -384,7 +384,7 @@ struct TodoSourceTag: View {
     let cat: Bool
     @Environment(\.locale) private var locale
     var body: some View {
-        Text(cat ? AppLanguage(locale: locale).ui("cat 发现") : AppLanguage(locale: locale).ui("你交代的"))
+        Text(cat ? AppLanguage(locale: locale).ui("小咪发现") : AppLanguage(locale: locale).ui("你交代的"))
             .font(catTypography.Role.caption.font.weight(.semibold))
             .foregroundStyle(cat ? catBrand.paw : catColors.secondary)
             .padding(.horizontal, 8).padding(.vertical, 2)

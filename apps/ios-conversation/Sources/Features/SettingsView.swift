@@ -56,7 +56,7 @@ struct ProfileExport: FileDocument {
                 EmptyView()
             } footer: {
                 VStack(spacing: 4) {
-                    Text(ui("cat 原生本地版 0.1.0"))
+                    Text(ui("小咪原生本地版 0.1.0"))
                     Text(ui("界面控件提供中英文；文档、用户内容、示例正文及系统或服务错误保留原文。英文布局与原生音频仍需设备验收。"))
                 }.font(.system(size: 12)).foregroundStyle(catColors.tertiary).multilineTextAlignment(.center).frame(maxWidth: .infinity)
             }
@@ -68,7 +68,7 @@ struct ProfileExport: FileDocument {
         .tint(catColors.ink)
         .navigationTitle(ui("设置"))
         .navigationBarTitleDisplayMode(.large)
-        .fileExporter(isPresented: $exporting, document: exportDocument, contentType: .json, defaultFilename: "cat-workspace-export") { result in if case .failure(let error) = result { model.error = error.localizedDescription } }
+        .fileExporter(isPresented: $exporting, document: exportDocument, contentType: .json, defaultFilename: "mimi-workspace-export") { result in if case .failure(let error) = result { model.error = error.localizedDescription } }
         .confirmationDialog(ui("只重置全部演示环境；用户分区保留。"), isPresented: $reset) { Button(ui("重置演示"), role: .destructive) { model.perform { await model.suspendRuntimes(); NativeVoiceController.shared.interrupt(); try await model.repository.resetDemo(); model.path = []; model.drafts = [:]; model.loaded = false; await model.start() } } }
     }
     /// r9 §5: section headers are 13pt tertiary, not uppercased.

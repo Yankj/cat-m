@@ -82,7 +82,7 @@ private struct NativeOAuthSwitchModifier: ViewModifier {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         VStack(spacing: 16) {
-            Text(AppLanguage(locale: uiLocale).ui("登录 cat")).font(catTypography.Role.title.font).foregroundStyle(catColors.ink)
+            Text(AppLanguage(locale: uiLocale).ui("登录小咪")).font(catTypography.Role.title.font).foregroundStyle(catColors.ink)
             NativeOAuthProviderButtons(oauth: oauth)
             if let n = oauth.notice { NativeOAuthNoticeCapsule(notice: n) }
             Text(AppLanguage(locale: uiLocale).ui("登录凭据只保存在本机钥匙串，可随时退出。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)

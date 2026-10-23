@@ -368,7 +368,7 @@ import EventKit
         let first = await router.execute(call, credential: try XCTUnwrap(credential(call)))
         XCTAssertEqual(first.status, .ok); XCTAssertEqual(first.savedIdentity?.title, "p89h rem")
         let control = await router.lookup(call); XCTAssertNotNil(control, "control: single original is restorable")
-        let copy = EKReminder(eventStore: store); copy.title = "p89h rem"; copy.notes = "cat · " + DeviceToolContract.callMarker(id)
+        let copy = EKReminder(eventStore: store); copy.title = "p89h rem"; copy.notes = "mimi · " + DeviceToolContract.callMarker(id)
         copy.calendar = store.defaultCalendarForNewReminders(); try store.save(copy, commit: true)
         let restored = await router.lookup(call); XCTAssertNil(restored, "restore never picks one of several")
         var trace: [String] = []; DeviceToolRouter.trace = { trace.append($0) }
@@ -510,7 +510,7 @@ import EventKit
         store.reset(); try store.remove(try XCTUnwrap(store.event(withIdentifier: originalID)), span: .thisEvent, commit: true)
         let stA = try coldStore(with: a); XCTAssertTrue(stA.isInterrupted(a.call_id))
         await stA.resumeInterrupted(a.call_id)
-        XCTAssertNil(ledger.entry(callID: a.call_id), "the copy found by marker is not recorded as cat's item")
+        XCTAssertNil(ledger.entry(callID: a.call_id), "the copy found by marker is not recorded as mimi's item")
         switch stA.phase(a.call_id) {
         case .reportFailed(let r), .done(let r): XCTAssertNotEqual(r.status, .ok, "restore reported unknown, not success")
         default: XCTFail("restore did not finish")

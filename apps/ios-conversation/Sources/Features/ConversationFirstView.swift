@@ -198,7 +198,7 @@ import catImageComposer
     /// v1.2 header: the bar names the assistant (avatar + 「cat」 + status), not the first message. The conversation title
     /// moved into the title menu; the v1.1.1 width cap still applies to this text.
     private var r8Title:String { Self.headerTitle }
-    static let headerTitle = "cat"
+    static let headerTitle = "mimi"
     private var firstTitleLine:String { String(conversationTitle.split(separator:"\n",maxSplits:1).first ?? Substring(conversationTitle)) }
     /// v1.1.x title overflow: the principal item is centered, so it may use the bar width minus the leading and trailing
     /// 44pt buttons plus their system margins on both sides; the title then truncates with … instead of running under them.
@@ -800,7 +800,7 @@ import catImageComposer
                 NativeConversationComposer(model:model,
                     enabled:!restrictToFrozenFixture && !model.switchingArtifactContinuation,
                     maximumVisibleHeight:min(budget.maximumTextHeight,ComposerMetrics.maxHeight(for:textSize)),
-                    placeholder:composerChrome.runState == .responding ? ui("继续追问…") : ui("问问 cat"),
+                    placeholder:composerChrome.runState == .responding ? ui("继续追问…") : ui("问问小咪"),
                     lineCountChanged:{composerLineCount=$0},
                     addAttachments:{_ = composerChrome.addAttachments($0,using:attachmentUploader)},
                     focusChanged:{ if $0 { composerFocusCount += 1 } },

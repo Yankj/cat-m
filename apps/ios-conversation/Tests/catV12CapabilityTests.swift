@@ -38,7 +38,7 @@ final class catV12CapabilityTests: XCTestCase {
         for l in links { XCTAssertTrue(catCapabilityLinks.isAllowed(URL(string: l)!), l); XCTAssertNotNil(catAppRoute(url: URL(string: l)!), l) }
     }
     @MainActor func testHeaderShowsAssistantNameWithinV111Cap() {
-        XCTAssertEqual(ConversationFirstView.headerTitle, "cat")
+        XCTAssertEqual(ConversationFirstView.headerTitle, "mimi")
         let font = UIFont.systemFont(ofSize: 17)
         let width = ConversationFirstView.titleTextWidth(ConversationFirstView.headerTitle, barWidth: 393, font: font)
         let cap = ConversationFirstView.principalTitleMaxWidth(barWidth: 393)!
