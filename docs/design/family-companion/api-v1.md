@@ -267,3 +267,21 @@ HTTP：
 - **记忆更正 `expected_version`**：`PATCH` 既有记忆可带 `expected_version`（上次读到的 `updated_at`，ISO-8601）。缺省时服务端以写入开始时读到的 `updated_at` 作 CAS。不匹配返回 `409 memory_conflict`，保留较新正文；对象已不存在返回 `404`。
 - **删除栅栏**：墓碑记录原 `operation_id`，重放已删除的保存返回 `not_saved` / `previously_deleted`。每用户 `clear_generations` 计数，"全部清除"后，以旧 generation 开始的日记写入被拒绝。
 - **日志**：只记稳定错误码（`code` 或异常类名），不记 `message`、堆栈、标题、正文；静态审计见 `services/edge/test/log-content-audit.test.mjs`。
+
+## 12. v0.2–v0.4 实现补充（2026-10-23，候选，未部署）
+
+在不改变 §1–§11 语义的前提下，实现新增以下命令与路由。均为同一 `catpaw.family.v1` 协议的扩展，旧客户端不受影响。
+
+| 新增 | 说明 |
+|---|---|
+| `member.upsert` | 同 `child.upsert`，`payload.member_kind` ∈ `child`/`adult`/`other`（记忆主体可以是成人）。 |
+| `memory.pause` / `reminder.pause` | `payload.paused: bool`，`expected_revision` = 家庭 revision。记忆暂停时召回为空、`memory.upsert` 被拒 `memory_paused`；提醒暂停时不新建、不派发。 |
+| `household.delete` | 家庭归档，事实墓碑化、提醒取消；之后的命令 `404 not_found`。 |
+| `memory.upsert` 的 `payload.admitted_generation` | 抽取任务带入其受理时的记忆代数；任何 `memory.delete` / `child.delete` 之后代数 +1，旧代数写入被拒 `stale_generation`（不再学回已删除事实）。 |
+| `child.delete` | 同时墓碑化该成员的事实。 |
+| `POST /households/{id}/captures` | `kind` = `text` / `voice_transcript` / `image`。输出确认卡（`item.propose`），命令 id 由 `capture_id` 派生，重试不重复。图片字节只交给抽取器，不落库。未配置图片抽取器时 `422 capability_unavailable`。 |
+| `GET /households/{id}/home` | 我们家：家庭、成员、计划、观察、事实（带 `source`）、设置。 |
+| `GET /households/{id}/memories`、`/memories/recall?q=&member_id=&at=` | 召回在 SQL 中先按属主、家庭、状态、有效期、主体、可见性过滤，再词法排序取前 6。`use_memory=false` 或 `ephemeral=true` 时返回空。 |
+| 拒绝码 | `member_not_found`、`deleted`、`previously_deleted`、`proposal_closed`、`invalid_state`、`already_exists`、`quiet_hours`、`daily_limit`、`reminders_paused`、`fire_at_past`、`memory_paused`、`stale_generation`。`revision_conflict`、`proposal_closed` 为 `reread`，其余 `stop`。 |
+
+提醒派发：`family.claim_due_reminders` 30 秒租约，`family.fire_reminder` 原子复核提醒/事项/家庭状态后写 `reminder.due` outbox 事件，每条只触发一次。

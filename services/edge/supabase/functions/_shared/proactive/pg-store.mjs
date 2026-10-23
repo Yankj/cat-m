@@ -22,14 +22,15 @@ export function createPgStore(sql) {
       const set = keys.map(k => { args.push(k === 'recurrence' ? (f[k] == null ? null : JSON.stringify(f[k])) : f[k]); return `${k}=$${args.length}${k === 'recurrence' ? '::text::jsonb' : ''}`; });
       const r = await sql.unsafe(`update proactive.tasks set ${set.join(',')} where user_id=$1 and id=$2 and revision=$3 returning ${TASK_COLS}`, args); return iso(r[0]) ?? null;
     },
-    async claimDue(nowIso, limit) { const r = await sql.unsafe('select * from proactive.claim_due_reminders($1::timestamptz,$2)', [nowIso, limit]); return r.map(iso); },
+    async claimDue(nowIso, limit) { const r = await sql.unsafe('select * from proactive.claim_due_reminders($1::timestamptz,$2)', [nowIso, limit]); return r.map(iso).map(c => ({ ...c, claimed_at: nowIso })); },
     async finishOccurrence(c, f) {
       await sql.begin(async tx => {
         await tx.unsafe(`update proactive.tasks set next_fire_at=$3, fire_count=$4, status=case when status='snoozed' then 'open' else $5 end, snooze_until=null where id=$1 and next_fire_at=$2`, [c.task_id, c.scheduled_at, f.next_fire_at, f.fire_count, f.status]);
         await tx.unsafe(`update proactive.reminder_occurrences set state='generated' where task_id=$1 and scheduled_at=$2`, [c.task_id, c.scheduled_at]);
       });
     },
-    async releaseOccurrence(c) { await sql.unsafe(`delete from proactive.reminder_occurrences where task_id=$1 and scheduled_at=$2 and state='claimed'`, [c.task_id, c.scheduled_at]); },
+    // fenced on the claim time: a worker whose lease was re-claimed cannot release the newer claim
+    async releaseOccurrence(c) { await sql.unsafe(`delete from proactive.reminder_occurrences where task_id=$1 and scheduled_at=$2 and state='claimed' and ($3::timestamptz is null or claimed_at=$3::timestamptz)`, [c.task_id, c.scheduled_at, c.claimed_at ?? null]); },
     async insertEvent(ev) { if (ev.kind === 'reminder_due' && ev.task_id) { const r = await sql.unsafe(`insert into proactive.events(user_id,task_id,conversation_id,kind,title,body,payload,dedupe_key,push_state) select $1,$2,$3,$4,$5,$6,$7::text::jsonb,$8,$9 where exists (select 1 from proactive.tasks t where t.id=$2 and t.user_id=$1 and t.status in ('open','snoozed') and t.next_fire_at=($7::text::jsonb->>'scheduled_at')::timestamptz) on conflict(user_id,dedupe_key) do nothing returning *`, [ev.user_id, ev.task_id, ev.conversation_id, ev.kind, ev.title, ev.body, JSON.stringify(ev.payload ?? {}), ev.dedupe_key, ev.push_state ?? 'pending']); return iso(r[0]) ?? null; }
       const r = await sql.unsafe(`insert into proactive.events(user_id,task_id,conversation_id,kind,title,body,payload,dedupe_key,push_state) values($1,$2,$3,$4,$5,$6,$7::text::jsonb,$8,$9) on conflict(user_id,dedupe_key) do nothing returning *`, [ev.user_id, ev.task_id, ev.conversation_id, ev.kind, ev.title, ev.body, JSON.stringify(ev.payload ?? {}), ev.dedupe_key, ev.push_state ?? 'pending']); return iso(r[0]) ?? null; },
     async listEvents(uid, after, limit) { const r = await sql.unsafe(`select * from (select * from proactive.events where user_id=$1 and ($2::timestamptz is null or created_at>$2::timestamptz) order by created_at desc limit $3) e order by created_at`, [uid, after, limit]); return r.map(iso); },

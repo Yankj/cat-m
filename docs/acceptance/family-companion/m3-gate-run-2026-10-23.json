@@ -1,0 +1,1784 @@
+{
+ "corpus": "cat.family-memory.synthetic.zh.v1",
+ "cases": [
+  {
+   "id": "FAM-MEM-001",
+   "category": "paraphrase",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "dd594dd1-cd33-5d7e-8618-22cd0c432d92@1",
+    "80db1989-651c-55b4-82ac-f66f5ce3c498@1",
+    "62e5ef3d-59d9-51fd-9161-48793b1fd695@1",
+    "a4149b25-a327-5124-965f-8d32c98b7a67@1",
+    "d87552bc-c322-52a0-9198-2e7f1aabf21a@1",
+    "79236482-e743-5bf2-a3f0-026388a4629e@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-002",
+   "category": "paraphrase",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "e1a6ff5a-6bd1-5971-8f58-c1ed33b4d64c@1",
+    "4286d9d1-68b0-5556-8e32-00f8f99a8d50@1",
+    "381f45df-4c9d-5b07-8b37-cd420695b5bc@1",
+    "64f84c28-5373-53af-905c-8ae9d96d33ad@1",
+    "b12c6faf-6734-5f30-a3f8-4fa0a09fabc3@1",
+    "e3de7fae-dd70-5aa3-96f8-5cc40625ac52@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-003",
+   "category": "paraphrase",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "43312c2e-5d14-5bcb-a0e7-51fea0ed8d88@1",
+    "344816e1-9a88-5ba2-9827-411ac96903b7@1",
+    "95864f8e-6a93-5393-a9cb-ea56fe7ae0fd@1",
+    "f2909968-5e1d-5498-b1a6-ca2c819bf3d4@1",
+    "fe458f8b-bb95-5ca9-9c77-4bac9265e422@1",
+    "3ed1a238-3b11-5377-ae56-02787bc9a35d@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-004",
+   "category": "paraphrase",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "2cec92f3-11c0-5559-b57a-950ccbfff525@1",
+    "37c80dbb-38ed-5b55-88c6-4f4b4ee6c1d4@1",
+    "5e7ffe52-9c8e-55bd-91ca-129fed968383@1",
+    "9d0a69cb-d52a-5711-9472-3f3a89ee4ed9@1",
+    "846455ae-e870-52e9-a5d6-79ef095e5ccd@1",
+    "9910461e-f80b-5d78-9ae3-d26ceb9bebc5@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-005",
+   "category": "paraphrase",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "e4b1035d-b4af-5bb6-ad51-ba9dfa64a195@1",
+    "2250d623-3277-526d-8cd8-21eadd0e257b@1",
+    "80cc5435-2de6-57a3-af28-27ca139605f3@1",
+    "c841c386-4907-5c96-96b7-62da0121b01b@1",
+    "b990956c-ae36-5f1f-8aea-3cce7f59f111@1",
+    "42b81344-ddea-579d-a48d-ce16c65887bb@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-006",
+   "category": "paraphrase",
+   "eligible": true,
+   "recall": 0,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "1824a15b-f64c-5aca-bf94-e39220d18509@1",
+    "df0ac9a9-9df6-58d7-957c-291cd56e3c02@1",
+    "05a10a8a-382d-5a50-85be-557f60002278@1",
+    "e267d7cd-944e-56f9-a3aa-d97a317b9d49@1",
+    "dd2d0e66-eb74-53ea-9f57-9d4674b7d9cd@1",
+    "5cfdad23-a7ce-5892-8293-7976fd4a07ab@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-007",
+   "category": "paraphrase",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "f78433f0-af6d-5e92-8a39-e3156f2eac6f@1",
+    "9c26503e-a7c0-5c58-8c71-49d7e6157f60@1",
+    "d9a1eacf-038e-59a9-a4c1-91ea31758620@1",
+    "7b868e6d-6a2c-5975-a7de-5b5070e0c6f0@1",
+    "ea623dba-dc20-5b12-a8dd-e5a694fd2c6d@1",
+    "b89ca96d-801d-5442-895a-8b4c645418c2@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-008",
+   "category": "paraphrase",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "97e76267-5809-5733-9a68-2d1eec4fd0f7@1",
+    "cddcdf84-c35b-55c7-9ed3-f1a31e968751@1",
+    "c2b46fd8-236a-5876-bebb-91d976bfbccf@1",
+    "04335491-de42-50f2-9d3d-f0752f7e38b5@1",
+    "18b8f370-b4a5-518d-b1dd-45c19d86757e@1",
+    "b2517806-599d-50ec-9517-de47868086da@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-009",
+   "category": "paraphrase",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "593b3254-9ef8-591c-a03b-c9663de66c95@1",
+    "4af23861-a79d-521b-aa48-4a78cf605848@1",
+    "344fc49c-50ab-5a21-8117-a86cfe167f72@1",
+    "6d0f3cf5-055d-5a35-94c8-884d2a1e2701@1",
+    "6c2de547-9fa8-5150-a29a-8e794e45c2da@1",
+    "1fc7252b-d75a-5b03-817c-2a4bfe0bbeb7@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-010",
+   "category": "paraphrase",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "f83324a4-dd57-55d6-b9cb-fc4ee446d919@1",
+    "d4becb08-eac9-524e-af7a-8ad01c23bdf0@1",
+    "42df4870-b984-5487-a294-f1ba8f7d8ddc@1",
+    "5fa579ae-1fe4-5595-baef-b145f4f32ef7@1",
+    "b11f141f-13d3-5b41-95a0-a70afd8b5bab@1",
+    "3315c87f-751c-5605-aa6f-a8236bea43d4@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-011",
+   "category": "negation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "2ba29ea0-2238-52de-b1e4-ab6ee8bc5f49@1",
+    "bdc789a1-6cc0-5b9c-a810-a90c01a1e478@1",
+    "49e83956-7041-56bd-aaf7-b57d870cd8df@1",
+    "6192aaca-7fe6-5308-bafb-3929224de1e4@1",
+    "8eace095-a4ca-5b2d-b115-8d99eb04f78e@1",
+    "adcae93a-a251-5b4b-8065-0fad05d1e980@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-012",
+   "category": "negation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "370d29c4-d1d1-5124-83e3-ce77f336a459@1",
+    "4231efd3-a909-5d55-ac1b-55bcdaff40ee@1",
+    "0486fe7a-c328-5d71-a6f7-68f9fecbcc75@1",
+    "c195778e-726c-5637-8fad-1704bef78e2d@1",
+    "3d594869-cca9-5fc4-bbe7-5b29617d2b4f@1",
+    "9b0e343a-2156-5afa-bc81-b10971b2f8c6@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-013",
+   "category": "negation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-014",
+   "category": "negation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "b1442d2e-07e9-59d6-9975-8236949806b3@1",
+    "22086560-511c-593c-8d27-c132320494d1@1",
+    "7cad11b9-4fe1-58e7-8604-b931230985b2@1",
+    "b9abc4cc-e5cf-5714-9bd5-90f168c5485a@1",
+    "d4f2886a-97a6-59fe-a42f-3d93b9b927a2@1",
+    "f717702f-0055-5758-a3e3-4192e1a13dc1@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-015",
+   "category": "negation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "c84d1136-6e7c-5f30-b0f7-96892234321c@1",
+    "025d3d50-0ee3-5937-a5a8-78945d9636d0@1",
+    "7438aa44-71a8-5140-96ff-7071cc204708@1",
+    "862cc5c1-c8a6-5c8e-9479-0f857e966e95@1",
+    "76479fde-7a11-5bab-8bf2-a1f1be961f7a@1",
+    "66ed9873-d41b-5ed0-8327-75052b35a13c@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-016",
+   "category": "negation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "10495f08-6dfc-5a9a-b156-81a92b2cd00e@1",
+    "42e67fcd-ab5b-5670-8b69-d214c714c800@1",
+    "ddf049a7-afa9-5860-af66-1d549963ff47@1",
+    "419ec2d7-46af-5a29-8a88-6199bf996d2c@1",
+    "e882e204-abf2-53a8-a7e5-cda42a771025@1",
+    "48ee513c-32bf-5f68-a8e9-8a040275a1e1@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-017",
+   "category": "negation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "6b6eb2cd-8aee-5a98-be48-b7fdd91cdd2f@1",
+    "3ef323a7-a609-5ed4-86c5-e47fbeb39661@1",
+    "826e0594-3d86-5ec7-9995-603b7ed97dc0@1",
+    "5455b845-7bf6-574a-abd0-fdb34a76d8a6@1",
+    "3db5558b-e814-51b1-97c1-ad8b8c89675c@1",
+    "d07fb44f-9546-564e-ada3-0fbe0276679b@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-018",
+   "category": "negation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-019",
+   "category": "negation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-020",
+   "category": "negation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "pause_reminder",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "865d80e1-b00f-5aa7-a5f6-1ef925b1a9dd@1",
+    "561e1fa3-8340-5d75-875d-a79548ac3b68@1",
+    "40c801d6-d4a9-55d5-8c1d-7d3119a88303@1",
+    "3efd7f26-0a7a-54d2-ba8a-635123faab33@1",
+    "905d0861-d272-5d82-aebe-799574a3dc44@1",
+    "4b714360-78ba-5800-b651-5cba5fb28ab3@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-021",
+   "category": "subject",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "e61abec6-b25a-5f3b-996d-ecc56f407ebc@1",
+    "8b0bbf11-60fa-59c5-b5fe-cd311fe22569@1",
+    "266aad82-e0d4-5673-b069-99f61cc31ca5@1",
+    "f624b4b1-bef6-58c2-b1c7-04d1b5ae70a5@1",
+    "c0064aca-42d2-56b2-a8d1-7e089ddaddaa@1",
+    "6efc4c81-2dc1-587d-a2bd-f075dbf69a51@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-022",
+   "category": "subject",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-023",
+   "category": "subject",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "21b8a208-30b9-5714-8af5-120cc0cc4b8d@1",
+    "5cf12245-283b-5273-bf9c-eea2e00fb738@1",
+    "0e5db001-e5ef-5ac8-894b-a264b9aa176f@1",
+    "27c63cdc-1600-52bd-9345-fdb53b2eb2e4@1",
+    "9efd2dca-f899-56a1-8bc1-3ccb844fd72d@1",
+    "3401adb1-96e4-59c5-9f7f-37735cb439f1@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-024",
+   "category": "subject",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-025",
+   "category": "subject",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "c5eb0047-a1af-54e6-ad82-ad56d5bec7f6@1",
+    "35dfcab8-3f43-522f-8188-c167d7c966ab@1",
+    "b90e7753-e3f8-5f74-9039-ecadd89b94fb@1",
+    "8036a253-bd9f-5e4f-a9c9-83fa72738906@1",
+    "e1e2a109-c88b-5e65-ab94-fca54b41ad6e@1",
+    "e18182f0-c7f7-5334-9fbd-e50a6e92f7af@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-026",
+   "category": "subject",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-027",
+   "category": "subject",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-028",
+   "category": "subject",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "remove_member",
+     "applied",
+     null
+    ],
+    [
+     "create_new_member",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "80fe39c9-3e41-59fc-bfd5-6b9817c1121e@1",
+    "ccf9d3a1-44f3-5900-8be2-3e07a78577c2@1",
+    "0487a562-7e30-5161-82d6-469f46f53d08@1",
+    "e9c49914-3b85-5c9a-b53e-b36528dfeaa5@1",
+    "f32faebc-e272-57b4-97c3-be61cb22e039@1",
+    "8c7804e7-51f8-5f19-a453-641e7da28ce0@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-029",
+   "category": "subject",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "ff1cc4c1-6e04-5b1c-bdb4-7b8e175c5609@1",
+    "c6e84fe8-398c-5662-a83f-1bd1aa0407aa@1",
+    "a1f63cdc-c399-5da5-932a-d00c8c749837@1",
+    "347d6eb0-bb43-5511-a7a3-2fe071ca1423@1",
+    "7513b8c6-3360-593c-b6a1-5e2ab52062a9@1",
+    "5709473a-8535-584c-9301-531eb1022bd3@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-030",
+   "category": "subject",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "aed35fa2-5a31-5426-8239-b2687f0f5e23@1",
+    "92b59978-5bc0-53ce-ae09-8c0ed3888feb@1",
+    "000ea185-cdb5-5e25-ac97-75ceb8bda9e0@1",
+    "328b00b3-0d58-5c0c-9717-2b4f9b6ebeca@1",
+    "a8717337-15ad-5201-8594-ee5dc1503847@1",
+    "7b01d8ab-8963-55e8-8b48-38a5d91e59fa@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-031",
+   "category": "provenance",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "d9e59b06-d673-56bc-a8e9-eade8ae04ec1@1",
+    "fbc1f17f-6668-5b82-b6d5-cb61f351d816@1",
+    "a1196d7b-894e-5b8a-8e90-956c875f1638@1",
+    "6de2023f-fffd-5cd3-84f7-d83a752b58a4@1",
+    "8cde40dd-4253-5ce7-be52-827435585492@1",
+    "c74ef7cc-a752-50dd-9531-fdb2a9bdd5b9@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-032",
+   "category": "provenance",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-033",
+   "category": "provenance",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "confirm_source_correction",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "0a8e4ec5-0097-5cce-a280-fc9a9801c10b@2",
+    "73a14822-e809-59bd-9258-4d22410551b2@1",
+    "76cf39d2-abd4-5312-ab46-2b4f9a957179@1",
+    "2a84c13c-e95f-53cc-ba33-2c75bcd6c052@1",
+    "4ff02f05-a408-5f8c-9c08-28acea418f2c@1",
+    "11d079df-256c-5715-a244-9a6323ab158e@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-034",
+   "category": "provenance",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "expire_raw_media",
+     "noop",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "d13275ec-ac8e-5ddc-a119-5d13aa718b8e@1",
+    "d6da9b17-cdb5-5c97-9736-dfa3023107ec@1",
+    "7f1d40f9-36d3-5485-ba36-53646da37563@1",
+    "81c41d5f-781a-5c47-bddc-d9a37cde45dc@1",
+    "2c94a570-8ba8-55e9-9724-0650f3257560@1",
+    "da11131a-536e-5e2a-844a-f284aa6e24fb@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-035",
+   "category": "provenance",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "retract_source",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-036",
+   "category": "provenance",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-037",
+   "category": "provenance",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-038",
+   "category": "provenance",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "request_shared_projection"
+   ],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-039",
+   "category": "provenance",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "2d3e42a5-749c-5c5d-8027-6959428797bf@1",
+    "899a3b17-968c-5d4c-a8d3-7502bdc109f8@1",
+    "9f2dce52-9d03-512f-a53e-2d2fa89d798c@1",
+    "0c2a8475-49ba-59b4-bb1d-8d5c95f3b67a@1",
+    "283ed2c7-800a-5dfc-af90-7b9b841148bd@1",
+    "e247fe1f-68bf-5e35-b492-6b4559cd8b09@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-040",
+   "category": "provenance",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "freeze_recall_snapshot",
+    "resolve_before_output"
+   ],
+   "ops": [
+    [
+     "revoke_source_access",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-041",
+   "category": "temporal",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-042",
+   "category": "temporal",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-043",
+   "category": "temporal",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-044",
+   "category": "temporal",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-045",
+   "category": "temporal",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "2e70f03d-b981-566e-97d5-de4804a3212d@1",
+    "b1940361-41e1-5e5b-b6e9-84cf95f453a9@1",
+    "ec1543d9-4acf-50ec-8137-011ed522f3e1@1",
+    "7cf832f9-e5b8-55d3-b78f-5fcabd3f6373@1",
+    "4a0a7d2d-306d-5a31-b6e1-5ea56980d097@1",
+    "9eb38785-b288-586d-9e3f-7b9fde2786b1@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-046",
+   "category": "temporal",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-047",
+   "category": "temporal",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "c24504d8-60ee-5de7-a07d-55a116795b1f@1",
+    "ba2d4385-4970-5237-9ebd-b57515f23e35@1",
+    "5119f768-04fd-5d02-b9ca-e42a58bb5969@1",
+    "937864eb-7c56-5be0-a7a7-da021b35ce79@1",
+    "9f4d67ed-bb11-53ec-ab0c-b8422fcf0e54@1",
+    "8d1aad65-9870-5443-88bf-a01f233f4f57@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-048",
+   "category": "temporal",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "778253a0-f215-50ef-a1d8-ed324358539a@1",
+    "003ae0a2-cde4-58be-86db-a900f3b9295c@1",
+    "4d8992c8-89e3-54b5-bfc5-6b3ed60b1ed0@1",
+    "535b7998-d371-5bb4-81bc-fab9de5a59c8@1",
+    "ecea193a-4f3d-56f1-9b9c-ad7e664e5963@1",
+    "bd62cb96-bbe5-5777-b2bc-f8104256d912@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-049",
+   "category": "temporal",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-050",
+   "category": "temporal",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "ef1efc3d-45e2-584c-b04c-70ad1f8f8c81@1",
+    "b24231f3-f48c-5dc3-92a9-ce53c2959447@1",
+    "a9e41322-2b06-5a4c-8b2c-baebaf08358a@1",
+    "1473a5f3-cc6e-568b-852f-c2cf0eab05d4@1",
+    "29ae911d-40eb-57d6-abb1-045ea3a93a0f@1",
+    "4c2c5f31-83ae-59e5-bd25-4853b41be8b0@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-051",
+   "category": "conflict_revision",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "correct_memory",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "4828724d-e732-56b2-9552-ec8be99529ac@2",
+    "b042e174-9219-58e1-a208-56cde1d254ec@1",
+    "867a6927-dbf4-5515-8881-b3326f966b86@1",
+    "717d5dbc-6d75-5a9b-8519-5dc5a86bff07@1",
+    "a1a88547-3dd7-5b94-8a0f-553c0d541989@1",
+    "5959ee75-4020-5c41-b425-db11c9c0cd25@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-052",
+   "category": "conflict_revision",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "late_update",
+     "rejected",
+     "revision_conflict"
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "dccb85fa-d09f-5564-b34d-437fe6d2928a@1",
+    "be0def41-b3b2-5b9d-98c0-5a32e9ca6458@2",
+    "dad84088-ee4f-514a-98dc-a624c200f05b@1",
+    "4fc3c469-5798-547d-9dc2-22855a92a490@1",
+    "757d281d-be83-524f-90a4-5e9478e885e9@1",
+    "164119ca-970e-5f47-9550-602efe16046b@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-053",
+   "category": "conflict_revision",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "55fb5491-dc19-5e3e-bfa4-89f8c3f46abf@1",
+    "d98cd321-3a49-59e9-acb1-9b8ff66a9a5e@1",
+    "66a65b86-0c81-5299-a403-c26e03b70335@1",
+    "1c81a183-e1a2-575f-a96c-9f162f4750e0@1",
+    "f12d8067-c1f1-525d-854a-635df445fe7e@1",
+    "dd988418-94e9-5c68-9891-6547b36c2df2@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-054",
+   "category": "conflict_revision",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "confirm_this_time_only",
+     "noop",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "6dc5addc-a005-55e0-8e56-3e0bf839e00e@1",
+    "51318607-4d68-5aa1-9ccd-66c8b69d5e91@1",
+    "0ecb343a-0642-5bbb-a61d-aaca34479209@1",
+    "c16a9f86-6ca7-54a1-a4f4-d8299d2a4f28@1",
+    "b0222977-2b29-56c7-9df6-fd7753d8547b@1",
+    "bdf760cc-efb8-5ff7-8b9c-c730682a6d50@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-055",
+   "category": "conflict_revision",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "debc2c5e-8287-5d28-9300-08e7ed4d4393@1",
+    "1540632f-8686-55c1-8e09-1469ce515d21@1",
+    "5fc1b35a-1559-51f9-8848-49ac83b91e49@1",
+    "1d4a0283-81d4-5867-ba97-42c672020b4b@1",
+    "e041ffbe-7815-5243-8478-54ea04906ef2@1",
+    "9b7717f2-530d-5b3e-9cd7-7153d9bf43e3@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-056",
+   "category": "conflict_revision",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "late_set_memory_enabled"
+   ],
+   "ops": [
+    [
+     "set_memory_enabled",
+     "applied",
+     null
+    ],
+    [
+     "set_memory_enabled",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-057",
+   "category": "conflict_revision",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "82ac23df-c419-5309-a9e6-91a147c5921c@1",
+    "dde913e6-62fb-50eb-94ac-7f59caf70ee2@2",
+    "e1017f5b-fb02-5aae-9dcc-11b2c6234cbc@1",
+    "338157d6-08bc-5922-a7e4-562f485fd6bd@1",
+    "fbf3c13f-6787-543e-ae02-1a7e4292c84b@1",
+    "62990167-a93b-5c16-b688-7e6631dbb316@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-058",
+   "category": "conflict_revision",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "correct_summary_source",
+     "applied",
+     "applied"
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "ec8d6d48-34a7-51c4-8638-7025e07510ae@1",
+    "a4fd388a-894c-549e-86f9-34c523c5cea3@1",
+    "a630e5d5-6a4b-5fa1-91f1-bf1955fe75cd@1",
+    "357df665-0f05-5bb7-a7a2-61069d9507ea@1",
+    "ec34f6f1-489e-574e-847f-a07d7130cb2e@1",
+    "bcb125e6-3d9d-5598-8358-4dbf16477b8a@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-059",
+   "category": "conflict_revision",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "confirm_memory",
+     "applied",
+     null
+    ],
+    [
+     "replay_confirm",
+     200,
+     "applied",
+     true
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "620ef38f-887d-5592-acd4-082ea45eaab3@1",
+    "3833ae97-c8f6-50d4-bff8-32d94a29458c@1",
+    "4777c52f-58a7-55b9-8550-b31a0c12d846@1",
+    "38dfabbc-a989-5e16-b3c3-a3799016fe58@1",
+    "6d65bcb3-3e7f-54b3-9226-5b1698f8bf9b@1",
+    "16a03346-dbb6-59a9-997c-794f8518f0b7@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-060",
+   "category": "conflict_revision",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "confirm_memory",
+     "applied",
+     null
+    ],
+    [
+     "replay_changed_payload",
+     409,
+     "idempotency_conflict",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "d3b0e770-8151-5817-bd0c-27dec24d023b@1",
+    "7b7104a1-f773-5b2f-b79b-6e22bb9a59a3@1",
+    "5afd2ca9-d514-53fb-85df-9627a351d900@1",
+    "43af77de-49db-5b52-b52f-9e54c9cebc7f@1",
+    "57cb6ea4-0ebe-5b1a-8d22-985d3bfcb439@1",
+    "1b865eb0-0cae-569a-a3ae-ba9c685d34cb@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-061",
+   "category": "deletion",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "complete_old_extraction_job"
+   ],
+   "ops": [
+    [
+     "forget_memory",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-062",
+   "category": "deletion",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "commit_summary"
+   ],
+   "ops": [
+    [
+     "forget_memory",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-063",
+   "category": "deletion",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "freeze_recall_snapshot",
+    "resolve_before_output"
+   ],
+   "ops": [
+    [
+     "forget_memory",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-064",
+   "category": "deletion",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "search_stale_index"
+   ],
+   "ops": [
+    [
+     "forget_memory",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-065",
+   "category": "deletion",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "dispatch_derived_reminder"
+   ],
+   "ops": [
+    [
+     "forget_memory",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-066",
+   "category": "deletion",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "forget_no_relearn",
+     "applied",
+     null
+    ],
+    [
+     "extract_old_paraphrase",
+     "rejected",
+     "stale_generation"
+    ]
+   ],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-067",
+   "category": "deletion",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "explicit_allow_relearn",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "e50513de-0187-50a6-b3d6-c98469011ec0@1",
+    "5b0f76c7-d071-5330-a99f-cd829360b37c@1",
+    "035b4149-7393-5b39-a55a-546172d55579@1",
+    "8d1f8c6b-3208-5c29-9241-da515b9ffd36@1",
+    "dd6fbbd6-7639-56ee-a3b7-fa3f943a3249@1",
+    "e45af09c-3979-563e-bd30-4a1f24ad7ea1@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-068",
+   "category": "deletion",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "undo_forget"
+   ],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-069",
+   "category": "deletion",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "query_cleanup_receipt"
+   ],
+   "ops": [
+    [
+     "forget_memory",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-070",
+   "category": "deletion",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "delete_household",
+     "applied",
+     null
+    ],
+    [
+     "sync_old_device",
+     null,
+     "not_found"
+    ]
+   ],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-071",
+   "category": "household_authority",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": [
+    "e9e76ac3-674c-533a-96d9-edbe57b0ab21@1",
+    "c4ac6230-8675-527a-8ec3-ad5b5503afdf@1",
+    "61e795e1-351f-5d54-9657-56d81ac5eef7@1",
+    "25c4c621-d1c8-5e5f-ad90-ce291874d991@1",
+    "ba41cf0e-0034-53e5-8474-23878b48582e@1",
+    "460b23fa-432b-52d8-9aa2-7e63c334ad0e@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-072",
+   "category": "household_authority",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-073",
+   "category": "household_authority",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "revoke_membership"
+   ],
+   "ops": [],
+   "http": 404,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-074",
+   "category": "household_authority",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "freeze_recall_snapshot",
+    "revoke_membership",
+    "resolve_before_output"
+   ],
+   "ops": [],
+   "http": 404,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-075",
+   "category": "household_authority",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "start_recall",
+    "switch_account",
+    "deliver_late_result"
+   ],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-076",
+   "category": "household_authority",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "promote_shared_memory"
+   ],
+   "ops": [],
+   "http": 404,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-077",
+   "category": "household_authority",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "create_same_display_name_household"
+   ],
+   "ops": [
+    [
+     "delete_household",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-078",
+   "category": "household_authority",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-079",
+   "category": "household_authority",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-080",
+   "category": "household_authority",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-081",
+   "category": "sensitive_observation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "confirm_sensitive_observation",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "d9f7010b-d072-56c9-b023-22aad6dc7306@1",
+    "8f459e99-6785-5c28-a2c7-c62e8a8ad080@1",
+    "3989162c-e529-5720-8b57-8d5d3f0d9d49@1",
+    "01cc9c74-1a3d-5161-a606-da863bf349fa@1",
+    "807ee54c-09c6-5409-915f-891120ac46f1@1",
+    "58bdd327-f205-5a75-87e0-f5781f8549a0@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-082",
+   "category": "sensitive_observation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "confirm_sensitive_observation",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "3caa01cf-80c3-51cc-b524-97865f325bfd@1",
+    "8049542c-f50a-5678-bb6e-d53b3da8eb9a@1",
+    "e3af1fdf-13c0-5858-863c-a20b12e5c4fa@1",
+    "b72b2d1f-4b7d-5261-9444-a22bf05ccc8e@1",
+    "f65fe665-1d2b-5dac-bd92-dac17a86f5a5@1",
+    "30125dde-8985-5ac1-8157-391b136486b4@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-083",
+   "category": "sensitive_observation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "confirm_sensitive_observation",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "f45a905a-068c-553f-9d03-ed1cdd3e608e@1",
+    "1733f3a9-35ff-5af8-920d-4f00d2bd9331@1",
+    "98d711c5-36e8-59a6-a1b8-8034fa20bb06@1",
+    "b9f770a0-df49-5504-8629-d3f861fd8af7@1",
+    "6857d813-05f5-5e5a-8ea1-34c722668052@1",
+    "563c2b73-6304-5798-992c-78f4646f61eb@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-084",
+   "category": "sensitive_observation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "confirm_sensitive_observation",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "78295993-b836-508b-adfc-c745c1486e5f@1",
+    "2208679d-b5e3-5a60-8826-e832378fb9ee@1",
+    "d2103174-cf1b-5529-9495-a924a7193d72@1",
+    "34a97cd2-7f7d-5e5c-a6ec-7dd179be7f26@1",
+    "f316aa36-8762-572a-af40-46ea6f08e537@1",
+    "5e049488-4ea3-5c0e-b476-40ef2a5fecc8@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-085",
+   "category": "sensitive_observation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "confirm_sensitive_observation",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "67de386a-60ce-5a20-871e-19953f5dbade@1",
+    "5e659921-ab65-5bf6-904e-57cdf273ac38@1",
+    "03747bbc-fc49-5981-9886-66f022ed5273@1",
+    "13e2a55d-1cc3-56ca-ab09-7deab25fa876@1",
+    "473e22d6-f644-5dd9-83cf-2bc4cd07931a@1",
+    "3d49ea74-6671-55f3-8be5-2f70007c9707@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-086",
+   "category": "sensitive_observation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-087",
+   "category": "sensitive_observation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-088",
+   "category": "sensitive_observation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-089",
+   "category": "sensitive_observation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-090",
+   "category": "sensitive_observation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "confirm_sensitive_observation",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "c40e2444-c947-5f97-bf21-c8d1b3eaf119@1",
+    "9e00e202-b1d6-5a87-a57c-695d82e60fad@1",
+    "4df6d10c-be4c-515e-841b-dc3327253ac0@1",
+    "4d1047c6-0e6e-5f36-9b06-69261080f620@1",
+    "16e2e090-48a8-5422-a6a9-6d13705f9120@1",
+    "97a6a68d-1bad-5bc3-87ff-d1de218b32f7@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-091",
+   "category": "modality_confirmation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "extract_voice_fields"
+   ],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-092",
+   "category": "modality_confirmation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "extract_voice_fields"
+   ],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-093",
+   "category": "modality_confirmation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "extract_voice_fields"
+   ],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-094",
+   "category": "modality_confirmation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "extract_voice_fields"
+   ],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-095",
+   "category": "modality_confirmation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "extract_image_fields"
+   ],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-096",
+   "category": "modality_confirmation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "extract_image_fields"
+   ],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-097",
+   "category": "modality_confirmation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "extract_image_fields"
+   ],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-098",
+   "category": "modality_confirmation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "import_older_notice",
+     "noop",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "b5707ba9-617f-512c-b88a-eede43dfdbc8@1",
+    "15c54c11-ed4e-5df5-a42d-754630bc8e94@2",
+    "ec484ce9-f814-5717-ad2c-ac5a3b226e92@1",
+    "da9d5e14-fc58-56fb-af52-13d07188ce71@1",
+    "c3a65266-555a-54d3-b3a4-d42951c4177f@1",
+    "93078374-3aa3-5a51-a410-e155e7066264@1"
+   ]
+  },
+  {
+   "id": "FAM-MEM-099",
+   "category": "modality_confirmation",
+   "eligible": false,
+   "recall": null,
+   "leaked": [],
+   "not_run_ops": [
+    "extract_image_fields"
+   ],
+   "ops": [],
+   "http": 200,
+   "returned": []
+  },
+  {
+   "id": "FAM-MEM-100",
+   "category": "modality_confirmation",
+   "eligible": true,
+   "recall": 1,
+   "leaked": [],
+   "not_run_ops": [],
+   "ops": [
+    [
+     "edit_extracted_field",
+     "noop",
+     null
+    ],
+    [
+     "confirm_edited_fields",
+     "applied",
+     null
+    ]
+   ],
+   "http": 200,
+   "returned": [
+    "415ccf68-fac3-56b1-b5c1-fe5212aa78ba@1",
+    "9898281f-33d7-5a70-8756-4660e1db73a1@2",
+    "b6a95308-119b-5501-820a-f7bd7dadf40b@1",
+    "0aaa46d0-c878-57b6-9b47-9c8e819f0671@1",
+    "0c2a6665-8f1c-5ccd-8222-16d5349ff3ac@1",
+    "5e293a41-0db4-5476-bff4-bd460ff2b744@1"
+   ]
+  }
+ ],
+ "at": "2026-10-22T20:23:06.610Z",
+ "summary": {
+  "eligible": 50,
+  "macro_recall_at_6": 0.98,
+  "micro_recall_at_6": 0.9807692307692307,
+  "gold_hits": 51,
+  "gold_refs": 52,
+  "eligible_with_unsupported_ops_scored_0": 0,
+  "safety_forbidden_ref_cases": 0,
+  "cases_with_unsupported_ops": 23,
+  "gate_macro_threshold": 0.9,
+  "by_category": {
+   "paraphrase": {
+    "eligible": 10,
+    "recall_sum": 9
+   },
+   "negation": {
+    "eligible": 7,
+    "recall_sum": 7
+   },
+   "subject": {
+    "eligible": 6,
+    "recall_sum": 6
+   },
+   "provenance": {
+    "eligible": 4,
+    "recall_sum": 4
+   },
+   "temporal": {
+    "eligible": 4,
+    "recall_sum": 4
+   },
+   "conflict_revision": {
+    "eligible": 9,
+    "recall_sum": 9
+   },
+   "deletion": {
+    "eligible": 1,
+    "recall_sum": 1
+   },
+   "household_authority": {
+    "eligible": 1,
+    "recall_sum": 1
+   },
+   "sensitive_observation": {
+    "eligible": 6,
+    "recall_sum": 6
+   },
+   "modality_confirmation": {
+    "eligible": 2,
+    "recall_sum": 2
+   }
+  }
+ }
+}
