@@ -4,7 +4,7 @@ import XCTest
 
 /// Deliberately synthetic codec: exercises the production persistence boundary without
 /// creating Keychain entries. It is not evidence for the production cipher's security.
-private struct ParentingTestCipher: ParentingWorkspaceCipher {
+struct ParentingTestCipher: ParentingWorkspaceCipher {
     private struct Envelope: Codable {
         let subject: UUID
         let digest: String

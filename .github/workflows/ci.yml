@@ -56,6 +56,7 @@ jobs:
       - name: xcodebuild build-for-testing (simulator)
         working-directory: apps/ios-conversation
         run: xcodebuild -project cat.xcodeproj -scheme cat -destination 'generic/platform=iOS Simulator' build-for-testing CODE_SIGNING_ALLOWED=NO
-      - name: Parenting synthetic XCTest (fresh simulator, no backend config)
+      - name: Parenting synthetic XCTest and UI journeys (fresh simulator, no backend config)
+        timeout-minutes: 20
         working-directory: apps/ios-conversation
         run: bash Scripts/test-parenting-core-simulator.sh
