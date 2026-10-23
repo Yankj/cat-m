@@ -19,16 +19,16 @@ function one(s, today, children) {
   if (/今天|今日/.test(s)) date = today;
   else if (/明天|明日/.test(s)) date = iso(addDays(today, 1));
   else if (/后天/.test(s)) date = iso(addDays(today, 2));
-  if (!date && (m = /(下下|下个?|这个?|本)?(?:周|星期|礼拜)([一二三四五六日天])/.exec(s))) {
-    const target = WD[m[2]]; let diff = (target - dow + 7) % 7;
-    if (m[1] && m[1].startsWith('下')) { const mondayNext = 7 - ((dow + 6) % 7); diff = mondayNext + ((target + 6) % 7) + (m[1].startsWith('下下') ? 7 : 0); }
-    date = iso(addDays(today, diff));
-  }
   if (!date && (m = /(?:(\d{4})年)?(\d{1,2})月(\d{1,2})[日号]/.exec(s))) {
     let y = m[1] ? Number(m[1]) : base.getUTCFullYear(); const cand = `${y}-${pad(m[2])}-${pad(m[3])}`;
     if (!m[1] && cand < today) y += 1;
     const d = new Date(`${y}-${pad(m[2])}-${pad(m[3])}T00:00:00Z`);
     if (d.getUTCMonth() + 1 === Number(m[2])) date = iso(d);
+  }
+  if (!date && (m = /(下下|下个?|这个?|本)?(?:周|星期|礼拜)([一二三四五六日天])/.exec(s))) {
+    const target = WD[m[2]]; let diff = (target - dow + 7) % 7;
+    if (m[1] && m[1].startsWith('下')) { const mondayNext = 7 - ((dow + 6) % 7); diff = mondayNext + ((target + 6) % 7) + (m[1].startsWith('下下') ? 7 : 0); }
+    date = iso(addDays(today, diff));
   }
   if (!date && (m = /(\d{1,2})[./](\d{1,2})(?!\d)/.exec(s))) { const d = new Date(`${base.getUTCFullYear()}-${pad(m[1])}-${pad(m[2])}T00:00:00Z`); if (!isNaN(d)) date = iso(d); }
   if ((m = /(\d{1,2}):(\d{2})/.exec(s))) time = `${pad(m[1])}:${m[2]}`;
@@ -41,14 +41,18 @@ function one(s, today, children) {
   }
   const bring = []; if ((m = /(?:带上?|准备|别忘了?带?|记得带)([^，,。；;]+)/.exec(s))) for (const x of m[1].split(/[、和及与跟,，\s]+/)) { const v = x.replace(/^(好|上)/, '').trim(); if (v && v.length <= 20) bring.push(v); }
   const kid = children.find(c => c.display_name && s.includes(c.display_name));
-  let place = null; if ((m = /(?:在|去|到)([^\s，,。；;]{2,12}?)(?:上课|集合|参加|见面|门口|$|，|,)/.exec(s))) place = m[1];
+  let deadline = false; if (/\d{1,2}[日号]?前|之前|截止/.test(s)) deadline = true;
+  let place = null; if ((m = /([^\s，,。；;：:0-9]{2,10}?)(门口)?集合/.exec(s))) place = m[1] + (m[2] ?? '');
+  if (!place && (m = /(?:在|去|到)([^\s，,。；;]{2,12}?)(?:上课|集合|参加|见面|门口|$|，|,)/.exec(s))) place = m[1];
   let title = s.replace(/(?:带上?|准备|别忘了?带?|记得带)[^，,。；;]+/, '')
     .replace(/(今天|今日|明天|明日|后天|(下下|下个?|这个?|本)?(周|星期|礼拜)[一二三四五六日天]|(\d{4}年)?\d{1,2}月\d{1,2}[日号]|\d{1,2}[./]\d{1,2})/g, '')
     .replace(/(早上|上午|中午|下午|傍晚|晚上)?([0-9一二两三四五六七八九十]{1,3})点(半|一刻|[0-9一二三四五六七八九十]{1,3}分?)?|\d{1,2}:\d{2}/g, '')
     .replace(kid ? new RegExp(kid.display_name, 'g') : /$^/, '').replace(/^[\s，,的要有去]+|[\s，,]+$/g, '').trim();
+  title = title.replace(/^[^：:]{0,12}通知[：:]/, '').replace(/[（(][）)]/g, '').replace(/(，|,)?请(?=$|，|,)/g, '').replace(/^前|之前|截止/g, '').replace(/[，,]{2,}/g, '，').replace(/^[\s，,]+|[\s，,]+$/g, '');
+  if (place) title = title.replace(new RegExp('[，,]?\\s*' + place + '集合'), '');
   if (place) title = title.replace(new RegExp('\\s*(在|去|到)' + place + '(上课|集合|参加|见面|门口)?'), '').trim();
   if (kid && title.length <= 2) title = title + kid.display_name;
   if (!title) return null;
   if (title.length > 40) title = title.slice(0, 40);
-  return { title, local_date: date, local_time: time, member_id: kid?.member_id ?? null, place, bring: bring.slice(0, 6) };
+  return { title, deadline, local_date: date, local_time: time, member_id: kid?.member_id ?? null, place, bring: bring.slice(0, 6) };
 }
