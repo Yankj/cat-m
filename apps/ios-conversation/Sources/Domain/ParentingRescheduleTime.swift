@@ -9,7 +9,7 @@ enum ParentingRescheduleTime {
     }
     private static let clarification = "请补充一个明确日期和钟点，例如“明天下午五点”或“2027-02-18 17:00”。有歧义或夏令时变化的时间请手动选择后核对。"
     private static let datePattern = #"(?<![0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}(?![0-9])|今天|明天|后天"#
-    private static let clockPattern = #"(?<![0-9零〇一二两三四五六七八九十])(?:(凌晨|早上|上午|中午|下午|傍晚|晚上)\s*)?([0-9]{1,2}|[零〇一二两三四五六七八九十]{1,3})(?:[:：]([0-9]{2})(?:[:：]([0-9]{2}))?|[点时](?:([0-9]{1,2}|[零〇一二两三四五六七八九十]{1,3})分?|(半))?)(?![0-9零〇一二两三四五六七八九十半刻分:：]|\.[0-9])"#
+    private static let clockPattern = #"(?<![0-9零〇一二两三四五六七八九十:：])(?:(凌晨|早上|上午|中午|下午|傍晚|晚上)\s*)?([0-9]{1,2}|[零〇一二两三四五六七八九十]{1,3})(?:[:：]([0-9]{2})(?:[:：]([0-9]{2}))?|[点时](?:([0-9]{1,2}|[零〇一二两三四五六七八九十]{1,3})分?|(半))?)(?![0-9零〇一二两三四五六七八九十半刻分:：]|\.[0-9])"#
     private static let absolutePattern = #"(?<![0-9])([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(Z|[+-][0-9]{2}:[0-9]{2})(?![0-9:+-]|\.[0-9])"#
     // Unsupported time operations or additional date/zone clues stay editable instead of being guessed.
     private static let unsupportedPattern = #"大后天|昨天|前天|周[一二三四五六日天1-7]|星期|[上下本这]周|[0-9一二两三四五六七八九十]+月[0-9一二两三四五六七八九十]+|取消|每[天周月]|每天|每星期|推迟|延后|提前|小时后|分钟后|一刻|三刻|左右|大约|大概|之前|之后|以前|以后|[点时分]多|不是|不要|不改|不用|或者|或是|也许|UTC|GMT|北京时间|当地时间|纽约时间|时区|[A-Za-z_]+/[A-Za-z_]+"#
@@ -66,7 +66,9 @@ enum ParentingRescheduleTime {
     }
     private static func noOtherTime(in text: String) -> Bool {
         matches(datePattern, in: text).isEmpty && matches(clockPattern, in: text).isEmpty &&
-            matches(unsupportedPattern, in: text).isEmpty && matches(#"[+-][0-9]{2}:?[0-9]{2}|[上下]午|凌晨|早上|中午|傍晚|晚上"#, in: text).isEmpty
+            matches(unsupportedPattern, in: text).isEmpty && matches(#"[+-][0-9]{2}:?[0-9]{2}|[上下]午|凌晨|早上|中午|傍晚|晚上"#, in: text).isEmpty &&
+            matches(#"[0-9]+\s*[:：]|[:：]\s*[0-9]+"#, in: text).isEmpty &&
+            matches(#"(?i)(?<![A-Za-z])(?:Z|AM|PM)(?![A-Za-z])"#, in: text).isEmpty
     }
     private static func fixedZone(_ text: String) -> TimeZone? {
         if text == "Z" { return TimeZone(secondsFromGMT: 0) }
