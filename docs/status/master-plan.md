@@ -6,18 +6,18 @@
 
 | 阶段 | 代码 | 自动测试 | 设备验证 | 线上验收 |
 |---|---|---|---|---|
-| M1 先把一件事办清楚 | #123 draft 候选；新增失败恢复缺陷正修复 | `974dbb1` / [CI 39986351154](https://github.com/Yankj/mimi/actions/runs/39986351154)全部通过：Edge 906通过/2跳过，Xcode build-for-testing通过，54项育儿XCTest实际执行0失败；新发现恢复缺陷的修复尚待新候选验证 | 本轮 NOT_RUN；本机无完整 Xcode，既有 CI 合成 XCTest 与真机主流程另计 | NOT_RUN；专用后端未部署 |
+| M1 先把一件事办清楚 | #123 draft `d5f739e`；失败恢复缺陷已修复并完成定点复审 | `974dbb1` / [CI 39986351154](https://github.com/Yankj/mimi/actions/runs/39986351154)曾通过真实构建及54项XCTest；最新 `d5f739e` / [CI 39989566438](https://github.com/Yankj/mimi/actions/runs/39989566438)后端通过，iOS构建/56项XCTest仍待终态，不沿用旧SHA结果；独立固定输入HTTP回归18/18通过 | 本轮 NOT_RUN；本机无完整 Xcode，既有 CI 合成 XCTest 与真机主流程另计 | NOT_RUN；专用后端未部署 |
 | M2 日常变化与本机提醒 | 未启动 | NOT_RUN | NOT_RUN | NOT_RUN |
 | M3 成长回顾 | 未启动；已有轻目标/记录是 M1 基础 | NOT_RUN | NOT_RUN | NOT_RUN |
 | M4 家庭事实记忆 | 未启动；旧记忆模块仅复用资产 | NOT_RUN | NOT_RUN | NOT_RUN |
 | M5 同步、分工、可靠主动 | 未启动；旧 family 后端不等于育儿端已接通 | NOT_RUN | NOT_RUN | NOT_RUN |
 | M6 真实家庭试用 | 未启动 | NOT_RUN | NOT_RUN | NOT_RUN |
 
-**仓库与 PR：**主线基线 `4ec8118`，本地整理基于 #123 `974dbb13db1113a49bd5b5cdc3c645663313b13a`，未合并或部署。README、产品/设计索引、AGENTS、架构图与目录机器清单已对齐新路线，旧日期证据保留；[资产审计](../architecture/mimi-assets-2026-10-24.md)与[PR 审计](../architecture/mimi-pr-disposition-2026-10-24.md)固定来源。#120 已关闭未合并，独有代码/分支及原描述保留。#113 的43文件已逐blob进入main；#116旧路线被替代。初次关闭被自动审批拒绝后，用户明确批准只关闭；两项现已closed/unmerged，原描述、分支和提交均保留。开放产品候选收敛为#123。
+**仓库与 PR：**主线基线 `4ec8118`，治理以 [draft PR #124](https://github.com/Yankj/mimi/pull/124) 独立审阅，base 为 #123 的 `feat/parenting-core`；本地将最新产品候选 `d5f739e9039046c8b52d785c34eb58ff32fa8e4b` 同步到治理分支，产品四文件逐字节保留。治理提交 `5cfdf12`、`0732dcd` 已推送；尚未合并任何 PR 或部署。README、产品/设计索引、AGENTS、架构图与目录机器清单已对齐新路线，旧日期证据保留；[资产审计](../architecture/mimi-assets-2026-10-24.md)与[PR 审计](../architecture/mimi-pr-disposition-2026-10-24.md)固定来源。#120 已关闭未合并，独有代码/分支及原描述保留。#113 的43文件已逐blob进入main；#116旧路线被替代。初次关闭被自动审批拒绝后，用户明确批准只关闭；两项现已closed/unmerged，原描述、分支和提交均保留。开放产品候选收敛为#123，#124仅治理与来源修复。
 
 **验证与待处理：**布局/部署来源/AF计划/CGUI/FINAL计划/能力清单/敏感扫描及扫描器回归通过；治理16正负例通过，原17项治理入口259个本地链接有效；加上22份原pin恢复后检查547链接，4条旧本地工作目录引用仅保留历史来源，不伪造当前文件。用户已批准24历史文件恢复例外，按原清单逐hash恢复后，冻结来源检查全通过；原清单和历史变更提交未改。另22项历史AF输入仅有品牌/仓库URL漂移，已按每文件原pin恢复，未改清单；原AF Goal检查实跑通过（9项local-only输入仍不可用）。本地pre-push旧仓库名白名单已精确补入mimi并通过5组/38个真实临时Git回归，未绕过hook。治理结果不证明原生或线上通过。
 
-**M1 独立审查：**在 `974dbb1` 的真实HTTP handler/ChatService + 合成Repository复现“未创建远端对象的清理请求连续404”；源码链会让 pending 清理阻挡以后整理。已交云端补受身份约束的幂等删除墓碑与迟到create围栏，不能客户端吞404。Node复现使用既有禁网prelude、模型调用0；原生UI、真实PG、生产Auth未执行。原始复现与恢复patch保存在ignored `build/mimi-roadmap-20261024/`。
+**M1 独立审查：**在 `974dbb1` 的真实HTTP handler/ChatService + 合成Repository复现“未创建远端对象的清理请求连续404”；源码链会让 pending 清理阻挡以后整理。云端 `d5f739e` 已补受身份约束的幂等删除墓碑与迟到create围栏，客户端仍严格校验回执、不吞404。固定提交独立禁网复跑实际HTTP模块18/18通过，定点复审未发现该问题剩余P1；日志SHA256为 `9077fdef818e34eb7eb10fa96b2bb0175c54c82bf3a404d8277066a9201026af`，原始复现、复审日志与恢复patch保存在ignored `build/mimi-roadmap-20261024/`。合成Repository不证明真实PG多实例并发，未执行原生UI、生产Auth或模型调用。
 
 以下条目均保留其当日状态；旧“当前”“PAUSED”、版本号与测试数不覆盖本节。
 

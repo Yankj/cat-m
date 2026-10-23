@@ -160,6 +160,55 @@ test('source, answer and reasoning canaries are live only, never in durable snap
  }finally{console.info=oldLog;}
 });
 
+test('DELETE before remote creation persists a bound tombstone and permits an independent new intake',async()=>{
+ const f=await fixture(),cid=randomUUID(),path=f.baseIntake+'/'+cid,p={cid,path};
+ assert.equal((await purge(f,p,'Bearer missing-fixture')).status,401);
+ assert.equal((await purge(f,{path:path.replace(f.scope.scope_id,randomUUID())})).status,403);
+ assert.equal((await f.records('native-chat-conversations')).length,0);
+ for(let attempt=0;attempt<3;attempt++){
+  const response=await purge(f,p);assert.equal(response.status,200);const receipt=(await response.json()).purge;
+  assert.equal(receipt.conversation_id,cid);assert.equal(receipt.scope_id,f.scope.scope_id);assert.equal(receipt.subject_id,f.principal.subject_id);
+  assert.equal(receipt.intake_contract,CONTRACT);assert.equal(receipt.purged,true);assert.equal(receipt.already_purged,attempt>0);
+ }
+ const row=(await f.records('native-chat-conversations')).find(c=>c.id===cid);assert.equal(row.state,'revoked');assert.equal(row.intake_purged,true);assert.deepEqual(row.messages,[]);assert.equal(row.last_turn_id,null);
+ const before=f.repository.snapshot();assert.equal((await f.req(f.baseIntake,{conversation_id:cid})).status,410);
+ const tid=randomUUID(),body={turn_id:tid,expected_revision:1,expected_grant_epoch:1,message:{id:randomUUID(),text:JSON.stringify({request_id:tid,source_text:'late create must not revive'})},context:[]};
+ assert.equal((await f.req(path+'/turns',body)).status,410);
+ assert.equal((await f.req(f.baseIntake.replace(PREFIX,'/catpaw/chat/v1'),{conversation_id:cid})).status,404);
+ assert.equal((await purge(f,p,'Bearer foreign-fixture')).status,404);
+ // A rejected start may acquire/release the runtime lease; it must not mutate business records.
+ const business=snapshot=>({...snapshot,records:snapshot.records.filter(([key])=>JSON.parse(key)[1]!=='native-chat-runtime-leases')});
+ assert.deepEqual(business(f.repository.snapshot()),business(before));assert.equal(f.calls.length,0);
+ const cold=await fixture({snapshot:before,identity:{scope:f.scope,principal:f.principal,foreign:f.foreign}});
+ assert.equal((await cold.req(cold.baseIntake,{conversation_id:cid})).status,410);assert.equal((await purge(cold,p)).status,200);assert.equal(cold.calls.length,0);
+ const next=await f.prepare();assert.notEqual(next.cid,cid);assert.equal((await f.sendIntake(next)).turn.state,'completed');assert.equal(f.calls.length,1);
+});
+
+test('both create/delete orderings finish revoked and never allow a later create',async()=>{
+ for(const order of ['delete-first','create-first']){
+  const f=await fixture(),cid=randomUUID(),path=f.baseIntake+'/'+cid;
+  const create=()=>f.req(f.baseIntake,{conversation_id:cid}),remove=()=>purge(f,{path});
+  const pair=order==='delete-first'?[remove(),create()]:[create(),remove()],responses=await Promise.all(pair);
+  const deleted=responses[order==='delete-first'?0:1],created=responses[order==='delete-first'?1:0];assert.equal(deleted.status,200);assert.ok([201,410].includes(created.status));
+  assert.equal((await create()).status,410);const row=(await f.records('native-chat-conversations')).find(c=>c.id===cid);assert.equal(row.state,'revoked');assert.equal(row.intake_purged,true);assert.equal(f.calls.length,0);
+ }
+});
+
+test('a missing-row precheck cannot overwrite an ordinary or foreign insert winner',async()=>{
+ for(const foreign of [false,true]){
+  const f=await fixture(),cid=randomUUID(),namespace=foreign?f.baseIntake:f.baseIntake.replace(PREFIX,'/catpaw/chat/v1');
+  assert.equal((await f.req(namespace,{conversation_id:cid},foreign?'Bearer foreign-fixture':'Bearer memory-fixture')).status,201);
+  const before=f.repository.snapshot(),transaction=f.repository.transaction.bind(f.repository);let hidden=false;
+  f.repository.transaction=action=>transaction(tx=>{
+   const get=tx.get.bind(tx);
+   // Port interleaving: precheck saw no row; INSERT sees another creator's committed winner.
+   tx.get=async(owner,kind,id)=>{if(!hidden&&kind==='native-chat-conversations'&&id===cid){hidden=true;return null;}return get(owner,kind,id);};
+   return action(tx);
+  });
+  assert.equal((await purge(f,{path:f.baseIntake+'/'+cid})).status,404);assert.equal(hidden,true);assert.deepEqual(f.repository.snapshot(),before);assert.equal(f.calls.length,0);
+ }
+});
+
 test('DELETE removes transient data and all durable content fields, fences late output, and cannot be revived by duplicate start',async()=>{
  const sourceCanary='DELETE_SOURCE_'+randomUUID(),answerCanary='DELETE_ANSWER_'+randomUUID(),entered=deferred(),release=deferred();
  const f=await fixture({stream:async function*(input){entered.resolve();await release.promise;yield {type:'text_delta',text:JSON.stringify({...draft(requestID(input)),title:answerCanary})};yield {type:'done',finish_reason:'stop'};}}),p=await f.prepare();p.body.message.text=JSON.stringify({request_id:p.tid,source_text:sourceCanary});
