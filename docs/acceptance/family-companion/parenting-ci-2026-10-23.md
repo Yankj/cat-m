@@ -18,6 +18,7 @@
 | `58cada277f5ce8e31242ff593f49017e17275a39` / [39983474486](https://github.com/Yankj/mimi/actions/runs/39983474486) | 最小移动factory到功能层；名称/签名/权限不变。便携357通过、PR90 proactive通过，官方工程检查238源/4targets通过。宿主编译真实失败：InlineModel:94在catch中未写self，赋值误指不可变Error绑定；属于本次引入，已补self.error | 54 XCTest未运行；未把便携测试或工程检查算作育儿原生测试 |
 | `dd8661a4e3b703eb67184661b2a0a4f7ef5011d0` / [39984692961](https://github.com/Yankj/mimi/actions/runs/39984692961) | 便携及工程检查通过；编译推进到catTests，新增夹具:757的可选MainActor throwing闭包三元表达式触发Swift诊断失败。已改为显式if赋值，语义和54项数量不变 | build-for-testing失败，定向XCTest步骤跳过；不能把产品模块编译进展称完整构建通过 |
 | `974dbb13db1113a49bd5b5cdc3c645663313b13a` / [39986351154](https://github.com/Yankj/mimi/actions/runs/39986351154) | 三个job均完成SUCCESS。Xcode26.6实际build-for-testing通过；[原生job120527182599](https://github.com/Yankj/mimi/actions/runs/39986351154/job/120527182599)实际执行54项XCTest（21 workspace + 8 parser + 25 inline），0失败，`TEST EXECUTE SUCCEEDED`。Edge job120527182538实际906通过、0失败、2跳过（908总数），约95.3秒 | 合成XCTest不是UI操作或真机体验验收，也不证明真实模型、PG/RLS、系统通知或线上服务；新发现的删除早于创建问题需下一个候选修复并重跑 |
+| `d5f739e9039046c8b52d785c34eb58ff32fa8e4b` / [39989566438](https://github.com/Yankj/mimi/actions/runs/39989566438) | 三个job均完成SUCCESS。Xcode26.6 build-for-testing通过；[原生job120537569259](https://github.com/Yankj/mimi/actions/runs/39989566438/job/120537569259)实际56项XCTest（21 workspace + 8 parser + 27 inline），0失败，新增准备失败清理重开和实际NativeHTTP凭据矩阵均通过。Edge job120537568994实际909通过、0失败、2跳过（911总数），约53.9秒 | 没有UI、真机、真实Auth/model/PG或上线验收。后续定点复现finalizer故障和真实Auth收据恢复组合问题，见下，不能以本次绿色提前关闭M1或进入M2 |
 
 PR workflow默认checkout GitHub生成的合并候选：初次为 `00d333a7a5b3395a55afaed3d69a4dd6af75523a`（973a8f2合入4ec8118），不是实际合并到main。必须将head、base、CI合并候选和部署版本分开。
 
@@ -43,9 +44,24 @@ PR workflow默认checkout GitHub生成的合并候选：初次为 `00d333a7a5b33
 
 原生测试新增2项至 **56项**（21 workspace + 8 parser + 27 inline）：真实控制器在准备失败后取消、持久pending、fresh epoch和repository重开、清理重试后新cid成功；真实NativeHTTP adapter配全拦截URLProtocol验证10种固定wire输入，404/401/离线和错误身份/purpose/purged/retained均拒绝，仅精确200墓碑回执接受。URLProtocol不实现服务器状态机，也不会退回真实网络。这2项写入及静态审查通过，提交时尚未SDK编译或运行，不能借974dbb1的54项通过替代。
 
+上述2项随后在d5f739e的CI实际执行通过；56项模块测试耗时约12.3秒，xcodebuild测试操作338.129秒，16:59:37返回成功。该候选没有UI测试；摘要为忽略目录 `build/parenting-core/ci-39989566438-ios-excerpt.log`。
+
+## 下一M1候选：运行清理、可信账号组合与UI旅程
+
+继续审查发现两项需实证收口的问题，均保留此前绿色的精确候选身份：
+
+- **finalizer读取失败**：在真实admission事务commit后、缓存登记前暂停，DELETE先返回200；恢复执行且最后一次终态读取抛错，d5f739e残留临时原话并未释放运行租约，provider调用0、持久库无原话。嵌套finally现在不让数据库读取失败阻断缓存输入清理或租约释放；只有成功读取rate_limited状态才保留输入供明确重试。新增2项真实handler回归，内存加载旧源码19/20（故障场景红），修复20/20；本机含dialogue/SSE/lease重点组 **65/65 PASS**。扩大12文件组120/120 PASS（51.145秒），与65项组重叠不累加。日志 `m1-finalizer-regression.log`、`m1-expanded-finalizer-regression.log`，不等于真实PG故障演练。
+- **回访收据先挂载、认证后恢复**：原Home的StateObject可能在AccountEpoch尚为空时创建固定token Store，随后Auth同namespace复用chat，原对象id不变使重试永久不可用。现在NativeAuth发布实际的 `ParentingWorkspacePresentation`，只在已验证用户、chat主体、scope和当前token匹配时创建模型；同代保留，换代重建，离开账号清空。生产Home注入这一模型并按完整身份重建；旧Store固定token读写屏障保持，未从收据激活账户，也不以联网状态控制本机账本。新增 `ParentingAccountLifecycleTests` 用真实SwiftData、实际Auth生命周期与共享生产组合模型：持有合成/user至preview挂载，验证此时没有账本组合；放行认证后保留同chat，读回既存账本并确认/完成，旧nil-token Store仍拒读写。Auth、scope resolver及cipher为明确合成边界，不是生产Auth或UI截图证据。
+
+新增 `ParentingWorkspaceUITests` 的3条实际宿主操作旅程：空态→手建合成孩子/目标→明确许可/原位合成回复→编辑采用→选时间→待确认→确认→调整→完成记录/目标关联→冷重开；准备失败→退出无安排→清理pending禁发→明确重试清理→新整理；深色accessibility5空态与编辑取消冒烟。DEBUG入口使用独立UUID隔离目录、实际SwiftData/AES/Store/SwiftUI，模型/许可/删除仅在进程内注入；不预置成功旅程的孩子或安排。它预激活合成账号，不覆盖上述真实收据恢复，后者由单独Auth组合测试覆盖。未就绪或打开失败停在fixture专用页，跳过Auth启动、OAuth、APNs、后台任务和调试路由。默认URLProtocol为额外防御，未声称能覆盖每一种系统/后台网络配置。
+
+育儿主按钮改用既有 `calmCTATop/Bottom` 暖橙语义；白字对两端的静态sRGB比为4.520/5.427，按下只缩放、不降低背景透明度；disabled使用已有中性背景/深字。此前dark action白字仅2.323。数值计算不替代渲染验收。
+
+本次提交的预期筛选为 **57项模块测试 + 3项UI测试**，新增部分提交时尚未SDK编译/运行；CI定向步骤设20分钟上限，不将数量或静态检查写成通过。XCTest截图以 `Synthetic-Parenting-M1-*` 附件留在runner xcresult；未新增任何上传，runner结束后的持久截图获取仍缺失。无真机、真实模型、PG多实例、系统提醒或线上验收，后端仍未部署；M2暂停。
+
 ## 接续测试范围
 
-新增CI定向运行脚本只选择 `catTests/ParentingWorkspaceTests`、`ParentingIntakeTests`、`ParentingInlineIntakeTests` 三类合成用例。使用已安装iPhone runtime创建自己的空白模拟器，结束只删除本次创建的设备；存在Local.xcconfig时拒绝执行，移除四个backend环境配置及继承fixture/connection/simulator-child注入，不安装依赖或下载runtime。测试使用临时文件和mock transport，无真实儿童数据、真实模型、生产Keychain或数据库。空Debug配置使项目Auth/后端启动被guard拦住；现有AppDelegate仍有系统APNs注册/BG任务注册，未测量全进程或系统网络次数，不声称全进程零网络。
+d5f739e及之前的CI定向脚本只选择 `catTests/ParentingWorkspaceTests`、`ParentingIntakeTests`、`ParentingInlineIntakeTests` 三类合成用例。使用已安装iPhone runtime创建自己的空白模拟器，结束只删除本次创建的设备；存在Local.xcconfig时拒绝执行，移除四个backend环境配置及继承fixture/connection/simulator-child注入，不安装依赖或下载runtime。测试使用临时文件和mock transport，无真实儿童数据、真实模型、生产Keychain或数据库。空Debug配置使项目Auth/后端启动被guard拦住；现有AppDelegate仍有系统APNs注册/BG任务注册，未测量全进程或系统网络次数，不声称全进程零网络。
 
 `build-for-testing`只编译，定向XCTest步骤运行后才可报告其实际执行数量。新测试script和workflow的shell/源码检查不能代替SDK执行；此刻仍无原生UI、真机、真实模型、PG多实例、系统通知或线上后端验收。
 

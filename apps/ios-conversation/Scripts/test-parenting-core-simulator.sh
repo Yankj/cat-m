@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run only the parenting synthetic XCTest classes on a fresh simulator, using installed runtimes.
+# Run parenting module tests and UI journeys on a fresh simulator, using installed runtimes.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -41,4 +41,6 @@ env -u CATPAW_SUPABASE_PROJECT_URL -u CATPAW_SUPABASE_PUBLISHABLE_KEY \
     -only-testing:catTests/ParentingWorkspaceTests \
     -only-testing:catTests/ParentingIntakeTests \
     -only-testing:catTests/ParentingInlineIntakeTests \
+    -only-testing:catTests/ParentingAccountLifecycleTests \
+    -only-testing:catUITests/ParentingWorkspaceUITests \
     test-without-building CODE_SIGNING_ALLOWED=NO

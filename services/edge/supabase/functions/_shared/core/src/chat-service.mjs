@@ -317,7 +317,22 @@ export class ChatService {
    * synchronously before the first await so the caller's own release cannot drop the lease early. */
   async execute(env){
     this.integration?.retain?.(env.owner);
-    try{return await this.executeHeld(env);}finally{if(env.turn.intake_contract){const saved=await this.repository.transaction(tx=>tx.get(env.owner,'native-chat-turns',env.turn.id)),cache=this.intakeRuntimeFor(env.owner,env.turn.id);if(cache&&!(saved?.state==='failed'&&saved.error?.code==='rate_limited'))cache.input=null;env.intakeInput=null;}await this.integration?.release?.(env.owner);}
+    try{return await this.executeHeld(env);}finally{
+      try{
+        if(env.turn.intake_contract){
+          let saved;
+          try{saved=await this.repository.transaction(tx=>tx.get(env.owner,'native-chat-turns',env.turn.id));}
+          finally{
+            // A failed final read cannot retain source text or prevent releasing this runtime's hold.
+            // Only a positively read busy outcome may keep input for an explicit retry of the same turn.
+            const cache=this.intakeRuntimeFor(env.owner,env.turn.id);
+            if(saved?.intake_purged)cache?.drop();
+            else if(cache&&!(saved?.state==='failed'&&saved.error?.code==='rate_limited'))cache.input=null;
+            env.intakeInput=null;
+          }
+        }
+      }finally{await this.integration?.release?.(env.owner);}
+    }
   }
   async executeHeld(env){
     const now=this.clockNow??Date.now,startedAt=now(),deadline=startedAt+(this.modelBudgetMs??50000);

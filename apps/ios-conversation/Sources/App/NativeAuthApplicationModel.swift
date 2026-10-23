@@ -33,9 +33,25 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     }
 }
 
+/// A ready local ledger belongs to this exact chat, scope, subject and verified account generation.
+/// Receipt previews cannot create it; replacing it never reauthorizes an older Store.
+@MainActor struct ParentingWorkspacePresentation {
+    struct Identity: Hashable {
+        let chat: ObjectIdentifier
+        let profile: UUID
+        let workspace: UUID
+        let subject: UUID
+        let token: AccountToken
+    }
+    let id: Identity
+    let model: ParentingWorkspaceModel
+}
+
 @MainActor final class NativeAuthApplicationModel: ObservableObject {
     @Published private(set) var state = NativeAuthSnapshot(phase: .signedOut, user: nil, generation: 0, message: nil)
     @Published private(set) var chat: ConversationFirstModel?
+    @Published private(set) var parentingWorkspace: ParentingWorkspacePresentation?
+    private var parentingCipher: any ParentingWorkspaceCipher = ParentingPersistentCipher()
     @Published private(set) var error: String?
     @Published private(set) var registrationNotice: String?
     @Published private(set) var actionBusy = false
@@ -183,9 +199,10 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         let gate = catOnboarding.initialState(fixture: fixture); onboarding = gate; needsOnboarding = gate.needsOnboarding
     }
     // Test initializer is mock-only; production continues using the configured Keychain.
-    init(configuration:NativeAuthConfiguration,manager:NativeAuthSessionManager,vault:any NativeAuthVault,barrier:any NativeAuthLogoutBarrier,root:URL,workspaceResolver:(any NativeApplicationScopeResolving)? = nil,connectionMonitor:ConnectionMonitor? = nil,retryClock:any NativeWorkspaceRetryClock = NativeWorkspaceSystemClock(),retrySchedule:NativeWorkspaceRetrySchedule = .production) {
+    init(configuration:NativeAuthConfiguration,manager:NativeAuthSessionManager,vault:any NativeAuthVault,barrier:any NativeAuthLogoutBarrier,root:URL,workspaceResolver:(any NativeApplicationScopeResolving)? = nil,connectionMonitor:ConnectionMonitor? = nil,retryClock:any NativeWorkspaceRetryClock = NativeWorkspaceSystemClock(),retrySchedule:NativeWorkspaceRetrySchedule = .production,parentingCipher:any ParentingWorkspaceCipher = ParentingPersistentCipher()) {
         self.configuration=configuration;self.manager=manager;self.localVault=vault;self.localBarrier=barrier;self.root=root;self.isFixture=true
         self.workspaceResolver=workspaceResolver;self.connectionMonitor=connectionMonitor ?? ConnectionMonitor(start:false);self.retryClock=retryClock;self.retrySchedule=retrySchedule
+        self.parentingCipher=parentingCipher
         onboarding = .completed; needsOnboarding = false
     }
     private var receiptURL:URL { root.appendingPathComponent("last-local-workspace.json") }
@@ -560,6 +577,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         // Codex p89c-c: passive invalidation (loginRequired / signedOut / storageBlocked from the session manager) closes the
         // shared account barrier synchronously on arrival — before any await and without waiting for a SwiftUI `.task`.
         Self.applyAccountBarrier(snapshot, fresh: false)
+        refreshParentingWorkspace()
         guard let manager, !Task.isCancelled,!logoutInProgress else { return }
         let openingEpoch=lifecycleEpoch
         let current = await manager.snapshot()
@@ -567,6 +585,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
               current.phase == snapshot.phase, current.user == snapshot.user else { return }
         Self.applyAccountBarrier(snapshot, fresh: true)   // verified-current snapshot may (re)activate an account
         state = snapshot
+        refreshParentingWorkspace()
         if snapshot.phase == .restoring { chat?.setNetworkAdmissionAllowed(false);return }
         if [.authenticated,.refreshing].contains(snapshot.phase), let user = snapshot.user, let configuration {
             if snapshot.phase == .refreshing {
@@ -671,6 +690,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     /// Every account-chat attach: the deferred first-run flag is written, and a draft typed into the launch shell moves
     /// into the account chat (only into an empty composer; never across a logout). The shell keeps nothing.
     private func didAttachChat(_ opened: ConversationFirstModel) {
+        refreshParentingWorkspace()
         LaunchTrace.mark("chat.attached", opened.loaded ? "loaded" : "loading", once: true)
         launchSlow = false; launchChatStalled = false
         if firstRunMarkPending { firstRunMarkPending = false; catOnboarding.markCompleted() }
@@ -680,6 +700,19 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         guard !carried.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         if opened.draft.isEmpty { opened.editDraft(carried) }
         shell.editDraft("")
+    }
+    private func refreshParentingWorkspace() {
+        guard let chat, let subject = chat.trustedSubjectID,
+              state.user?.id == subject, let token = Self.principal(for: subject),
+              AccountEpoch.shared.isValid(token) else {
+            parentingWorkspace = nil
+            return
+        }
+        let identity = ParentingWorkspacePresentation.Identity(chat: ObjectIdentifier(chat),
+            profile: chat.scope.profileID, workspace: chat.scope.workspaceID, subject: subject, token: token)
+        guard parentingWorkspace?.id != identity else { return }
+        parentingWorkspace = .init(id: identity, model: ParentingWorkspaceModel(repository: chat.repository,
+            scope: chat.scope, subjectID: subject, cipher: parentingCipher))
     }
     private func workspaceKeyIsCurrent(_ key:WorkspaceKey,user:NativeAuthUser) async -> Bool {
         guard let manager,!logoutInProgress,key.lifecycleEpoch == lifecycleEpoch else{return false}
@@ -882,6 +915,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     private func takeChat() -> (ConversationFirstModel?,NativeChatHTTPBackend?,String?) {
         let previous = chat
         chat = nil
+        parentingWorkspace = nil
         uiDecisionSubmitter = nil
         GenerativeBlockStore.shared.submitter = nil
         DeviceCallHub.submitter = nil

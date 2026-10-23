@@ -12,7 +12,7 @@ import AppIntents
     #endif
     var isP0Fixture:Bool {
         #if DEBUG
-        return P0ExperienceFixture.scenario != nil
+        return ParentingUITestFixture.isRequested || P0ExperienceFixture.scenario != nil
         #else
         return false
         #endif
@@ -20,6 +20,11 @@ import AppIntents
     private(set) var loginSession: SupabaseUserAccessSession?
     init() {
         #if DEBUG
+        if ParentingUITestFixture.isRequested {
+            do { p0Model = try ParentingUITestFixture.make() }
+            catch { self.error = error.localizedDescription }
+            return
+        }
         guard let test = P0ExperienceFixture.launchEnvironment["CF_UI_TEST_STORE"], UUID(uuidString:test) != nil else { model = nil; error = nil; return }
         #else
         model = nil; error = nil; return
@@ -77,6 +82,7 @@ import AppIntents
     func startFixture() async {
         #if DEBUG
         guard let pending=p0Model,model == nil else { return }
+        if ParentingUITestFixture.isRequested { model = pending; return }
         do {
             if P0ExperienceFixture.scenario?.hasPrefix("p0-ui-accepted-work")==true,
                let testStore=P0ExperienceFixture.launchEnvironment["CF_UI_TEST_STORE"],UUID(uuidString:testStore) != nil,
@@ -127,6 +133,9 @@ import AppIntents
         // Launch path: these are a handful of dictionary inserts (measured via LaunchTrace "adapters.registered"). They stay
         // synchronous on purpose — a chat restored from disk on the 2nd launch renders its catpaw-card fences in frame 1.
         LaunchTrace.mark("app.init")
+        #if DEBUG
+        ParentingUITestFixture.installNetworkGuard()
+        #endif
         GenerativeBlockAdapter.registerWithMarkdown()
         MemorySavedChipAdapter.register() // wave2 V1
         DeviceStatusCardAdapter.register() // wave2 V3 receipt + permission cards
@@ -138,7 +147,7 @@ import AppIntents
         #if DEBUG && os(iOS)
         // PR90g (QA only): ProactiveNotificationAuthUITests launches with this flag so the system prompt appears and can be
         // allowed once; simctl privacy cannot pre-grant notifications. Debug builds only; no effect without the flag.
-        if CommandLine.arguments.contains("-CatpawRequestNotificationAuth") {
+        if !ParentingUITestFixture.isRequested, CommandLine.arguments.contains("-CatpawRequestNotificationAuth") {
             Task { _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) }
         }
         #endif
@@ -147,7 +156,9 @@ import AppIntents
         WindowGroup {
             LaunchHandoff { Group {
                 #if DEBUG
-                if let model = synthetic.chat {
+                if ParentingUITestFixture.isRequested {
+                    primaryView
+                } else if let model = synthetic.chat {
                     ConversationFirstView(model:model,accountLabel:synthetic.fixtureIdentity,restrictToFrozenFixture:true)
                         .safeAreaInset(edge:.top) { VStack { Text(synthetic.fixtureIdentity ?? ui("明确合成测试")).font(.caption).accessibilityIdentifier("fixture.identity"); Button(ui("运行冻结合成报告")) { Task { await synthetic.sendFrozenCase() } }.disabled(!synthetic.ready || synthetic.submitted).accessibilityIdentifier("fixture.run"); if let error = synthetic.error { Text(error).accessibilityIdentifier("fixture.error") } }.padding(8).background(catColors.panel) }
                         .task { await synthetic.loadFrozenCase() }
@@ -157,13 +168,26 @@ import AppIntents
                 #endif
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity) }
-            .onOpenURL { url in catRouteCenter.shared.pending = catAppRoute(url: url) }
+            .onOpenURL { url in
+                #if DEBUG
+                if ParentingUITestFixture.isRequested { return }
+                #endif
+                catRouteCenter.shared.pending = catAppRoute(url: url)
+            }
             .catpawInAppBanner()
             .environment(\.catpawOAuth, oauth)
             .nativeOAuthSwitchConfirmation(oauth)
-            .task { bindOAuth() }
+            .task {
+                #if DEBUG
+                if ParentingUITestFixture.isRequested { return }
+                #endif
+                bindOAuth()
+            }
             #if DEBUG || DEVICE_TRIAL
             .task {
+                #if DEBUG
+                if ParentingUITestFixture.isRequested { return }
+                #endif
                 // Acceptance: `defaults write … catOpenURL catpawm://tasks` or env CATPAW_ACCEPTANCE_OPEN_URL.
                 let raw = ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_OPEN_URL"]
                     ?? UserDefaults.standard.string(forKey: "CatpawOpenURL")
@@ -201,9 +225,18 @@ import AppIntents
         Group {
             if auth.isFixture {
                 ConversationFirstView(model:model,accountLabel:ui("合成登录测试 · 无真实 Auth/模型"))
+            } else if let presentation = auth.parentingWorkspace,
+                      presentation.id.chat == ObjectIdentifier(model),
+                      AccountEpoch.shared.isValid(presentation.id.token) {
+                ParentingHomeView(model:model,workspaceModel:presentation.model,accountLabel:auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email,onSignOut:{ catLeaveActivity.stopAll(); Task { let l2User=auth.state.user?.id; await auth.requestSignOut { AccountLocalData.signOut(userID:l2User); if let l2User { L2SecureStore.wipe(userID:l2User) } } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
+                    .id(presentation.id)
             } else {
-                ParentingHomeView(model:model,accountLabel:auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email,onSignOut:{ catLeaveActivity.stopAll(); Task { let l2User=auth.state.user?.id; await auth.requestSignOut { AccountLocalData.signOut(userID:l2User); if let l2User { L2SecureStore.wipe(userID:l2User) } } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
-                    .id(ObjectIdentifier(model))
+                VStack(spacing: 20) {
+                    BrandMark(size: 56, style: .fill)
+                    Text(ui("正在打开你的本机育儿记录…")).foregroundStyle(catColors.secondary)
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(catColors.background.ignoresSafeArea())
+                    .overlay(alignment: .top) { LaunchStatusOverlay(auth: auth) }
             }
         }
             // p89i: one shared confirmation UI for parked items of the leaving account (#89/#90/#91 sources).
@@ -236,6 +269,17 @@ import AppIntents
         }, afterSignIn: { await auth.completeOnboardingAfterSignIn() })   // splash/login P0: sign-in opens the gate reactively
     }
     @ViewBuilder private var primaryView: some View {
+        #if DEBUG
+        if ParentingUITestFixture.isRequested {
+            ParentingUITestSurface(model: bootstrap.model, error: bootstrap.error)
+        } else {
+            regularPrimaryView
+        }
+        #else
+        regularPrimaryView
+        #endif
+    }
+    @ViewBuilder private var regularPrimaryView: some View {
         if let model = bootstrap.model {
             #if DEBUG
             if let size=P0ExperienceFixture.textSizeOverride {
