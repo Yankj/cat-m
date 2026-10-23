@@ -428,10 +428,6 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
     check(!url.search,422,'schema_invalid');const parts=path.split('/').filter(Boolean);check(parts.length===8&&parts[3]==='scopes'&&parts[5]==='runs'&&parts[7]==='sources',404,'not_found');
     const scope=taskActionUUID(parts[4]),run=taskActionUUID(parts[6]);check(request.method==='GET',405,'method_not_allowed');check(runtime.sourceService,503,'source_service_not_configured');return reply(await runtime.sourceService.readCatalog(auth,scope,run));
   }
-  // A purpose-frozen intake conversation can only be read or controlled through its restrictive namespace.
-  const canonicalPath='/'+path.split('/').filter(Boolean).join('/');
-  const normalConversation=/^\/catpaw\/(?:chat|accepted-work|revisions|revision-work)\/v1\/scopes\/([a-f0-9-]+)\/conversations\/([a-f0-9-]+)(?:\/|$)/.exec(canonicalPath);
-  if(normalConversation){const c=await runtime.chat.readConversation(auth,normalConversation[1],normalConversation[2]);check(!c.intake_contract,404,'not_found');}
   const response=await raw(new Request(new URL(path+url.search,url.origin),request));
   return response;
  }catch(e){const ra=e instanceof ApiError?retryAfterParts(e):{headers:{},body:{}};const r=reply({error:{code:e instanceof ApiError?e.code:'internal_error',retryable:e instanceof ApiError&&e.retryable===true,reconciliation_required:e instanceof ApiError?e.reconciliation:false,...ra.body}},e instanceof ApiError?e.status:500);for(const [k,v] of Object.entries(ra.headers))r.headers.set(k,v);return r;}};

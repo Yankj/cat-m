@@ -48,13 +48,14 @@ async function fixture({slowMs=0,slowDbMs=0}={}){
 }
 async function frame(reader){const {done,value}=await reader.read();assert.equal(done,false);return JSON.parse(new TextDecoder().decode(value).slice(6).trim());}
 
-test('slow auth/DB checks: one authentication per POST, durable acceptance before model terminal',async()=>{
+test('slow auth/DB checks: one authentication per POST, durable acceptance before model terminal',async t=>{
   const f=await fixture({slowMs:15,slowDbMs:2}),before=f.counters(),started=performance.now();
-  const response=await f.request(`${f.path}/${f.cid}/turns`,f.input),reader=response.body.getReader(),accepted=await frame(reader);
+  let reader;
+  t.after(async()=>{try{await reader?.cancel();}finally{await f.stop();}});
+  const response=await f.request(`${f.path}/${f.cid}/turns`,f.input);reader=response.body.getReader();const accepted=await frame(reader);
   assert.equal(accepted.type,'turn_started');assert.equal((await f.readRow()).events[0].type,'turn_started');
   assert.equal(f.counters().authCalls-before.authCalls,1);assert.ok(f.counters().modelCalls<=1);
   console.info(JSON.stringify({benchmark:'synthetic_slow_store',injected_auth_check_ms:15,injected_store_operation_ms:2,accept_elapsed_ms:Math.round(performance.now()-started),auth_calls_per_post:1,store_operations:f.counters().dbOperations-before.dbOperations}));
-  await reader.cancel();await f.stop();
 });
 test('same-isolate committed delta notification avoids another turn snapshot and retains fresh authorization',async()=>{
   const f=await fixture({slowMs:5}),response=await f.request(`${f.path}/${f.cid}/turns`,f.input),reader=response.body.getReader();

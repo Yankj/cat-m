@@ -754,7 +754,12 @@ private struct ParentingInlineDeletingCipher: ParentingWorkspaceCipher {
             entries.values.append(.init(url: url, storage: persistence, repository: repository, service: service))
             return service
         }
-        let purge: (@MainActor () throws -> Void)? = withRecovery ? { for entry in entries.values { try entry.storage.delete() } } : nil
+        let purge: (@MainActor () throws -> Void)?
+        if withRecovery {
+            purge = { for entry in entries.values { try entry.storage.delete() } }
+        } else {
+            purge = nil
+        }
         let model = ParentingInlineIntakeModel(scope: scope, subjectID: subject, factory: factory, admission: { admission.allowed }, epoch: epoch, clock: { now }, id: { ids.next() }, timeZone: try XCTUnwrap(TimeZone(secondsFromGMT: 0)), recoveryStore: recovery, cleanupStore: cleanup, localPurge: purge)
         return .init(model: model, backend: backend, scope: scope, epoch: epoch, entries: entries, admission: admission, recovery: recovery, cleanup: cleanup, directory: directory)
     }

@@ -16,8 +16,17 @@
 |---|---|---|
 | `973a8f2cdc468e60ed007c128194adcac334a2ae` / [39983178500](https://github.com/Yankj/mimi/actions/runs/39983178500) | macOS26.6.2 / Xcode26.6；便携Swift编译真实失败：`ParentingInlineIntake.swift:4` 找不到 `ConversationSessionService`；属于本次引入。修复push后的concurrency取消旧Node job | 工程检查、宿主build-for-testing被前序失败跳过；54 XCTest未运行。旧run不得写为通过 |
 | `58cada277f5ce8e31242ff593f49017e17275a39` / [39983474486](https://github.com/Yankj/mimi/actions/runs/39983474486) | 最小移动factory到功能层；名称/签名/权限不变。便携357通过、PR90 proactive通过，官方工程检查238源/4targets通过。宿主编译真实失败：InlineModel:94在catch中未写self，赋值误指不可变Error绑定；属于本次引入，已补self.error | 54 XCTest未运行；未把便携测试或工程检查算作育儿原生测试 |
+| `dd8661a4e3b703eb67184661b2a0a4f7ef5011d0` / [39984692961](https://github.com/Yankj/mimi/actions/runs/39984692961) | 便携及工程检查通过；编译推进到catTests，新增夹具:757的可选MainActor throwing闭包三元表达式触发Swift诊断失败。已改为显式if赋值，语义和54项数量不变 | build-for-testing失败，定向XCTest步骤跳过；不能把产品模块编译进展称完整构建通过 |
 
 PR workflow默认checkout GitHub生成的合并候选：初次为 `00d333a7a5b3395a55afaed3d69a4dd6af75523a`（973a8f2合入4ec8118），不是实际合并到main。必须将head、base、CI合并候选和部署版本分开。
+
+## 后端实际回归及修复
+
+初次Edge CI在 `dialogue-p0.test.mjs` 的“one authentication per POST”实际报 `2 !== 1`。本次API新增的普通namespace预读取先鉴权，随后原startTurn又鉴权，属于本次回归；断言又在provider latch清理前失败，使旧suite挂住，后续修复push由concurrency取消它，不能记Node全量通过。
+
+现已移除URL层预读取，将purpose比较放到既有授权事务。普通start/revision/accepted-work仍用原startTurn事务检查；read/cancel/retry/control/device/interrupt各在已有读写点校验；observe在snapshot及缓存事件输出前核对。PG conversation-head不投影purpose，因此两个readTurn存储分支核对turn marker。育儿只读入口在同一事务先做不加锁的主体/purpose拒绝预检，随后仍执行原有fresh source/consent/epoch围栏，不复用预检授予访问，也不增加一次鉴权。测试清理加after钩子，失败时也释放provider latch，原1次鉴权断言保留。
+
+本机Linux追加实跑两组：`dialogue-p0 + parenting-intake-http + sse-observer-retry` **53/53 PASS**；原9文件组加task-revision/revision-work/accepted-work的12文件组 **115/115 PASS**。两组有重叠，不累加为168个独立测试。新intake现在15项，新增单次鉴权及投影存储port覆盖；此投影mock不证明真实PG/RLS执行。均使用既有offline-prelude及strip loader，无依赖安装/生产调用。日志在忽略目录 `build/parenting-core/m1-auth-regression.log` 和 `m1-expanded-node-regression.log`。
 
 ## 接续测试范围
 
