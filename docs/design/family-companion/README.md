@@ -1,4 +1,4 @@
-# cat 家庭陪伴场景 · 方案资产索引
+# 小咪家庭陪伴场景 · 方案资产索引
 
 2026-10-22。首期从宝妈带孩子出发，后续扩展家庭事务与自我管理。本目录包含产品结构、视觉概念和工程改造方案，全部为虚构示例；不是已实施功能或产品验收结果。实时工程交付状态仍见[主计划](../../status/master-plan.md)。
 
@@ -6,7 +6,7 @@
 
 1. [技术方案 Markdown](../../architecture/family-companion-technical-plan.md) / [18 页 PDF](../../architecture/family-companion-technical-plan.pdf)：仓库改造路径、领域数据/API/事件、记忆统一、可靠调度、前置修复与分阶段验收。
 2. [产品架构图 PNG](assets/cat-product-architecture-v0.1.png) / [PDF](assets/cat-product-architecture-v0.1.pdf) / [SVG](assets/cat-product-architecture-v0.1.svg)：目标用户、场景、长期闭环和对象关系。v0.1 待评审，图中“三个入口”表示内容分区，不要求底部 Tab。
-3. [修订视觉 v0.2](assets/visual-v0.2-review.png)：当前待评审概念，延续现有 cat 风格。图片不作为组件尺寸/色值权威，源码 token 优先。
+3. [修订视觉 v0.2](assets/visual-v0.2-review.png)：当前待评审概念，延续现有小咪风格。图片不作为组件尺寸/色值权威，源码 token 优先。
 4. [温馨 UI 局部细节](assets/warm-ui-details-v1-review.png)：圆润图标、猫状态、确认卡、记忆更正和空态，当前待评审。
 5. [技术架构图](assets/technical-architecture.png)：现有原生宿主 + 模块化 Edge 后端 + 一个 Postgres；未新建云服务。
 6. [决策记录](decisions.md)：已确认方向、工程建议和待确认项分开。
@@ -54,7 +54,7 @@ PDF 将 Markdown 表格按带字段标签的记录排版，架构图单独一页
 
 ## 仓库与后续工作
 
-当前源项目复用既有 `ai-work/catpaw-m`。用户指定目标为另一待确认执行环境中的 `ai-workspace/cat-m`，当前 Mac 不存在该目标用户目录，尚未迁移且未删除源。远端已核验改名为同一仓库 `Yankj/cat-m`（repository ID 1413057312），origin 已更新；旧名永久重定向。本次专用分支 `docs/family-product-plan` 基于 main `789ad4fe`，没有重复 clone、改名远端、合并 PR 或部署。
+当前源项目复用既有 `ai-work/catpaw-m`。用户指定目标为另一待确认执行环境中的 `ai-workspace/mimi`，当前 Mac 不存在该目标用户目录，尚未迁移且未删除源。远端已核验改名为同一仓库 `Yankj/mimi`（repository ID 1413057312），origin 已更新；旧名永久重定向。本次专用分支 `docs/family-product-plan` 基于 main `789ad4fe`，没有重复 clone、改名远端、合并 PR 或部署。
 
 PR #110 已关闭、未合并；品牌通过 PR #112 合入 main。旧审计基于 423d25b1，原生/后端维护源码与 789ad4fe 无新增差异；历史测试结果不能改写成新 SHA 已测试。
 

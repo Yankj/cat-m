@@ -28,15 +28,15 @@ onboarding 由只读 HTTPS 获取，缓存 `build/research-onboarding-20261013/o
 
 上游登记代码分别使用 `useComponent` 显示 pie/bar 图，`useRenderTool` 显示后端计划工具，`useFrontendTool` 更改主题，`useHumanInTheLoop` 让用户选时间。它已经是“同对话内呈现并交互”的应用实例，而非只输出静态 Markdown。[固定登记](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/hooks/use-generative-ui-examples.tsx)。
 
-官方当前 `useComponent` 接收命名、参数 schema、renderer 和 agent scope；组件成为模型可调用的 tool。`useRenderTool` 只决定已有 tool call 如何显示，不登记可执行行为。cat 应保留这个差别：**收到可视化数据可以显示，收到“调用工具”不能自动证明工具已执行或用户已批准。** [useComponent](https://docs.copilotkit.ai/reference/v2/hooks/useComponent)、[useRenderTool](https://docs.copilotkit.ai/reference/v2/hooks/useRenderTool)。
+官方当前 `useComponent` 接收命名、参数 schema、renderer 和 agent scope；组件成为模型可调用的 tool。`useRenderTool` 只决定已有 tool call 如何显示，不登记可执行行为。小咪应保留这个差别：**收到可视化数据可以显示，收到“调用工具”不能自动证明工具已执行或用户已批准。** [useComponent](https://docs.copilotkit.ai/reference/v2/hooks/useComponent)、[useRenderTool](https://docs.copilotkit.ai/reference/v2/hooks/useRenderTool)。
 
-`useFrontendTool` 的 handler 可在浏览器执行，`useHumanInTheLoop` 则等待用户 `respond`；后者的阶段为参数生成、等待用户、用户已回应。官方 hook 的这一完成状态代表它的调用返回，不代表 cat 日历、文件或后端副作用已成功。原生应以领域账本、真实回执和读取恢复显示结果。[useFrontendTool](https://docs.copilotkit.ai/reference/hooks/useFrontendTool)、[useHumanInTheLoop](https://docs.copilotkit.ai/reference/hooks/useHumanInTheLoop)。
+`useFrontendTool` 的 handler 可在浏览器执行，`useHumanInTheLoop` 则等待用户 `respond`；后者的阶段为参数生成、等待用户、用户已回应。官方 hook 的这一完成状态代表它的调用返回，不代表小咪日历、文件或后端副作用已成功。原生应以领域账本、真实回执和读取恢复显示结果。[useFrontendTool](https://docs.copilotkit.ai/reference/hooks/useFrontendTool)、[useHumanInTheLoop](https://docs.copilotkit.ai/reference/hooks/useHumanInTheLoop)。
 
-固定上游图表使用 Recharts，schema 主要是标题、说明和 label/value 数组，没有来源、单位、版本或 cat 动作合同。采用图表意图时须补足这些字段，不能把模型数值默认当已验证事实；上游无数据状态与 hover Tooltip 也不能直接承担手机读屏和触摸交互。[bar 图](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/components/generative-ui/charts/bar-chart.tsx)、[pie 图](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/components/generative-ui/charts/pie-chart.tsx)。
+固定上游图表使用 Recharts，schema 主要是标题、说明和 label/value 数组，没有来源、单位、版本或小咪动作合同。采用图表意图时须补足这些字段，不能把模型数值默认当已验证事实；上游无数据状态与 hover Tooltip 也不能直接承担手机读屏和触摸交互。[bar 图](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/components/generative-ui/charts/bar-chart.tsx)、[pie 图](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/components/generative-ui/charts/pie-chart.tsx)。
 
 ### 从工作卡扩展到交互式回答
 
-以下是 cat 产品设计建议，不是上游已完成的组件能力或新增领域对象。模型在应用公布的 registry 内选择；没有适合的组件时直接清楚回答，不能强制每个答案变成卡。
+以下是小咪产品设计建议，不是上游已完成的组件能力或新增领域对象。模型在应用公布的 registry 内选择；没有适合的组件时直接清楚回答，不能强制每个答案变成卡。
 
 | 对话需要 | 建议呈现与交互 | 领域归属 | 边界 |
 |---|---|---|---|
@@ -50,11 +50,11 @@ onboarding 由只读 HTTPS 获取，缓存 `build/research-onboarding-20261013/o
 
 ## 第二项：onboarding 的适用性
 
-页面要求先识别工作目录；已有工程先获得明确 yes，再调用 latest CLI，并保留浏览器 run ID。内容随后依赖 CLI 逐步输出，没有在本次响应里展示最终 patch 或 preset。其说明称 AG-UI streams（原 Rich Threads）借 CopilotKit Intelligence 增加 durable delivery，并保留 `useThreads` 与旧 CLI intent 名字。这只是该接入路线的文案，**本轮未验证服务套餐、保存地域、删除策略、可持续免费资源或 cat 互通**。[onboarding 页面](https://copilotkit.ai/onboarding-prompts/b0c0b78b9383)。
+页面要求先识别工作目录；已有工程先获得明确 yes，再调用 latest CLI，并保留浏览器 run ID。内容随后依赖 CLI 逐步输出，没有在本次响应里展示最终 patch 或 preset。其说明称 AG-UI streams（原 Rich Threads）借 CopilotKit Intelligence 增加 durable delivery，并保留 `useThreads` 与旧 CLI intent 名字。这只是该接入路线的文案，**本轮未验证服务套餐、保存地域、删除策略、可持续免费资源或小咪互通**。[onboarding 页面](https://copilotkit.ai/onboarding-prompts/b0c0b78b9383)。
 
 可采纳的是“先识别现有项目，再检查实际变更，按具体步骤验证”的工程方法。不可从引用推导安装、外发仓库／环境、改变模型 route、导入凭据或新托管服务的授权；页面作者的操作指令也不是用户的指令。本轮是评估与 Markdown 更新，不需要为了文案中的 yes 发起安装许可问题。
 
-若未来考虑正式 SDK 接入，先确认指定 run 的配置和计划，再固定版本、列出实际目录／包／网络与服务变更，证明 Swift 边界或被隔离的 TS 局部收益。`latest` 不是可追溯的交付版本。Intelligence 的 durable delivery 还需明确与 Supabase 的关系：它可以是运输／投递层候选，不能自然变成第二套审批、任务、计划 revision、调度或成果权威。没有事务对应、租户隔离、删除、cursor、重放与故障恢复证明，就不能用“durable”关闭 cat 验收。
+若未来考虑正式 SDK 接入，先确认指定 run 的配置和计划，再固定版本、列出实际目录／包／网络与服务变更，证明 Swift 边界或被隔离的 TS 局部收益。`latest` 不是可追溯的交付版本。Intelligence 的 durable delivery 还需明确与 Supabase 的关系：它可以是运输／投递层候选，不能自然变成第二套审批、任务、计划 revision、调度或成果权威。没有事务对应、租户隔离、删除、cursor、重放与故障恢复证明，就不能用“durable”关闭小咪验收。
 
 ## Swift 与协议边界
 
@@ -64,7 +64,7 @@ AG-UI 标准不限定 Web 渲染目标，因此可实现 Swift 事件 adapter。
 
 官方 AG-UI 1.0 有两个特别需要对齐的约束：tool 参数增量在 `TOOL_CALL_END` 前不可执行；END 仅表示完整，仍需 schema 校验。frontend tool 的结果通过下一 run 的 messages 回传；主动 interrupt 也是结束当前 run，再由下一 run 同 thread/state 的 resume 接续。协议没有 consumer 向原 SSE 流的 mid-run 回传通道。[Tool Calls 1.0](https://docs.ag-ui.com/spec/1.0/events/tool-calls)、[Interrupts and Resume 1.0](https://docs.ag-ui.com/spec/1.0/basic/patterns/interrupt-resume)。
 
-因此“卡就绪时可点击，其他正文还在流”是 cat 的 UI 与命令受理体验；它不等于把回答直接注入同一条 SSE。现有领域命令可按安全 checkpoint 受理，同工作/thread 以新的 run 接续。若以后用 AG-UI adapter，必须映射这一边界，保留 pending input/tool 事实；`RUN_FINISHED` 不能误写成所有工作或副作用均已完成。snapshot/delta 能支持同步，但仍须自建版本冲突、重读与持久领域保障。[State Management](https://docs.ag-ui.com/concepts/state)。
+因此“卡就绪时可点击，其他正文还在流”是小咪的 UI 与命令受理体验；它不等于把回答直接注入同一条 SSE。现有领域命令可按安全 checkpoint 受理，同工作/thread 以新的 run 接续。若以后用 AG-UI adapter，必须映射这一边界，保留 pending input/tool 事实；`RUN_FINISHED` 不能误写成所有工作或副作用均已完成。snapshot/delta 能支持同步，但仍须自建版本冲突、重读与持久领域保障。[State Management](https://docs.ag-ui.com/concepts/state)。
 
 ## 可实施的 schema、action 与流中状态建议
 
@@ -77,7 +77,7 @@ AG-UI 标准不限定 Web 渲染目标，因此可实现 Swift 事件 adapter。
 5. **副作用**：工作修改、审批和执行继续走原 typed command 与权限／revision／幂等账本；UI rendering 不执行副作用。离开、重开和历史 replay 只能恢复呈现与待决事实。
 6. **流中阶段**：生成中／参数完整待验证／可操作／提交中／已受理／冲突或未知分开；“可操作”针对当前完整对象，不等待同 turn 所有文字结束。结构增量不能覆盖用户编辑、抢焦点、整条 remount 或跳阅读锚点。
 
-上述属于 cat 建议。上游可参考[bounded Table catalog](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/components/generative-ui/table-catalog.tsx)、[Open GenUI renderer](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/components/generative-ui/open-generative-ui/renderer.tsx) 与[回对话 bridge](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/lib/sandbox/prompt-bridge.tsx)。它们的组件内标记、React promise 与内存状态没有证明跨 App 重启的 exactly-once、系统动作或 SQL 多实例恢复。
+上述属于小咪建议。上游可参考[bounded Table catalog](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/components/generative-ui/table-catalog.tsx)、[Open GenUI renderer](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/components/generative-ui/open-generative-ui/renderer.tsx) 与[回对话 bridge](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/lib/sandbox/prompt-bridge.tsx)。它们的组件内标记、React promise 与内存状态没有证明跨 App 重启的 exactly-once、系统动作或 SQL 多实例恢复。
 
 ## 需要进入可验收 spec 的检查
 
@@ -100,6 +100,6 @@ AG-UI 标准不限定 Web 渲染目标，因此可实现 Swift 事件 adapter。
 
 若原生 registry 不能表达某类解释，再评估独立 TS viewer；要先有具体任务收益，再固定组件、资源和版本。默认无账户凭据／共享 cookies/storage、无系统写 handler；限制网络、消息 origin、生成内容能力与资源容量。回 Agent 由原生明确按钮产生可审阅请求，生成 JS 不能自称用户手势、批准或完成。它的 WKWebView/iframe 边界、恶意来源、生命周期、导出、离线资源、手势与读屏都需实际验证。
 
-固定上游 sandbox 暴露 sendPrompt/openLink，但授权手势主要依赖提示词，没有 cat 的 durable action ID、批准 revision 或 effect核对；其任意生成 renderer 依赖 WebSandbox 和 CSP，而不是只靠 schema 获得可信性。不能把这个开放路径作为原生审批、日程或记忆删除的执行入口。[sandbox functions](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/lib/sandbox/sandbox-functions.ts)、[frame-content](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/components/generative-ui/open-generative-ui/frame-content.ts)。
+固定上游 sandbox 暴露 sendPrompt/openLink，但授权手势主要依赖提示词，没有小咪的 durable action ID、批准 revision 或 effect核对；其任意生成 renderer 依赖 WebSandbox 和 CSP，而不是只靠 schema 获得可信性。不能把这个开放路径作为原生审批、日程或记忆删除的执行入口。[sandbox functions](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/lib/sandbox/sandbox-functions.ts)、[frame-content](https://github.com/CopilotKit/OpenIntelligentUI/blob/9c982df1a16b734a49d8dd9d1c29b0e4b1b1805b/apps/app/src/components/generative-ui/open-generative-ui/frame-content.ts)。
 
 本轮可推进的决定是 **Swift 原生受控 GenUI＋受控解释／图表／试算内容＋明确动作边界**。正式 CopilotKit SDK/Intelligence、任意生成 TS viewer 或 wire 迁移仍须各自具体适配与互通证据；这些候选不阻挡已经确认的原生能力开发。

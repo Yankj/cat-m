@@ -1,4 +1,4 @@
-# cat 运行时与版本现状：2026-10-12快照
+# 小咪运行时与版本现状：2026-10-12快照
 
 本文件是带日期的事实快照，唯一实时进展仍是 [主交付计划](../status/master-plan.md)。固定本地目录的来源HEAD为 **`52ee35267fddfcb4ca4108a7a37893e860598d97`**，分支为 `integration/local-fixed-directory`；详细提交映射见 [local-integration-source.json](../status/local-integration-source.json)。本文之后的文档commit不表示应用或云端版本变化。
 

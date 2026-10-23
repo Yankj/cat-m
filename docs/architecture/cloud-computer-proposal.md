@@ -37,7 +37,7 @@ flowchart LR
 
 ## 官方能力与实际限制
 
-Supabase Edge当前官方限制为256MB内存、每请求CPU2s、worker wall-clock免费150s/付费400s；当前cat tick的30s是本地工程限制。`waitUntil`不能把函数变成无限进程。[Edge限制](https://supabase.com/docs/guides/functions/limits)。Supabase Cron可以调用SQL/HTTP，Queues提供持久消息；可见性窗口的投递保证不能替代外部写入幂等与unknown核对。[Cron](https://supabase.com/docs/guides/cron)、[Queues](https://supabase.com/docs/guides/queues)。
+Supabase Edge当前官方限制为256MB内存、每请求CPU2s、worker wall-clock免费150s/付费400s；当前小咪 tick的30s是本地工程限制。`waitUntil`不能把函数变成无限进程。[Edge限制](https://supabase.com/docs/guides/functions/limits)。Supabase Cron可以调用SQL/HTTP，Queues提供持久消息；可见性窗口的投递保证不能替代外部写入幂等与unknown核对。[Cron](https://supabase.com/docs/guides/cron)、[Queues](https://supabase.com/docs/guides/queues)。
 
 托管worker候选Render提供后台worker进程，负责消费队列；不要求迁移Supabase数据库。[Render worker](https://render.com/docs/background-workers)。沙箱候选E2B提供按需Linux环境、文件/终端与pause/resume，Desktop支持截图/点击和VNC。[E2B](https://docs.e2b.dev/)、[Desktop](https://docs.e2b.dev/use-cases/computer-use)。这些是研究候选，未创建账户或测试。
 

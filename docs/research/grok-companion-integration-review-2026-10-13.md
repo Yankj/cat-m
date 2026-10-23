@@ -6,7 +6,7 @@
 
 采纳 Grok 方案中“每次主动说明原因、记忆可查可改可忘、控制与动作结果可找回”的产品要求，补入既有 AF-1/UX-1 的行为细节。保留 SwiftUI、conversation-first、A1 图标、现有模型路线及 Supabase 底座；不合并新的四 Tab App，不引入第二套状态库、假执行日志和暖橙深色主题。
 
-Grok 分支是一个可阅读的产品草案和内存界面骨架。它没有连接模型、Agent、日历、通知、数据库或执行回执，不能作为“主动 Agent 已实现”的证据。最需要修正的是把“用户确认”和“真实执行完成”分开：代码现在点击确认后直接写入“已确认并执行”，实际只修改内存数组。应由当前底座的审批、执行、核对和回执决定界面状态。[固定 AppStore 第40–45行](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Core/Stores/AppStore.swift#L40)
+Grok 分支是一个可阅读的产品草案和内存界面骨架。它没有连接模型、Agent、日历、通知、数据库或执行回执，不能作为“主动 Agent 已实现”的证据。最需要修正的是把“用户确认”和“真实执行完成”分开：代码现在点击确认后直接写入“已确认并执行”，实际只修改内存数组。应由当前底座的审批、执行、核对和回执决定界面状态。[固定 AppStore 第40–45行](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Core/Stores/AppStore.swift#L40)
 
 Meta Muse、OpenAI dots、xAI Grok Bot 均找到一手官方产品资料；用户已确认 Grok Bot 指 xAI 的实际产品。Grok 文档中的“主动最强”“移动非优先”“个人生活弱”等排名仍无测量或出处，不能用于决定我们的优势。CopilotKit 的 OpenMuse/OpenDots/OpenBot 开源模板与这些闭源官方产品分别记录，名称相近不构成代码来源或功能等价证据。
 
@@ -14,8 +14,8 @@ Meta Muse、OpenAI dots、xAI Grok Bot 均找到一手官方产品资料；用�
 
 | 项目 | 本次固定输入 |
 | --- | --- |
-| 仓库/分支 | Yankj/cat-m；feat/grok-cat-companion |
-| commit | 38c44457cb3f360beed9ee0dab5ab87b001db0c9；[固定 tree](https://github.com/Yankj/cat-m/tree/38c44457cb3f360beed9ee0dab5ab87b001db0c9) |
+| 仓库/分支 | Yankj/mimi；feat/grok-cat-companion |
+| commit | 38c44457cb3f360beed9ee0dab5ab87b001db0c9；[固定 tree](https://github.com/Yankj/mimi/tree/38c44457cb3f360beed9ee0dab5ab87b001db0c9) |
 | 已读 | README、Docs 7篇、CatCompanion 9个 Swift 文件，共17文件、22544字节 |
 | 只读缓存 | build/research-grok-companion-20261013/source/ |
 | manifest | build/research-grok-companion-20261013/READ-SOURCES.json；tree_truncated=false |
@@ -23,7 +23,7 @@ Meta Muse、OpenAI dots、xAI Grok Bot 均找到一手官方产品资料；用�
 | 校验 | 17/17文件长度与 Git blob SHA1 均吻合 manifest；全部逐文件阅读 |
 | 证据边界 | 未安装依赖、编译、运行 App、调用模型、执行系统动作或连接生产服务；不声称能构建或通过原生验收 |
 
-本次新增 CatCompanion 骨架范围没有独立 Xcode 工程、Package.swift 或构建配置；完整分支仍包含既有 apps/ios-conversation 等工程、根 Package.swift 与 THIRD_PARTY_NOTICES.md，不能把17个选读文件当作完整仓库。这里只记录新增骨架的静态边界；本次没有复制源码或引入依赖。README 所列 Core/Services 和 Features/Proactive 目录未在新增骨架中实现；EventKit、UserNotifications、BGTaskScheduler、云 API 是文档计划，9个 Swift 文件没有实现这些连接。[README 目录与运行说明](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/README.md#L19)
+本次新增 CatCompanion 骨架范围没有独立 Xcode 工程、Package.swift 或构建配置；完整分支仍包含既有 apps/ios-conversation 等工程、根 Package.swift 与 THIRD_PARTY_NOTICES.md，不能把17个选读文件当作完整仓库。这里只记录新增骨架的静态边界；本次没有复制源码或引入依赖。README 所列 Core/Services 和 Features/Proactive 目录未在新增骨架中实现；EventKit、UserNotifications、BGTaskScheduler、云 API 是文档计划，9个 Swift 文件没有实现这些连接。[README 目录与运行说明](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/README.md#L19)
 
 ## 3. 具名竞品：官方声明与未确认边界
 
@@ -35,25 +35,25 @@ Meta Muse、OpenAI dots、xAI Grok Bot 均找到一手官方产品资料；用�
 | OpenAI dots | 官方介绍持续云端电脑、长期目标/反馈、主动研究和手机消息；主动研究的连接应用权限为只读，不能自行发消息、改应用或操作电脑，规则与自动审核控制后续动作 | 主动研究与交互式执行的授权边界不能混同；具体移动创建入口随 rollout/版本核对；“移动非优先”“价格高”不能代替实际体验和费用比较。[OpenAI 官方介绍](https://openai.com/index/introducing-dots/) |
 | xAI Grok Bot | 官方介绍持久云端电脑、文件/浏览器/终端、长期上下文、routines、手机对话和审批；同账号 bots 共享电脑，bot 对话上下文分别保存 | 上下文分开不等于电脑隔离；不能推定开源 OpenBot 就是其实现；“个人生活触达弱”没有证据。[xAI overview](https://docs.x.ai/grok-bot/overview) |
 
-xAI 的移动文档（更新2026-10-12）明确 iOS 18+ 和 Android；手机可处理对话、语音、文件、审批及电脑接管。手机目前可查看 routine 的计划/历史并暂停、恢复或删除；编辑计划/指令与测试运行仍需桌面。这给 cat 的候选机会是把既有公开网页跟进的完整设置/修订闭环做在 iPhone，而不是声称我们的执行能力全面领先。[xAI mobile](https://docs.x.ai/grok-bot/mobile)
+xAI 的移动文档（更新2026-10-12）明确 iOS 18+ 和 Android；手机可处理对话、语音、文件、审批及电脑接管。手机目前可查看 routine 的计划/历史并暂停、恢复或删除；编辑计划/指令与测试运行仍需桌面。这给小咪的候选机会是把既有公开网页跟进的完整设置/修订闭环做在 iPhone，而不是声称我们的执行能力全面领先。[xAI mobile](https://docs.x.ai/grok-bot/mobile)
 
-xAI 审批文档（更新2026-10-12）提供允许一次、允许规则和拒绝，ask-first 优先；无人值守待批约10分钟过期，过期动作不执行，事后允许规则只影响未来。自动审核不保证零风险；共享电脑也不是 bot 间安全边界。cat 应保留原动作版本、明确过期和 unknown，不把“永远允许”或多点击一次当默认解决办法。[xAI approvals/security](https://docs.x.ai/grok-bot/approvals-security-and-privacy)
+xAI 审批文档（更新2026-10-12）提供允许一次、允许规则和拒绝，ask-first 优先；无人值守待批约10分钟过期，过期动作不执行，事后允许规则只影响未来。自动审核不保证零风险；共享电脑也不是 bot 间安全边界。小咪应保留原动作版本、明确过期和 unknown，不把“永远允许”或多点击一次当默认解决办法。[xAI approvals/security](https://docs.x.ai/grok-bot/approvals-security-and-privacy)
 
-xAI 区分 skill（可复用指令）和 routine（何时调用），建议先跑通一次真实任务再自动化，明确来源、时区、预期结果和待批/缺资料处理。cat 可借鉴创建跟进时的确认摘要；多 Specialist、任意技能市场和更多连接器仍是扩展。[xAI skills/routines](https://docs.x.ai/grok-bot/skills-routines-and-automations)
+xAI 区分 skill（可复用指令）和 routine（何时调用），建议先跑通一次真实任务再自动化，明确来源、时区、预期结果和待批/缺资料处理。小咪可借鉴创建跟进时的确认摘要；多 Specialist、任意技能市场和更多连接器仍是扩展。[xAI skills/routines](https://docs.x.ai/grok-bot/skills-routines-and-automations)
 
-原表的 Instinct、Gemini Spark、Apple Siri AI 身份与排名未在本轮逐项核验，不据此下结论；“移动瓶颈不是模型”“最被认可的隐私架构”等断言也没有给出研究方法。现有模型尚未通过本轮真实路由验证，不能先排除模型可用性、工具调用或速度问题。[原竞品表与结论](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/01-competitive-research.md#L5)
+原表的 Instinct、Gemini Spark、Apple Siri AI 身份与排名未在本轮逐项核验，不据此下结论；“移动瓶颈不是模型”“最被认可的隐私架构”等断言也没有给出研究方法。现有模型尚未通过本轮真实路由验证，不能先排除模型可用性、工具调用或速度问题。[原竞品表与结论](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/01-competitive-research.md#L5)
 
 ## 4. 七篇文档的采纳、修正与延期
 
 | 输入 | 可采纳 | 必须修正或延期 | 对应当前合同 |
 | --- | --- | --- | --- |
-| [01 竞品调研](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/01-competitive-research.md#L14) | 解释、确认、遗忘作为首要产品要求 | 补一手来源、实际版本与比较方法；去掉无出处排名；不从竞品存在推断我方已拥有云电脑 | AF-R03/07/08；AF-A09–13 |
-| [02 产品定位](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/02-product-positioning.md#L7) | 长期上下文、可控主动、端云协作 | 用户已选通用 Agent 底座，不能改成“对话只是入口之一”的商家个人层；“猫伴”只作候选名称，不新增品牌授权 | AF-1-G3-UX1；AF-U01 |
-| [03 产品说明书](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/03-product-spec.md#L5) | 日程/提醒、任务完成/待批、用户关注事项、可追溯副作用 | 日程输入对应CP-03；公开变化跟进对应CP-02；商家指标、账号连接器、未知变化即时推送延期；交通延误不能用示例伪装实时数据 | AF-A08/12–15；CP-01–03 |
-| [04 交互设计](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/04-interaction-design.md#L3) | 为什么现在、动作预览、修改/拒绝、候选记忆、来源提示、勿扰和日志入口 | 默认对话＋侧栏；精确许可取代“低风险自动/高风险二次确认”的硬编码分类；关闭sheet≠决定；锁屏摘要属于系统通知能力，不能当独立已实现渠道 | AF-A02/09–11/14–16；AF-U01/07/09 |
-| [05 视觉设计](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/05-visual-design.md#L3) | 语义区分、原生sheet、记忆列表和克制动效 | 保留UX-1的A1/中性黑白与现有强调色、系统浅深色、17pt动态正文、44pt目标；不引入橙/紫/青三套主视觉或固定15pt正文；只依靠色条不够 | AF-U02/07/09–11 |
-| [06 技术选择](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/06-tech-selection.md#L3) | SwiftUI为主；手机负责可用设备动作；重执行继续现有API；后台调度与前台UI分开 | 该骨架没有SwiftData实现；主工程保留已有Repository／SwiftDataPersistence，不另建权威状态；BGTaskScheduler不是定点服务端调度；TS局部由体验/互通探针决定，不能绝对禁止；不得自行修改部署版本或引入依赖 | AF-R05/08/09/12；S01–S07 |
-| [07 落地节奏](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/07-solution-roadmap.md#L9) | 先验一个真实闭环，控制面随主动能力同步实现 | 4–6周无估算依据，不作为承诺；不另开以商家灰度为结束条件的MVP；按现有切片和门槛推进，同一候选全部18A/12U/3CP仍必需 | [AF计划](../planning/AF-1/plan.md)、[验收](../acceptance/agent-foundation-acceptance.md) |
+| [01 竞品调研](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/01-competitive-research.md#L14) | 解释、确认、遗忘作为首要产品要求 | 补一手来源、实际版本与比较方法；去掉无出处排名；不从竞品存在推断我方已拥有云电脑 | AF-R03/07/08；AF-A09–13 |
+| [02 产品定位](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/02-product-positioning.md#L7) | 长期上下文、可控主动、端云协作 | 用户已选通用 Agent 底座，不能改成“对话只是入口之一”的商家个人层；“猫伴”只作候选名称，不新增品牌授权 | AF-1-G3-UX1；AF-U01 |
+| [03 产品说明书](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/03-product-spec.md#L5) | 日程/提醒、任务完成/待批、用户关注事项、可追溯副作用 | 日程输入对应CP-03；公开变化跟进对应CP-02；商家指标、账号连接器、未知变化即时推送延期；交通延误不能用示例伪装实时数据 | AF-A08/12–15；CP-01–03 |
+| [04 交互设计](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/04-interaction-design.md#L3) | 为什么现在、动作预览、修改/拒绝、候选记忆、来源提示、勿扰和日志入口 | 默认对话＋侧栏；精确许可取代“低风险自动/高风险二次确认”的硬编码分类；关闭sheet≠决定；锁屏摘要属于系统通知能力，不能当独立已实现渠道 | AF-A02/09–11/14–16；AF-U01/07/09 |
+| [05 视觉设计](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/05-visual-design.md#L3) | 语义区分、原生sheet、记忆列表和克制动效 | 保留UX-1的A1/中性黑白与现有强调色、系统浅深色、17pt动态正文、44pt目标；不引入橙/紫/青三套主视觉或固定15pt正文；只依靠色条不够 | AF-U02/07/09–11 |
+| [06 技术选择](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/06-tech-selection.md#L3) | SwiftUI为主；手机负责可用设备动作；重执行继续现有API；后台调度与前台UI分开 | 该骨架没有SwiftData实现；主工程保留已有Repository／SwiftDataPersistence，不另建权威状态；BGTaskScheduler不是定点服务端调度；TS局部由体验/互通探针决定，不能绝对禁止；不得自行修改部署版本或引入依赖 | AF-R05/08/09/12；S01–S07 |
+| [07 落地节奏](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/Docs/07-solution-roadmap.md#L9) | 先验一个真实闭环，控制面随主动能力同步实现 | 4–6周无估算依据，不作为承诺；不另开以商家灰度为结束条件的MVP；按现有切片和门槛推进，同一候选全部18A/12U/3CP仍必需 | [AF计划](../planning/AF-1/plan.md)、[验收](../acceptance/agent-foundation-acceptance.md) |
 
 Apple 明确 BGTaskRequest 的 earliestBeginDate 仅保证不早于所设时间，不能保证该时间启动。因而本地调度可以补足缓存/设备工作，不能关闭 AF-A12 的服务端独立调度验收。已知时间的本地提醒与云端未知变化 APNs 也分别验收。[Apple earliestBeginDate](https://developer.apple.com/documentation/backgroundtasks/bgtaskrequest/earliestbegindate)、[当前AF-A12/15](../acceptance/agent-foundation-acceptance.md)
 
@@ -61,15 +61,15 @@ Apple 明确 BGTaskRequest 的 earliestBeginDate 仅保证不早于所设时间�
 
 | 固定文件 | 实际行为 | 整合决定 |
 | --- | --- | --- |
-| [CatCompanionApp.swift](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/App/CatCompanionApp.swift#L3) | 新建AppStore，独立 @main 注入环境 | 不导入第二个App入口；维护入口仍是 apps/ios-conversation/CatpawM.xcodeproj |
-| [RootView.swift](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/App/RootView.swift#L7) | 永久四Tab，默认今日页 | 不采纳；记忆、跟进与设置通过现有侧栏/对象详情进入 |
-| [Domain.swift](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Core/Models/Domain.swift#L3) | UUID记忆、主动建议与文字日志；没有账户/Task/Run/effect/approval身份；confidence默认0.9，source默认“用户确认” | 仅借助reason/actionPreview的表达思路；映射现有对象、scope、revision、来源和确认状态，不把默认数字/文案当事实 |
-| [AppStore.swift](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Core/Stores/AppStore.swift#L6) | 内存样例：口味、会议、路况12分钟、门店报告；增删/确认/忽略均只修改数组 | 示例必须明示，不注入真实用户历史；禁止“确认即执行成功”；不作为Store替代实现 |
-| [Theme.swift](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/DesignSystem/Theme.swift#L3) | 固定深色颜色；卡只显示title/reason和确认/忽略，没有actionPreview/risk详情、修改入口或提交中状态 | 可参考紧凑原因文案；仍按UX-1语义tokens和完整状态实施，不直接复制组件 |
-| [AssistantView.swift](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Features/Assistant/AssistantView.swift#L3) | messages:[String]按数组下标辨认，发消息后追加固定“已记录”回复；无模型、网络、SSE、角色/turn身份、附件、许可或恢复 | 不复用聊天链路；固定回复不能宣称记忆已保存；保留现有连续对话/队列/附件/阅读位置合同 |
-| [HomeView.swift](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Features/Home/HomeView.swift#L11) | 展示全部样例建议；proactiveEnabled仅改变header文案，关闭后卡片仍在 | 不让开关只改变标签；既有结果可保留，暂停必须在服务端拒绝新due，区别通知静默 |
-| [MemoryView.swift](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Features/Memory/MemoryView.swift#L11) | 原生List、类型picker、内存新增/滑动删除、固定置信度展示；没有编辑详情/候选确认/持久化/删除屏障 | 借鉴原生列表表达；逐条来源、范围、候选/确认、修订和删除效果由AF-R07实现；不要求用户手填类型才可记忆 |
-| [SettingsView.swift](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Features/Settings/SettingsView.swift#L9) | 两个RAM布尔量、静态确认策略、内存日志；没有系统权限申请或实际策略 enforcement | 控制页面必须来自真实授权/Trigger状态；勿扰变量目前不改变任何行为，不能算通知或调度已实现 |
+| [CatCompanionApp.swift](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/App/CatCompanionApp.swift#L3) | 新建AppStore，独立 @main 注入环境 | 不导入第二个App入口；维护入口仍是 apps/ios-conversation/CatpawM.xcodeproj |
+| [RootView.swift](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/App/RootView.swift#L7) | 永久四Tab，默认今日页 | 不采纳；记忆、跟进与设置通过现有侧栏/对象详情进入 |
+| [Domain.swift](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Core/Models/Domain.swift#L3) | UUID记忆、主动建议与文字日志；没有账户/Task/Run/effect/approval身份；confidence默认0.9，source默认“用户确认” | 仅借助reason/actionPreview的表达思路；映射现有对象、scope、revision、来源和确认状态，不把默认数字/文案当事实 |
+| [AppStore.swift](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Core/Stores/AppStore.swift#L6) | 内存样例：口味、会议、路况12分钟、门店报告；增删/确认/忽略均只修改数组 | 示例必须明示，不注入真实用户历史；禁止“确认即执行成功”；不作为Store替代实现 |
+| [Theme.swift](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/DesignSystem/Theme.swift#L3) | 固定深色颜色；卡只显示title/reason和确认/忽略，没有actionPreview/risk详情、修改入口或提交中状态 | 可参考紧凑原因文案；仍按UX-1语义tokens和完整状态实施，不直接复制组件 |
+| [AssistantView.swift](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Features/Assistant/AssistantView.swift#L3) | messages:[String]按数组下标辨认，发消息后追加固定“已记录”回复；无模型、网络、SSE、角色/turn身份、附件、许可或恢复 | 不复用聊天链路；固定回复不能宣称记忆已保存；保留现有连续对话/队列/附件/阅读位置合同 |
+| [HomeView.swift](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Features/Home/HomeView.swift#L11) | 展示全部样例建议；proactiveEnabled仅改变header文案，关闭后卡片仍在 | 不让开关只改变标签；既有结果可保留，暂停必须在服务端拒绝新due，区别通知静默 |
+| [MemoryView.swift](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Features/Memory/MemoryView.swift#L11) | 原生List、类型picker、内存新增/滑动删除、固定置信度展示；没有编辑详情/候选确认/持久化/删除屏障 | 借鉴原生列表表达；逐条来源、范围、候选/确认、修订和删除效果由AF-R07实现；不要求用户手填类型才可记忆 |
+| [SettingsView.swift](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Features/Settings/SettingsView.swift#L9) | 两个RAM布尔量、静态确认策略、内存日志；没有系统权限申请或实际策略 enforcement | 控制页面必须来自真实授权/Trigger状态；勿扰变量目前不改变任何行为，不能算通知或调度已实现 |
 
 源码不含并发claim、持久待批、lease/fence、执行意图或可核对回执。因此未提交、已执行、已拒绝、超时unknown和断网恢复在这里无法区分；终止后重开将重新生成样例，旧决定/日志丢失。任何宣称“不会重复执行/遗忘不复活/退出后继续任务”都需现有底座和真实测试提供证据。
 

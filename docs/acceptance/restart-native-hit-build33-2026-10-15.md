@@ -1,6 +1,6 @@
 # 原生许可与抽屉 build33 · 2026-10-15
 
-候选 `AF-UX-HIT-DRAWER-20261015-33`，**0.3.0(33)**。`Native33-r1` 最终 **14/14 单元 PASS；7 条原生 UI 为 6 PASS / 1 FAIL**，整轮 FAIL。导航返回和双会话草稿已在本候选新测通过；普通正文横拖后的前景遮罩仍不可命中。**build33 未交付用户，固定“cat 最新体验”仍为 build29，UX 门未关闭。** 本文件为日期快照，当前进度只见 [master-plan](../status/master-plan.md)；[31](restart-native-hit-build31-2026-10-15.md)／[32](restart-native-hit-build32-2026-10-15.md)失败保留。
+候选 `AF-UX-HIT-DRAWER-20261015-33`，**0.3.0(33)**。`Native33-r1` 最终 **14/14 单元 PASS；7 条原生 UI 为 6 PASS / 1 FAIL**，整轮 FAIL。导航返回和双会话草稿已在本候选新测通过；普通正文横拖后的前景遮罩仍不可命中。**build33 未交付用户，固定“小咪最新体验”仍为 build29，UX 门未关闭。** 本文件为日期快照，当前进度只见 [master-plan](../status/master-plan.md)；[31](restart-native-hit-build31-2026-10-15.md)／[32](restart-native-hit-build32-2026-10-15.md)失败保留。
 
 冻结本地源码 `6fc2408ed42ccfa596949a8144c607809a66af20`；选择性发布远端 `b8344afc2ff8431282cacaf88b22a6e6f7b5f4c7`，tree `58a1888f960133411b673fe69c1d8020d3f65d94`。415 项输入固定于 ignored `build/native-hit-drawer33-20261015/source-snapshot.json`，SHA-256 `e7be5c52d71c0790ecf212991839481bfed805eeacead85aee14d1e41b750d1f`。独立 `frozen-app/CatpawM.app` 的33项包文件逐项大小及SHA-256与 `package-files33.json` 匹配，Info.plist为0.3.0(33)；包指纹 `a8d4a0d49b96d5544cbe20d90e98f42cca20af45bb05a55b91f24f8a5482656f`，manifest SHA-256 `42453a25d202ea2c975a9ff3f973d7c108404f798f0842d7cfb88c9a946cd105`。后续工作区或34候选不属于这些冻结字节。
 
