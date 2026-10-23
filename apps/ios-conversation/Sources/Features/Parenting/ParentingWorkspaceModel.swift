@@ -10,8 +10,8 @@ final class ParentingWorkspaceModel: ObservableObject {
 
     private let store: ParentingWorkspaceStore
 
-    init(repository: Repository, scope: DataScope, subjectID: UUID?) {
-        store = ParentingWorkspaceStore(repository: repository, scope: scope, subjectID: subjectID)
+    init(repository: Repository, scope: DataScope, subjectID: UUID?, cipher: any ParentingWorkspaceCipher = ParentingPersistentCipher()) {
+        store = ParentingWorkspaceStore(repository: repository, scope: scope, subjectID: subjectID, cipher: cipher)
     }
     init(store: ParentingWorkspaceStore) { self.store = store }
 

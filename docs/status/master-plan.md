@@ -6,20 +6,24 @@
 
 | 阶段 | 代码 | 自动测试 | 设备验证 | 线上验收 |
 |---|---|---|---|---|
-| M1 先把一件事办清楚 | #123 draft `d5f739e`；创建前清理已修复；新发现冷启动账号代次组合缺陷待修 | [CI 39989566438](https://github.com/Yankj/mimi/actions/runs/39989566438)三job全部通过：Edge 909通过/2跳过，真实Xcode26.6 build-for-testing通过，56项育儿XCTest实际执行0失败；独立固定输入HTTP回归18/18通过。新冷启动问题不在这56项覆盖内 | 原生UI/真机仍 NOT_RUN；云端补创建→完成→重开流程验证，本机无完整Xcode | NOT_RUN；专用后端未部署 |
+| M1 先把一件事办清楚 | #123 draft `563f07c`；创建前清理、nil-token冷启动及finalizer故障已补修；新发现临时scope切换使已保存账本不可见的P1待修 | [当前CI 39993290367](https://github.com/Yankj/mimi/actions/runs/39993290367) Edge 911通过/2跳过；iOS编译中，新增筛选57模块＋3 UI尚未取得执行结论。固定输入禁网HTTP20/20通过；此前d5的56项XCTest通过仅是旧候选证据 | 当前3条合成原生UI待运行；真机 NOT_RUN，本机无完整Xcode。成功重开与失败重开覆盖边界见下 | NOT_RUN；专用后端未部署 |
 | M2 日常变化与本机提醒 | 未启动 | NOT_RUN | NOT_RUN | NOT_RUN |
 | M3 成长回顾 | 未启动；已有轻目标/记录是 M1 基础 | NOT_RUN | NOT_RUN | NOT_RUN |
 | M4 家庭事实记忆 | 未启动；旧记忆模块仅复用资产 | NOT_RUN | NOT_RUN | NOT_RUN |
 | M5 同步、分工、可靠主动 | 未启动；旧 family 后端不等于育儿端已接通 | NOT_RUN | NOT_RUN | NOT_RUN |
 | M6 真实家庭试用 | 未启动 | NOT_RUN | NOT_RUN | NOT_RUN |
 
-**仓库与 PR：**主线基线 `4ec8118`，治理以 [draft PR #124](https://github.com/Yankj/mimi/pull/124) 独立审阅，base 为 #123 的 `feat/parenting-core`；本地将最新产品候选 `d5f739e9039046c8b52d785c34eb58ff32fa8e4b` 同步到治理分支，产品四文件逐字节保留。治理提交 `5cfdf12`、`0732dcd` 已推送；尚未合并任何 PR 或部署。README、产品/设计索引、AGENTS、架构图与目录机器清单已对齐新路线，旧日期证据保留；[资产审计](../architecture/mimi-assets-2026-10-24.md)与[PR 审计](../architecture/mimi-pr-disposition-2026-10-24.md)固定来源。#120 已关闭未合并，独有代码/分支及原描述保留。#113 的43文件已逐blob进入main；#116旧路线被替代。初次关闭被自动审批拒绝后，用户明确批准只关闭；两项现已closed/unmerged，原描述、分支和提交均保留。开放产品候选收敛为#123，#124仅治理与来源修复。
+**仓库与 PR：**主线基线 `4ec8118`，治理以 [draft PR #124](https://github.com/Yankj/mimi/pull/124) 独立审阅，base 为 #123 的 `feat/parenting-core`；本地将固定产品候选 `563f07cdb2e87248fa9a0294fd6e08d8abd0f739` 同步到治理分支，候选新增/修改的16文件逐字节保留。治理提交 `5cfdf12`、`0732dcd` 及后续边界澄清已推送；尚未合并任何 PR 或部署。README、产品/设计索引、AGENTS、架构图与目录机器清单已对齐新路线，旧日期证据保留；[资产审计](../architecture/mimi-assets-2026-10-24.md)与[PR 审计](../architecture/mimi-pr-disposition-2026-10-24.md)固定来源。#120 已关闭未合并，独有代码/分支及原描述保留。#113 的43文件已逐blob进入main；#116旧路线被替代。初次关闭被自动审批拒绝后，用户明确批准只关闭；两项现已closed/unmerged，原描述、分支和提交均保留。开放产品候选收敛为#123，#124仅治理与来源修复。
 
-**验证与待处理：**布局/部署来源/AF计划/CGUI/FINAL计划/能力清单/敏感扫描及扫描器回归通过；治理16正负例通过，原17项治理入口259个本地链接有效；加上22份原pin恢复后检查547链接，4条旧本地工作目录引用仅保留历史来源，不伪造当前文件。用户已批准24历史文件恢复例外，按原清单逐hash恢复后，冻结来源检查全通过；原清单和历史变更提交未改。另22项历史AF输入仅有品牌/仓库URL漂移，已按每文件原pin恢复，未改清单；原AF Goal检查实跑通过（9项local-only输入仍不可用）。本地pre-push旧仓库名白名单已精确补入mimi并通过5组/38个真实临时Git回归，未绕过hook。治理结果不证明原生或线上通过。
+**验证与待处理：**布局/部署来源/AF计划/CGUI/FINAL计划/能力清单/敏感扫描及扫描器回归通过；治理16正负例通过，原17项治理入口259个本地链接有效；加上22份原pin恢复后检查547链接，4条旧本地工作目录引用仅保留历史来源，不伪造当前文件。用户已批准24历史文件恢复例外，按原清单逐hash恢复后，冻结来源检查全通过；原清单和历史变更提交未改。另22项历史AF输入仅有品牌/仓库URL漂移，已按每文件原pin恢复，未改清单；原AF Goal检查实跑通过（9项local-only输入仍不可用）。本地pre-push旧仓库名白名单已精确补入mimi并通过5组/38个真实临时Git回归，未绕过hook。治理结果不证明原生或线上通过。 新增独立 `Repository integrity` workflow，在PR和main push执行上述检查及现有guard回归，权限只读、不保留checkout凭据；`a74c4f2`的[首次GitHub运行39993062579](https://github.com/Yankj/mimi/actions/runs/39993062579)四组检查实际全通过。已删除官网迁出后无构建对象的旧Website workflow，外站未改。不宣称服务器强制合并保护已启用。
 
 **M1 独立审查：**在 `974dbb1` 的真实HTTP handler/ChatService + 合成Repository复现“未创建远端对象的清理请求连续404”；源码链会让 pending 清理阻挡以后整理。云端 `d5f739e` 已补受身份约束的幂等删除墓碑与迟到create围栏，客户端仍严格校验回执、不吞404。固定提交独立禁网复跑实际HTTP模块18/18通过，定点复审未发现该问题剩余P1；日志SHA256为 `9077fdef818e34eb7eb10fa96b2bb0175c54c82bf3a404d8277066a9201026af`，原始复现、复审日志与恢复patch保存在ignored `build/mimi-roadmap-20261024/`。合成Repository不证明真实PG多实例并发，未执行原生UI、生产Auth或模型调用。
 
-**M1 原生组合接续：**`d5f739e`的[原生job120537569259](https://github.com/Yankj/mimi/actions/runs/39989566438/job/120537569259)实际执行56项、0失败，CI使用的合并候选为`9b12744`，并非合入main。独立源码审查随后确认：已有local receipt先挂载`chat`、Auth稍后恢复时，`ParentingHomeView`的StateObject/Store已捕获nil账号token；同namespace认证后复用同chat，现有视图identity不随可信账号代次变更，重试仍使用旧Store。此为回访用户冷启动P1，已交云端修复组合层并补生命周期回归，不能通过放宽旧token写屏障处理。另深色主按钮白字配`#FF8A5C`仅2.323:1，已交云端复用既有可读CTA语义；截图、深色/大字号与真实UI操作结果尚未取得。
+**M1 原生组合接续：**`d5f739e`的[原生job120537569259](https://github.com/Yankj/mimi/actions/runs/39989566438/job/120537569259)实际执行56项、0失败，CI合并候选`9b12744`不是main实际合并。随后独立审查发现receipt先挂载chat、Auth稍后恢复时StateObject捕获nil账号token；`563f07c`已在可信快照及chat attach处发布包含chat/profile/workspace/subject/token的presentation，由Home按完整身份重建，旧Store固定token屏障不变。新增生命周期回归实走收据预览、同chat认证恢复、原账本读回/确认/完成和退出拒写，SDK结果待当前CI，不以源码复审代替执行。
+
+**M1 未关闭的问题：**无receipt且配置scope为空时，认证成功可先挂载provisional scope，并发布可写账本；resolver迟到返回不同canonical scope后换repository，没有迁移，先前“保存成功”的孩子/安排从UI消失，冷重开仍读取新分区。默认配置允许scope空，源码链已确认，尚无SDK复现。已交云端阻止不稳定分区写入或提供明确迁移，并增加nil配置scope＋延迟不同resolver scope的回归；不能一刀切禁止已确认本机账本的离线访问。此P1未关闭，M1继续进行，M2不启动。
+
+**563f07c独立验证边界：**后端finalizer读取故障也会清源文本、释放lease，purged时清临时缓存；固定归档以现有禁网prelude及Node24.19.0实际运行HTTP/ChatService合成Repository测试20/20通过，日志SHA256=`b8819e4a1e31f672526f6527044de8a60bce0b0ca05e3dd636cb6b1abf1f7a35`。初次PATH Node22.12缺loader接口的启动失败另存，未改产品。当前CI的Edge913总/911通过/2跳过，CI合并候选`40b4b22`；真实PG并发/模型不在证据内。DEBUG UI fixture隔离、Xcode成员及57模块＋3UI选中范围已独立静态核对。成功UI旅程包含真实SwiftUI/SwiftData/AES/Store操作和同UUID重开后原记录读回，但尚未重新断言完成安排状态/时间；失败UI仅同进程重开编辑器，不是App冷启动恢复；深色大字仅冒烟。截图留runner xcresult，未上传，未取得可复审渲染结果。主按钮已改用既有CTA梯度，按下不降低背景透明度，静态白字对比4.520/5.427；不替代原生视觉验收。
 
 以下条目均保留其当日状态；旧“当前”“PAUSED”、版本号与测试数不覆盖本节。
 

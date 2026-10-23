@@ -65,6 +65,10 @@ struct catNotificationPayload: Equatable, Sendable {
     private(set) static var lastOpened: catNotificationPayload?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        #if DEBUG
+        // The isolated parenting UI acceptance app has no APNs or background work authority.
+        if ParentingUITestFixture.isRequested { return true }
+        #endif
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         center.setNotificationCategories(catPushAction.categories.union(ProactiveEngine.categories))

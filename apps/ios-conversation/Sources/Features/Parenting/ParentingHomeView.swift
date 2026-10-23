@@ -23,10 +23,10 @@ import Combine
     @State private var recordFilter: ParentingRecordFilter = .all
     @State private var now = Date()
 
-    init(model: ConversationFirstModel, accountLabel: String? = nil,
+    init(model: ConversationFirstModel, workspaceModel: ParentingWorkspaceModel? = nil, accountLabel: String? = nil,
          onSignOut: (() -> Void)? = nil, isAnonymousAccount: Bool = false) {
         _conversationModel = ObservedObject(wrappedValue: model)
-        _model = StateObject(wrappedValue: ParentingWorkspaceModel(
+        _model = StateObject(wrappedValue: workspaceModel ?? ParentingWorkspaceModel(
             repository: model.repository, scope: model.scope, subjectID: model.trustedSubjectID))
         self.accountLabel = accountLabel
         self.onSignOut = onSignOut
@@ -369,6 +369,7 @@ import Combine
     private func arrangementEdit(_ item: ParentingArrangement) -> some View {
         Button(ui("调整安排")) { sheet = .editArrangement(item) }
             .buttonStyle(ParentingSecondaryButtonStyle()).disabled(model.busy)
+            .accessibilityIdentifier("parenting.adjust.\(item.id)")
     }
     private func arrangementComplete(_ item: ParentingArrangement) -> some View {
         Button(ui("完成并记录")) { sheet = .complete(item) }
@@ -406,6 +407,7 @@ import Combine
                         Spacer()
                         Button(ui("添加目标"), systemImage: "plus") { sheet = .newGoal(child.id) }
                             .font(.subheadline).frame(minHeight: 44).disabled(model.busy)
+                            .accessibilityIdentifier("parenting.addGoal")
                     }
                     if childGoals.isEmpty {
                         Text(ui("还没有成长目标。也可以先记观察，之后再建立目标。"))
@@ -429,6 +431,7 @@ import Combine
                                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                                     .contentShape(Rectangle())
                                 }.buttonStyle(.plain)
+                                    .accessibilityIdentifier("parenting.goal.\(goal.id)")
                                 Button(role: .destructive) { deletion = .goal(goal.id) } label: {
                                     Image(systemName: "trash").frame(width: 44, height: 44)
                                 }.accessibilityLabel(ui("删除目标")).disabled(model.busy)
@@ -542,9 +545,11 @@ import Combine
                 .accessibilityLabel(ui("记录操作")).disabled(model.busy)
             }
             Text(verbatim: record.text).font(.body).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                .accessibilityIdentifier("parenting.record.body.\(record.id)")
             if let goal = goalTitle(record.goalID) {
                 Label { Text(verbatim: goal) } icon: { Image(systemName: "leaf") }
                     .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                    .accessibilityIdentifier("parenting.record.goal.\(record.id)")
             }
             if let arrangementID = record.arrangementID {
                 if let arrangement = workspace.arrangements.first(where: { $0.id == arrangementID }) {
@@ -765,10 +770,17 @@ private extension View {
     func parentingCard() -> some View { modifier(ParentingCardModifier()) }
 }
 private struct ParentingPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.subheadline.weight(.semibold)).foregroundStyle(catColors.calmGlyph)
+        configuration.label.font(.subheadline.weight(.semibold))
+            .foregroundStyle(isEnabled ? catColors.calmGlyph : catColors.ink)
             .padding(.horizontal, 17).padding(.vertical, 13).frame(minHeight: 46)
-            .background(catColors.action.opacity(configuration.isPressed ? 0.76 : 1), in: RoundedRectangle(cornerRadius: 14))
+            .background {
+                RoundedRectangle(cornerRadius: 14).fill(LinearGradient(
+                    colors: isEnabled ? [catColors.calmCTATop, catColors.calmCTABottom] : [catColors.fillSelected, catColors.fillSelected],
+                    startPoint: .top, endPoint: .bottom))
+            }
+            .scaleEffect(isEnabled && configuration.isPressed ? 0.98 : 1)
     }
 }
 private struct ParentingSecondaryButtonStyle: ButtonStyle {
@@ -1037,12 +1049,14 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
                     Button(ui("取消")) {
                         if hasUnsavedChanges { discardConfirmation = true } else { dismiss() }
                     }.disabled(saving)
+                    .accessibilityIdentifier("parenting.arrangement.cancel")
                 }
             }
             .interactiveDismissDisabled(saving || hasUnsavedChanges)
             .alert(ui("放弃未保存的内容？"), isPresented: $discardConfirmation) {
                 Button(ui("继续填写"), role: .cancel) { }
                 Button(ui("放弃并关闭"), role: .destructive) { dismiss() }
+                    .accessibilityIdentifier("parenting.arrangement.discard")
             } message: { Text(ui("当前表单尚未保存。关闭后将丢弃填写内容并停止接收本次整理结果；已经发出的请求不保证在服务端停止。")) }
         }
         .tint(catColors.actionText)
