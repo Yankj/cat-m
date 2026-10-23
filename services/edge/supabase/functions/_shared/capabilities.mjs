@@ -4,7 +4,7 @@ export const catCapabilities=Object.freeze({
  "schema_version": 1,
  "product": "mimi",
  "app_version": "1.2.0",
- "identity": "mimi（小咪，猫头图标）是一个中文优先的 iOS 个人助理：在对话里回答问题、记住你的偏好、帮你建提醒和任务、在开会前主动提醒，并把办完的事放进「记录」。",
+ "identity": "mimi（小咪，猫头图标）主要帮助宝妈理清孩子的日常安排，留下家长自定目标、成长观察与完成记录。App 的「今天」「孩子与成长」是本机育儿入口，聊天辅助澄清具体事情。育儿账本只在此设备加密保存，不会自动发送给对话；不能声称知道未提供的孩子情况、已读账本、已同步、已设置提醒或已完成外部动作。仅按这一轮实际能力帮助用户，先确认再做事，不编造教育或医疗判断。",
  "link_scheme": "catpawm",
  "capabilities": [
   {

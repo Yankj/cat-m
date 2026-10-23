@@ -55,14 +55,14 @@ import UIKit
     @ObservedObject private var transition = FirstRunTransition.shared
 
     private static let capabilities: [(icon: String, key: String)] = [
-        ("bell.fill", "onboarding.chip.reminder"),
-        ("calendar", "onboarding.chip.schedule"),
-        ("magnifyingglass", "onboarding.chip.research"),
-        ("pencil", "onboarding.chip.writing"),
-        ("checklist", "onboarding.chip.breakdown"),
-        ("list.bullet", "onboarding.chip.organize"),
-        ("doc", "onboarding.chip.files"),
-        ("bookmark.fill", "onboarding.chip.memory"),
+        ("sun.max.fill", "onboarding.parenting.today"),
+        ("calendar", "onboarding.parenting.arrangements"),
+        ("leaf.fill", "onboarding.parenting.goals"),
+        ("pencil", "onboarding.parenting.observations"),
+        ("checklist", "onboarding.parenting.confirm"),
+        ("heart.text.clipboard", "onboarding.parenting.completions"),
+        ("lock.shield", "onboarding.parenting.encryption"),
+        ("bookmark.fill", "onboarding.parenting.sources"),
     ]
 
     /// Splash/login P0: any entry failure (also the transient ones whose text stays hidden) leaves a small retry capsule;
@@ -179,18 +179,18 @@ import UIKit
                 .foregroundStyle(catColors.ink)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("onboarding.brand"), "brand")
-            rise(Text(ui("先你一步，把事办妥"))
+            rise(Text(ui("育儿的点滴，有处安放"))
                 .font(catTypography.Role.caption.font)
                 .foregroundStyle(catColors.calmSecondary)
                 .accessibilityIdentifier("onboarding.brandSubtitle"), "brandSubtitle")
-            rise(Text(ui("解放双手，\n让工作自己向前走"))
+            rise(Text(ui("记下今天的安排，\n看见孩子的成长"))
                 .font(serif.headline)
                 .lineSpacing(4)
                 .foregroundStyle(catColors.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("onboarding.headline"), "headline")
-            rise(Text(ui("从一句话开始，把事情交给我。"))
+            rise(Text(ui("安排先确认，成长慢慢记。家里的事，少一点挂心。"))
                 .font(catTypography.Role.secondary.font)
                 .foregroundStyle(catColors.calmSecondary)
                 .fixedSize(horizontal: false, vertical: true)
