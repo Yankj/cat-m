@@ -56,7 +56,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
         reveal(app, title)
         title.tap()
         title.typeText(" parent-reviewed")
-        let reviewedTitle = title.value as? String ?? ""
+        let reviewedTitle = (title.value as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         XCTAssertTrue(reviewedTitle.contains("parent-reviewed"))
         chooseExplicitTime(app)
         tap(app, app.buttons["parenting.arrangement.save"])
@@ -82,7 +82,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
         XCTAssertEqual(adjusted.value as? String, reviewedTitle)
         adjusted.tap()
         adjusted.typeText(" adjusted")
-        let adjustedTitle = adjusted.value as? String ?? ""
+        let adjustedTitle = (adjusted.value as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         XCTAssertTrue(adjustedTitle.contains("adjusted"))
         chooseExplicitTime(app)
         tap(app, app.buttons["parenting.arrangement.save"])
@@ -311,7 +311,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
         XCTAssertEqual(editor.value as? String, original)
         editor.tap()
         editor.typeText(" Corrected after checking.")
-        let corrected = editor.value as? String ?? ""
+        let corrected = (editor.value as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         XCTAssertTrue(corrected != original && corrected.contains("Corrected after checking."))
         assertPinnedAction(app, id: "parenting.record.save")
         tap(app, app.buttons["parenting.record.save"])
@@ -333,8 +333,9 @@ final class ParentingWorkspaceUITests: XCTestCase {
         capture(app, "observation-cold-read-same-record-goal-source-and-edit-time")
         tap(app, app.buttons["parenting.record.menu." + recordID])
         chooseMenuAction(app, "Delete record")
-        let delete = app.alerts.buttons["Delete"]
+        let delete = app.alerts.buttons.matching(NSPredicate(format: "label == %@", "Delete")).firstMatch
         XCTAssertTrue(delete.waitForExistence(timeout: 5), app.debugDescription)
+        wait { delete.exists && delete.isEnabled && delete.isHittable }
         delete.tap()
         wait { !reopened.exists }
         capture(app, "observation-explicit-delete")
@@ -519,9 +520,10 @@ final class ParentingWorkspaceUITests: XCTestCase {
     }
     private func closeUnsavedArrangement(_ app: XCUIApplication) {
         tap(app, app.buttons["parenting.arrangement.cancel"])
-        let discardID = app.alerts.buttons["parenting.arrangement.discard"]
-        let discard = discardID.exists ? discardID : app.alerts.buttons["Discard and close"]
+        let discardID = app.alerts.buttons.matching(identifier: "parenting.arrangement.discard").firstMatch
+        let discard = discardID.exists ? discardID : app.alerts.buttons.matching(NSPredicate(format: "label == %@", "Discard and close")).firstMatch
         XCTAssertTrue(discard.waitForExistence(timeout: 5), app.debugDescription)
+        wait { discard.exists && discard.isEnabled && discard.isHittable }
         discard.tap()
         wait { !self.inputExists(app, "parenting.arrangement.source") }
     }
@@ -594,11 +596,9 @@ final class ParentingWorkspaceUITests: XCTestCase {
         app.textViews[id].exists || app.textFields[id].exists
     }
     private func input(_ app: XCUIApplication, _ id: String) -> XCUIElement {
-        // Form can virtualize a field outside the current viewport. Source/name fields live above the intake section.
-        if !inputExists(app, id), ["parenting.arrangement.source", "parenting.child.name", "parenting.goal.title"].contains(id) {
-            for _ in 0..<3 { drag(app, towardBottom: false) }
-        }
-        reveal(app, element(app, id))
+        // A virtualized upper field can still exist with a zero frame. Search upward in that case as well.
+        let upperField = ["parenting.arrangement.source", "parenting.child.name", "parenting.goal.title"].contains(id)
+        reveal(app, element(app, id), searchTowardBottom: !upperField)
         wait { self.inputExists(app, id) }
         return app.textViews[id].exists ? app.textViews[id] : app.textFields[id]
     }
@@ -626,7 +626,8 @@ final class ParentingWorkspaceUITests: XCTestCase {
         XCTFail("Synthetic native UI condition timed out\n" + (currentApp?.debugDescription ?? "No active synthetic application"), file: file, line: line)
     }
     /// Visibility is separate from tappability: disabled Save and noninteractive groups must remain inspectable.
-    private func reveal(_ app: XCUIApplication, _ target: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+    private func reveal(_ app: XCUIApplication, _ target: XCUIElement, searchTowardBottom: Bool = true,
+                        file: StaticString = #filePath, line: UInt = #line) {
         for _ in 0..<16 {
             var targetFrame: CGRect?
             if target.exists {
@@ -642,9 +643,8 @@ final class ParentingWorkspaceUITests: XCTestCase {
             let scroll = scrollingElement(app)
             let viewport = visibleScrollFrame(app, scroll: scroll)
             if let rect = targetFrame, viewport.contains(CGPoint(x: rect.midX, y: rect.midY)) { return }
-            // Missing lower Form rows stay in the forward search; input() explicitly returns upper fields to the header.
-            // Do not reverse blindly halfway through and undo the useful scrolls before a virtual row appears.
-            let towardBottom = targetFrame.map { $0.midY >= viewport.minY } ?? true
+            // With no usable geometry, use the field's known direction instead of reversing an unrelated search.
+            let towardBottom = targetFrame.map { $0.midY >= viewport.minY } ?? searchTowardBottom
             drag(app, towardBottom: towardBottom, scroll: scroll)
         }
         // Reading identifier/frame on a nonexistent target throws before XCTest can print our useful hierarchy.
