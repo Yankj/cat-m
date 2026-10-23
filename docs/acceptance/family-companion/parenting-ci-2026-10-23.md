@@ -112,9 +112,21 @@ canonical 打开跨异步磁盘与 detach 时由独立 attempt UUID 占位，迟
 
 本次同时处理用户主动作可达性：安排和观察/完成记录的**唯一保存按钮**移入现有系统导航栏confirmationAction，沿用已经真实通过的昵称/目标保存模式；删除原Form底部重复位置。save()、操作ID/去重、所有valid/saving/model.busy/intake.busy/intakeCallID禁用条件保持，保存草稿后仍须独立确认安排。可见短文案配完整动作accessibilityLabel，保留保存中进度及A1 tint，不引入浮层或扩大到新功能。时间选择页不在此改动中。
 
-测试保留69模块+7UI和原15秒等待/16次滚动上限；取真实输入面板顶沿裁剪，Form手势落在cell内侧padding（实测cell x20、TextEditor x40），并使用视口20%–80%避开safearea。空frame不作为方向锚点，已知下方虚拟化节点不再盲目半程反向；上方输入仍由既有input()回到页首。Disclosure按当前AX的Other容器定位实际Button点击。新增导航栏位置/键盘上方断言；dark冒烟改约464字符合成长输入并明确检查键盘仍可见，不能把更长输入称已通过。下一SHA构建与7UI仍待真实运行。
+测试保留69模块+7UI和原15秒等待/16次滚动上限；取真实输入面板顶沿裁剪，Form手势落在cell内侧padding（实测cell x20、TextEditor x40），并使用视口20%–80%避开safearea。空frame不作为方向锚点，已知下方虚拟化节点不再盲目半程反向；上方输入仍由既有input()回到页首。Disclosure按当前AX的Other容器定位实际Button点击。新增导航栏位置/键盘上方断言；dark冒烟改472字符合成长输入并明确检查键盘仍可见，不能把更长输入称已通过。下一SHA构建与7UI仍待真实运行。
 
 M1尚未签收、M2暂停。仍无真机、真实模型、生产Auth/PG、系统通知、部署或持久交付的截图；不增加上传。
+
+## 47e6d0e：保存可达、两条持久恢复UI通过，其余五条按AX证据修复
+
+[47e6d0e7fc28aa522cdebb382ede3f3aaae99572 / CI40013451171](https://github.com/Yankj/mimi/actions/runs/40013451171) 已终态：changes、Edge SUCCESS；[iOS job120619457801](https://github.com/Yankj/mimi/actions/runs/40013451171/job/120619457801) FAILURE。签名build-for-testing及产物guard通过；**69模块/0失败**，6.510秒（壁钟6.860秒），包含8既有Auth runtime、4育儿Auth composition、27 inline、8 parser、22 workspace。Edge913总数/911通过/0失败/2跳过，保留12个既有隔离文件，68.392秒。
+
+**7 UI实际运行：2通过、5失败**，1748.431秒；测试操作2257.958秒，非45分钟取消。通过项为planned安排取消→原UUID/时间/取消状态冷读→无完成记录（305.438秒，包含“本机安排不会发送提醒”的实际文案断言），以及真实SwiftData提交故障→rollback→输入保留同表单重试→冷读唯一孩子（80.532秒）。
+
+原位成功旅程已完成许可、解析候选、显式采用、编辑、选择时间、保存待确认草稿；随后全文标题断言失败：XCTest在光标开头输入得到首位空格，Domain按既有规则裁剪后保存，实际标题与裁剪后的预期一致。独立观察也已由真实Store保存并显示正确正文/目标，但通用AX查询先取得同标识的leaf Image，误作目标文字。深色accessibility5实际输入472字符、保持键盘可见并通过固定保存位置/禁用断言，随后与准备失败旅程同样卡在放弃弹窗：系统输出两层同标识Button，单匹配查询有歧义。未知结果旅程已验证只显示原请求核对且没有新发送/重试按钮，但在点击核对前的原话保留检查停住：source仍存在而frame为零，旧helper只对不存在字段向上搜索，实际16次向下把Form滚到100%。因此本SHA没有后续原ID回查、完成/回顾和观察更正删除的整段UI通过证据。
+
+下一候选仅按上述证据修复：安排/记录目标及完成状态Label合并其可访问性子节点，让辅助技术读取业务文字；Discard与邻接Delete采用精确query的firstMatch并严格等待exists/enabled/hittable，弹窗不走底层Form滚动；三处编辑文本的expected依既有Domain规则裁剪首尾空白，保存、重开、冷读仍全文精确比较，来源原文逐字保留；已知上方字段在缺失或零frame时向上查找，有正常frame仍按几何方向，移除额外3次预拖动，统一保持16次上限。未删除用例、放宽断言、增加等待或替换真实持久化；生产状态机、服务和权限未变。新SHA的69模块+7 UI仍待实际运行。
+
+本机静态项目239源/4target、capabilities13、品牌兼容472和diff检查通过。敏感扫描无新增项，既有图片与NativeOAuth合成凭据两项待审不改规则；layout/frozen仍是此前独立治理范围的迁站描述及历史ReadoutPolicy hash错误。本次未导入#124。M1未签收、M2暂停；真机、真实模型/生产Auth/PG、多实例、通知和持久截图交付仍未验证，未部署或上传。
 
 ## 接续测试范围
 

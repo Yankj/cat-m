@@ -309,6 +309,7 @@ import Combine
                     if let goal = goalTitle(item.goalID) {
                         Label { Text(verbatim: goal) } icon: { Image(systemName: "leaf") }
                             .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                            .accessibilityElement(children: .combine)
                             .accessibilityIdentifier("parenting.arrangement.goal.\(item.id)")
                     }
                 }
@@ -350,6 +351,7 @@ import Combine
                 }
             } else if item.state == .completed {
                 Label(ui("家长已标记完成"), systemImage: "checkmark.circle").font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                    .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("parenting.arrangement.completed.\(item.id)")
                 if let record = workspace.records.first(where: { $0.arrangementID == item.id }) {
                     Button(ui("查看完成记录")) { tab = .records; selectedChildID = item.childID; recordFilter = .completion }
@@ -561,6 +563,7 @@ import Combine
             if let goal = goalTitle(record.goalID) {
                 Label { Text(verbatim: goal) } icon: { Image(systemName: "leaf") }
                     .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                    .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("parenting.record.goal.\(record.id)")
             }
             if let arrangementID = record.arrangementID {
