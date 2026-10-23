@@ -6,7 +6,7 @@
 
 | 阶段 | 代码 | 自动测试 | 设备验证 | 线上验收 |
 |---|---|---|---|---|
-| M1 先把一件事办清楚 | #123 draft `d5f739e`；失败恢复缺陷已修复并完成定点复审 | `974dbb1` / [CI 39986351154](https://github.com/Yankj/mimi/actions/runs/39986351154)曾通过真实构建及54项XCTest；最新 `d5f739e` / [CI 39989566438](https://github.com/Yankj/mimi/actions/runs/39989566438)后端通过，iOS构建/56项XCTest仍待终态，不沿用旧SHA结果；独立固定输入HTTP回归18/18通过 | 本轮 NOT_RUN；本机无完整 Xcode，既有 CI 合成 XCTest 与真机主流程另计 | NOT_RUN；专用后端未部署 |
+| M1 先把一件事办清楚 | #123 draft `d5f739e`；创建前清理已修复；新发现冷启动账号代次组合缺陷待修 | [CI 39989566438](https://github.com/Yankj/mimi/actions/runs/39989566438)三job全部通过：Edge 909通过/2跳过，真实Xcode26.6 build-for-testing通过，56项育儿XCTest实际执行0失败；独立固定输入HTTP回归18/18通过。新冷启动问题不在这56项覆盖内 | 原生UI/真机仍 NOT_RUN；云端补创建→完成→重开流程验证，本机无完整Xcode | NOT_RUN；专用后端未部署 |
 | M2 日常变化与本机提醒 | 未启动 | NOT_RUN | NOT_RUN | NOT_RUN |
 | M3 成长回顾 | 未启动；已有轻目标/记录是 M1 基础 | NOT_RUN | NOT_RUN | NOT_RUN |
 | M4 家庭事实记忆 | 未启动；旧记忆模块仅复用资产 | NOT_RUN | NOT_RUN | NOT_RUN |
@@ -18,6 +18,8 @@
 **验证与待处理：**布局/部署来源/AF计划/CGUI/FINAL计划/能力清单/敏感扫描及扫描器回归通过；治理16正负例通过，原17项治理入口259个本地链接有效；加上22份原pin恢复后检查547链接，4条旧本地工作目录引用仅保留历史来源，不伪造当前文件。用户已批准24历史文件恢复例外，按原清单逐hash恢复后，冻结来源检查全通过；原清单和历史变更提交未改。另22项历史AF输入仅有品牌/仓库URL漂移，已按每文件原pin恢复，未改清单；原AF Goal检查实跑通过（9项local-only输入仍不可用）。本地pre-push旧仓库名白名单已精确补入mimi并通过5组/38个真实临时Git回归，未绕过hook。治理结果不证明原生或线上通过。
 
 **M1 独立审查：**在 `974dbb1` 的真实HTTP handler/ChatService + 合成Repository复现“未创建远端对象的清理请求连续404”；源码链会让 pending 清理阻挡以后整理。云端 `d5f739e` 已补受身份约束的幂等删除墓碑与迟到create围栏，客户端仍严格校验回执、不吞404。固定提交独立禁网复跑实际HTTP模块18/18通过，定点复审未发现该问题剩余P1；日志SHA256为 `9077fdef818e34eb7eb10fa96b2bb0175c54c82bf3a404d8277066a9201026af`，原始复现、复审日志与恢复patch保存在ignored `build/mimi-roadmap-20261024/`。合成Repository不证明真实PG多实例并发，未执行原生UI、生产Auth或模型调用。
+
+**M1 原生组合接续：**`d5f739e`的[原生job120537569259](https://github.com/Yankj/mimi/actions/runs/39989566438/job/120537569259)实际执行56项、0失败，CI使用的合并候选为`9b12744`，并非合入main。独立源码审查随后确认：已有local receipt先挂载`chat`、Auth稍后恢复时，`ParentingHomeView`的StateObject/Store已捕获nil账号token；同namespace认证后复用同chat，现有视图identity不随可信账号代次变更，重试仍使用旧Store。此为回访用户冷启动P1，已交云端修复组合层并补生命周期回归，不能通过放宽旧token写屏障处理。另深色主按钮白字配`#FF8A5C`仅2.323:1，已交云端复用既有可读CTA语义；截图、深色/大字号与真实UI操作结果尚未取得。
 
 以下条目均保留其当日状态；旧“当前”“PAUSED”、版本号与测试数不覆盖本节。
 
