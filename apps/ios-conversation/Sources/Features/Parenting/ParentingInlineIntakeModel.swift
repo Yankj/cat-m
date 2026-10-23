@@ -1,6 +1,9 @@
 import Foundation
 import Combine
 
+/// Built only after an explicit parenting request. The service owns a separate encrypted journal.
+public typealias ParentingIntakeServiceFactory = @MainActor () throws -> ConversationSessionService
+
 /// Owns one explicit request, a private conversation and a private journal; never mutates the parenting ledger.
 @MainActor
 final class ParentingInlineIntakeModel: ObservableObject {

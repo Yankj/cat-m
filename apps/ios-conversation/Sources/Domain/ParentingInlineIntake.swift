@@ -1,8 +1,5 @@
 import Foundation
 
-/// Built only after an explicit parenting request. The service owns a separate encrypted journal.
-public typealias ParentingIntakeServiceFactory = @MainActor () throws -> ConversationSessionService
-
 public enum ParentingIntakePhase: String, Sendable, Equatable {
     case idle, preparing, awaitingConsent, sending, ready, failed, unknown, cancelled
 }
