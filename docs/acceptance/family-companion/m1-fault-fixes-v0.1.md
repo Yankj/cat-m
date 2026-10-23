@@ -32,3 +32,11 @@
 - 真实 PostgreSQL：新迁移与 pg-store 改动只做了离线/内存 store 验证，未在真实 PG 跑过；多实例、租约时序未验。
 - 内容日志 canary（不在 18 项内）：仅把 `fire_failed` 日志改为不带堆栈/内容，完整日志审计未做。
 - 未部署，未触碰生产。
+
+## v0.1 收尾（2026-10-23，本地真实 PG）
+- 环境：box 上 PostgreSQL 17.11 + pgvector，scratch DB；`scripts/pg-all-migrations-local.sh` 按序应用全部 18 条非 cron 迁移（含 20261023100000/100100），无失败。
+- 真实 PG 发现并修复：`20261023100000` 中 `on conflict (task_id, scheduled_at)` 与函数 OUT 参数同名导致 `column reference "task_id" is ambiguous`（每次 claim 都会失败）。已加 `#variable_conflict use_column`。该迁移未应用生产，生产不受影响。
+- `test/family-m1-pg.test.mjs` 6/6 PASS：租约 30 s 回收、双连接并发只一个持有、过期租约先于 limit、release 保留 due、取消后不写 reminder_due、MEM-01 CAS、MEM-03/04 tombstone operation_id + clear generation。
+- `scripts/pg-proactive-local.sh`（现含租约迁移）18/18 PASS。
+- 日志审计：proactive 的 `e.message` / `e.stack` 日志改为稳定错误码（`safe-log.mjs`）；新增静态审计 `test/log-content-audit.test.mjs`（唯一放行 `http.mjs:130`，只记栈帧位置）。
+- Node 回归：878 项，876 PASS / 0 FAIL / 2 SKIP。
