@@ -1,12 +1,12 @@
 {
-  "name": "cat",
+  "name": "mimi 小咪",
   "tagline": "先你一步，把事办妥。",
-  "description": "一个住在 iPhone 里的贴心助理。记住你的偏好，在合适的时候提醒你，确认后把事情办好。",
-  "url": "https://heydusk.com",
-  "repository": "https://github.com/Yankj/cat-m",
-  "release": "https://github.com/Yankj/cat-m/releases/latest",
+  "description": "家里的事，交给小咪记着。拍一张、说一句，它整理成待你确认的卡片；今天要办的一目了然，我们家的事它都记得，你点头之前什么都不改。",
+  "url": "https://mimi.heydusk.com",
+  "repository": "https://github.com/Yankj/mimi",
+  "release": "https://github.com/Yankj/mimi/releases/latest",
   "appVersion": "1.2.0",
-  "sourceCommit": "cb3bc90a6f35d93e9ad57a6c01c7dc83291d06ee",
+  "sourceCommit": "66478f165b6563b679a0b27b9e0a9a4d14baef80",
   "sourceDate": "2026-10-19",
   "demoVersion": "v1.1",
   "pillars": [

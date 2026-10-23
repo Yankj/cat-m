@@ -19,4 +19,4 @@ http.createServer(async(req,res)=>{
   if(range){const start=Number(range[1]),end=Math.min(range[2]?Number(range[2]):s.size-1,s.size-1);if(start>end){res.writeHead(416,{'Content-Range':`bytes */${s.size}`});res.end();return;}res.writeHead(206,{...headers,'Content-Length':end-start+1,'Content-Range':`bytes ${start}-${end}/${s.size}`});if(req.method==='HEAD')res.end();else createReadStream(file,{start,end}).pipe(res);}
   else {res.writeHead(200,{...headers,'Content-Length':s.size});if(req.method==='HEAD')res.end();else createReadStream(file).pipe(res);}
  }catch{res.writeHead(404,{'Content-Type':'text/plain; charset=utf-8'});res.end('页面不存在。请返回首页。');}
-}).listen(port,'127.0.0.1',()=>console.log(`Catpaw website: http://localhost:${port}`));
+}).listen(port,'127.0.0.1',()=>console.log(`mimi website: http://localhost:${port}`));
