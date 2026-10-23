@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="小咪 mascot">
+  <title>小咪 mascot</title>
+  <!-- ears -->
+  <path d="M52 104 L62 36 Q66 26 75 33 L116 70 Z" fill="#E9894A" stroke="#2B2622" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M188 104 L178 36 Q174 26 165 33 L124 70 Z" fill="#E9894A" stroke="#2B2622" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M70 52 L94 74 L68 84 Z" fill="#F6D9BF"/>
+  <path d="M170 52 L146 74 L172 84 Z" fill="#F6D9BF"/>
+  <!-- head -->
+  <ellipse cx="120" cy="134" rx="84" ry="74" fill="#E9894A" stroke="#2B2622" stroke-width="8"/>
+  <!-- muzzle -->
+  <ellipse cx="120" cy="160" rx="40" ry="28" fill="#FBF6EE"/>
+  <!-- calm closed eyes -->
+  <path d="M78 128 Q90 140 102 128" fill="none" stroke="#2B2622" stroke-width="8" stroke-linecap="round"/>
+  <path d="M138 128 Q150 140 162 128" fill="none" stroke="#2B2622" stroke-width="8" stroke-linecap="round"/>
+  <!-- nose + smile -->
+  <path d="M113 150 h14 l-7 8 z" fill="#2B2622" stroke="#2B2622" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M120 158 q-6 10 -16 6 M120 158 q6 10 16 6" fill="none" stroke="#2B2622" stroke-width="6" stroke-linecap="round"/>
+  <!-- cheeks -->
+  <circle cx="72" cy="156" r="9" fill="#F2B48A"/>
+  <circle cx="168" cy="156" r="9" fill="#F2B48A"/>
+</svg>

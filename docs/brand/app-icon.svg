@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="mimi app icon">
+  <title>mimi app icon</title>
+  <rect width="1024" height="1024" rx="228" fill="#FBF6EE"/>
+  <circle cx="512" cy="560" r="360" fill="#F6E6D3"/>
+  <g transform="translate(152 168) scale(3)">
+    <path d="M52 104 L62 36 Q66 26 75 33 L116 70 Z" fill="#E9894A" stroke="#2B2622" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M188 104 L178 36 Q174 26 165 33 L124 70 Z" fill="#E9894A" stroke="#2B2622" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M70 52 L94 74 L68 84 Z" fill="#F6D9BF"/><path d="M170 52 L146 74 L172 84 Z" fill="#F6D9BF"/>
+    <ellipse cx="120" cy="134" rx="84" ry="74" fill="#E9894A" stroke="#2B2622" stroke-width="7"/>
+    <ellipse cx="120" cy="160" rx="40" ry="28" fill="#FBF6EE"/>
+    <path d="M78 128 Q90 140 102 128 M138 128 Q150 140 162 128" fill="none" stroke="#2B2622" stroke-width="7" stroke-linecap="round"/>
+    <path d="M113 150 h14 l-7 8 z" fill="#2B2622" stroke="#2B2622" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M120 158 q-6 10 -16 6 M120 158 q6 10 16 6" fill="none" stroke="#2B2622" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="72" cy="156" r="9" fill="#F2B48A"/><circle cx="168" cy="156" r="9" fill="#F2B48A"/>
+  </g>
+</svg>
