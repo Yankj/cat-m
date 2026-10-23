@@ -1,7 +1,7 @@
 // In-memory store with the same semantics as pg-store (tests / local dev).
 const need = g => { if (g == null) throw new Error('generation_required'); };
 export function createMemoryStore() {
-  const LEASE_MS = 30000; const tasks = new Map(), occ = new Map(), events = [], tokens = []; let seq = 0; const idem = new Map(), sig = new Map(), weights = new Map(), feedback = new Map();
+  const LEASE_MS = 15 * 60 * 1000; /* = SQL claim_due_reminders lease (20261023100000) */ const tasks = new Map(), occ = new Map(), events = [], tokens = []; let seq = 0; const idem = new Map(), sig = new Map(), weights = new Map(), feedback = new Map();
   const id = () => crypto.randomUUID(), c = v => structuredClone(v);
   return {
     _dump: () => ({ tasks: [...tasks.values()], events, tokens }),
