@@ -172,6 +172,28 @@ UI **7项/1失败**，1627.764秒（壁钟1627.838秒）；22:12:13正常返回T
 
 M1尚未签收，M2未开始。设备和生产均未验证，后端未部署；未调用生产服务、上传截图或整合独立治理#124。
 
+## c37d82e：M1同一候选完整原生回归门闭合
+
+[c37d82e8424fcaf323ab3cd96ea6bdd90084cbd4 / CI40032353790](https://github.com/Yankj/mimi/actions/runs/40032353790) 于22:49:02 UTC终态SUCCESS，三个job均成功：changes120683433349、Edge120683503086、[iOS120683503125](https://github.com/Yankj/mimi/actions/runs/40032353790/job/120683503125)。base main仍为4ec8118，CI checkout的b6931c40eb9132e6f6b69291d7dc27655f5e54d3是GitHub测试合并候选，不是实际合并。
+
+build-for-testing和签名产物guard通过；**69模块/0失败**，18.991秒（壁钟21.613秒）；**7 UI/0失败**，1262.896秒（壁钟1262.918秒），TEST EXECUTE SUCCEEDED，xcodebuild测试操作1611.706秒。Edge913总数/911通过/0失败/2跳过，84.169秒，另12个既有隔离文件未纳入。
+
+| 同SHA实际UI | 通过秒数 |
+|---|---:|
+| 深色accessibility5长输入/放弃 | 112.935 |
+| 独立观察新增/更正/来源与时间/原ID目标冷读/删除再冷读 | 189.791 |
+| 原位整理/确认调整/完成回顾/原UUID时间状态记录冷读 | 428.967 |
+| planned取消/同UUID时间状态冷读/无完成记录及无提醒文案 | 125.348 |
+| 准备失败/pending冷恢复/明确清理/新整理/取消 | 181.719 |
+| 真实SwiftData提交故障/rollback/输入保留重试/冷读唯一孩子 | 36.515 |
+| unknown只回查原请求/候选未应用/显式采用编辑/原话保留/取消 | 187.620 |
+
+完整终态日志与只读独立审查一致；没有跨SHA拼接，也没有删方法、弱化数据断言或加整方法重试。类型收窄后本次观察完成整条旅程，但单轮绿色不证明之前失败的唯一根因。截图只留runner xcresult，未取回、上传或视觉审阅。
+
+**M1代码、构建、合成原生主流程及失败恢复门在此固定候选闭合。** UI的Home/Store/生产Keychain-AES/SwiftData及terminate-launch冷读真实；身份、许可与模型传输为进程内合成边界，NativeAuth收据组合另用实际生命周期配mock端口。真机、真实模型/Auth、部署后PG/RLS/多实例、系统通知和线上仍未验证，后台未部署；不称生产验收。Linux静态239源/4targets、capabilities13、品牌兼容472通过；扫描无新增、2既有待审和layout/frozen基线错误保持，不导入#124。
+
+M1恢复包在本地忽略目录：checkpoint-c37d82e8.patch，830804字节，SHA256 `8a943823651805a52fecf87c8464161b727748e5d60a1427471778c9c0e590bc`。从main基线archive应用后45个文件哈希逐一匹配提交；不是用户手机可下载链接，未上传文件服务。后续按用户已批准路线进入[M2原安排调整](../../design/family-companion/parenting-adjustments.md)，不继续无界扩展M1测试。
+
 ## 早期接续测试范围（截至d5f739e）
 
 d5f739e及之前的CI定向脚本只选择 `catTests/ParentingWorkspaceTests`、`ParentingIntakeTests`、`ParentingInlineIntakeTests` 三类合成用例。使用已安装iPhone runtime创建自己的空白模拟器，结束只删除本次创建的设备；存在Local.xcconfig时拒绝执行，移除四个backend环境配置及继承fixture/connection/simulator-child注入，不安装依赖或下载runtime。测试使用临时文件和mock transport，无真实儿童数据、真实模型、生产Keychain或数据库。空Debug配置使项目Auth/后端启动被guard拦住；现有AppDelegate仍有系统APNs注册/BG任务注册，未测量全进程或系统网络次数，不声称全进程零网络。

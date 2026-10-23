@@ -9,8 +9,9 @@ enum ParentingUITestFixture {
     static let failureScenario = "p0-ui-parenting-preparation-failure"
     static let saveRollbackScenario = "p0-ui-parenting-save-rollback"
     static let unknownScenario = "p0-ui-parenting-unknown-readback"
+    static let adjustmentScenario = "p0-ui-parenting-adjustment"
     static var isRequested: Bool {
-        [successScenario, failureScenario, saveRollbackScenario, unknownScenario]
+        [successScenario, failureScenario, saveRollbackScenario, unknownScenario, adjustmentScenario]
             .contains(ProcessInfo.processInfo.environment["CF_UI_TEST_SCENARIO"] ?? "")
     }
     static func installNetworkGuard() {
@@ -44,7 +45,8 @@ enum ParentingUITestFixture {
         }
         let boundary = ParentingUITestBackend(scope: scope,
             failPreparationOnce: ProcessInfo.processInfo.environment["CF_UI_TEST_SCENARIO"] == failureScenario,
-            unknownReply: ProcessInfo.processInfo.environment["CF_UI_TEST_SCENARIO"] == unknownScenario)
+            unknownReply: ProcessInfo.processInfo.environment["CF_UI_TEST_SCENARIO"] == unknownScenario,
+            adjustmentReply: ProcessInfo.processInfo.environment["CF_UI_TEST_SCENARIO"] == adjustmentScenario)
         let factory: ParentingIntakeServiceFactory = {
             guard let token = AccountEpoch.shared.capture(), UUID(uuidString: token.account) == subject else {
                 throw ParentingInlineIntakeError.changedContext
@@ -118,16 +120,18 @@ private actor ParentingUITestBackend: ConversationBackend, ParentingIntakeDataDe
     private var failDeletionOnce: Bool
     private var grantedConversations = Set<UUID>()
     private let unknownReply: Bool
+    private let adjustmentReply: Bool
     private var receivedUnknownReply = false
     private var violatedOriginalRequest = false
     private var originalRequest: ConversationTurnRequest?
     private var originalRequestBytes: Data?
     private let routeHash = textHash("parenting-native-ui-synthetic-only")
-    init(scope: DataScope, failPreparationOnce: Bool, unknownReply: Bool = false) {
+    init(scope: DataScope, failPreparationOnce: Bool, unknownReply: Bool = false, adjustmentReply: Bool = false) {
         self.scope = scope
         self.failPreparationOnce = failPreparationOnce
         self.failDeletionOnce = failPreparationOnce
         self.unknownReply = unknownReply
+        self.adjustmentReply = adjustmentReply
     }
     func connection(scope: DataScope) async -> ConversationConnection {
         .init(state: .providerUnverified, provider: "Synthetic parenting UI boundary", detail: "In-process only; no HTTP/Auth/model")
@@ -167,7 +171,15 @@ private actor ParentingUITestBackend: ConversationBackend, ParentingIntakeDataDe
                 continuation.finish(throwing: ConversationStreamInterrupted(reason: "Synthetic response lost after submission"))
             }
         }
-        let events = try Self.completedEvents(request)
+        if adjustmentReply {
+            let supplied = request.history.last?.content ?? ""
+            guard supplied.contains("Change to 2027-02-18T17:00:00Z."),
+                  !supplied.contains("Synthetic Reschedule Child"),
+                  !supplied.contains("Synthetic retained growth goal") else {
+                throw ConversationSessionError.invalidEvent
+            }
+        }
+        let events = try Self.completedEvents(request, adjustment: adjustmentReply)
         return AsyncThrowingStream { continuation in
             for event in events { continuation.yield(event) }
             continuation.finish()
@@ -203,10 +215,15 @@ private actor ParentingUITestBackend: ConversationBackend, ParentingIntakeDataDe
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
         return try encoder.encode(request)
     }
-    private static func completedEvents(_ request: ConversationTurnRequest) throws -> [ConversationTurnEvent] {
-        let body: [String: Any] = ["schema_version": 1, "contract": ParentingIntakeRequest.contract,
+    private static func completedEvents(_ request: ConversationTurnRequest, adjustment: Bool = false) throws -> [ConversationTurnEvent] {
+        var body: [String: Any] = ["schema_version": 1, "contract": ParentingIntakeRequest.contract,
             "request_id": request.operationID.uuidString.lowercased(), "title": "Synthetic reading together",
             "due_at": NSNull(), "time_evidence": NSNull(), "clarification": "Choose an explicit time before saving."]
+        if adjustment {
+            body["due_at"] = "2027-02-18T17:00:00Z"
+            body["time_evidence"] = "2027-02-18T17:00:00Z"
+            body["clarification"] = NSNull()
+        }
         let text = String(decoding: try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys]), as: UTF8.self)
         let messageID = stableID("parenting-ui-answer:" + request.operationID.uuidString)
         return [.init(operationID: request.operationID, epoch: request.epoch, sequence: 1,

@@ -68,9 +68,16 @@ def parenting_issues(s,name):
   if not HAN.search(k):continue
   prefix=s[:a]
   if name=='ParentingIntakeDraft.swift' and (
-      re.search(r'\bprompt\s*=\s*$',prefix) and s.startswith('"""',a)
+      re.search(r'\b(?:prompt|originalPrompt)\s*=\s*$',prefix) and s.startswith('"""',a)
+      or re.search(r'\bprompt\s*=\s*originalPrompt\s*\+\s*$',prefix) and s.startswith('"""',a)
       or re.search(r'\blet\s+(?:date|clock)\s*=\s*$',prefix)):
    source_content+=1;continue
+  # The bounded edit-time verifier's grammar is source data, while its clarification remains UI text.
+  # Keep this scoped to exact declarations/tokens; a Text/Button/etc. call is never exempted.
+  if name=='ParentingRescheduleTime.swift' and not re.search(r'\b(?:Text|Button|TextField|SecureField|Label|ProgressView|navigationTitle|accessibilityLabel|accessibilityHint)\(\s*$',prefix):
+   grammar_tokens={'今天','明天','后天','凌晨','早上','上午','中午','下午','傍晚','晚上','零','〇','一','二','两','三','四','五','六','七','八','九','十'}
+   if k in grammar_tokens or re.search(r'\bprivate\s+static\s+let\s+(?:datePattern|clockPattern|absolutePattern|unsupportedPattern)\s*=\s*#$',prefix) or re.search(r'\bmatches\(\s*#$',prefix):
+    source_content+=1;continue
   count+=1
   if k not in catalog:errors.append('missing parenting resource: '+k)
   if re.search(r'\b(?:Text|Button|TextField|SecureField|Label|ProgressView|navigationTitle|accessibilityLabel|accessibilityHint)\(\s*$',prefix):
@@ -113,6 +120,9 @@ assert parenting_issues('enum Tab { var title:String { "未登记的育儿标题
 assert parenting_issues('Text("设置")','ParentingProbe.swift')[0]
 assert not parenting_issues('enum Tab { var title:String { "设置" } }','ParentingProbe.swift')[0]
 assert parenting_issues('throw catError.invalid("未登记的育儿错误")','ParentingProbe.swift')[0]
+assert not parenting_issues('private static let datePattern = #"今天|明天"#','ParentingRescheduleTime.swift')[0]
+assert parenting_issues('Text("明天")','ParentingRescheduleTime.swift')[0]
+assert parenting_issues('private static let clarification = "未登记的时间澄清"','ParentingRescheduleTime.swift')[0]
 assert not parenting_issues('prompt = """协议内容"""','ParentingIntakeDraft.swift')[0]
 assert parenting_issues('let title = "协议内容"','ParentingIntakeDraft.swift')[0]
 assert key(next(literals('"""inner "quote" and \\(value)"""'))[2])=='inner "quote" and {0}'

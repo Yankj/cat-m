@@ -38,7 +38,7 @@ final class ParentingInlineIntakeModel: ObservableObject {
     private let cleanupStore: (any ParentingIntakeCleanupStoring)?
     private let localPurge: (@MainActor () throws -> Void)?
     private var deletionTask: Task<Void, Never>?
-    private var lastInput: (source: String, child: UUID, goal: UUID?)?
+    private var lastInput: (source: String, child: UUID, goal: UUID?, editTarget: ParentingArrangementEditTarget?)?
     private var generation = UUID()
     private var work: Work?
     private var task: Task<Void, Never>?
@@ -78,12 +78,12 @@ final class ParentingInlineIntakeModel: ObservableObject {
     }
     var canReconcile: Bool { !busy && phase == .unknown && work.map { isCurrent($0) && $0.recovery == .readOnly } == true }
 
-    func request(sourceText: String, childID: UUID, goalID: UUID?) async {
+    func request(sourceText: String, childID: UUID, goalID: UUID?, editTarget: ParentingArrangementEditTarget? = nil) async {
         guard !Task.isCancelled, !busy, phase != .awaitingConsent, phase != .unknown else { return }
         guard !deletionPending else { deletionError = Self.cleanupMessage; return }
         stop(publish: .idle)
         let owner = generation
-        lastInput = (sourceText, childID, goalID)
+        lastInput = (sourceText, childID, goalID, editTarget)
         do {
             // A new explicit request replaces an unclaimed cold recovery record as well.
             if recoveryAvailable, let previous = try recoveryStore?.read() {
@@ -101,7 +101,7 @@ final class ParentingInlineIntakeModel: ObservableObject {
             let requestID = makeID(), conversationID = makeID()
             guard requestID != conversationID else { throw ParentingInlineIntakeError.changedContext }
             let reference = ParentingIntakeRecoveryReference(requestID: requestID, scope: scope, subjectID: subjectID,
-                conversationID: conversationID, sourceText: sourceText, childID: childID, goalID: goalID, startedAt: clock(), timeZoneID: timeZone.identifier)
+                conversationID: conversationID, sourceText: sourceText, childID: childID, goalID: goalID, startedAt: clock(), timeZoneID: timeZone.identifier, editTarget: editTarget)
             let request = try reference.request(accountToken: token)
             let service = try factory()
             let context = Work(generation: generation, request: request, reference: reference, service: service)
@@ -115,7 +115,7 @@ final class ParentingInlineIntakeModel: ObservableObject {
     func retry() async {
         guard !Task.isCancelled, !busy else { return }
         guard let context = work else {
-            if canRetry, let input = lastInput { await request(sourceText: input.source, childID: input.child, goalID: input.goal) }
+            if canRetry, let input = lastInput { await request(sourceText: input.source, childID: input.child, goalID: input.goal, editTarget: input.editTarget) }
             return
         }
         guard accept(context) else { return }
@@ -124,7 +124,7 @@ final class ParentingInlineIntakeModel: ObservableObject {
         case .blocked: return
         case .terminal:
             guard phase == .failed else { return }
-            await request(sourceText: context.request.sourceText, childID: context.request.childID, goalID: context.request.goalID)
+            await request(sourceText: context.request.sourceText, childID: context.request.childID, goalID: context.request.goalID, editTarget: context.request.editTarget)
         case .notSent:
             guard phase == .failed else { return }
             phase = .preparing; busy = true; error = nil
@@ -168,7 +168,7 @@ final class ParentingInlineIntakeModel: ObservableObject {
             let request = try reference.request(accountToken: token)
             let service = try factory()
             let context = Work(generation: generation, request: request, reference: reference, service: service, recovery: .readOnly)
-            work = context; recoveredRequest = reference; lastInput = (reference.sourceText, reference.childID, reference.goalID)
+            work = context; recoveredRequest = reference; lastInput = (reference.sourceText, reference.childID, reference.goalID, reference.editTarget)
             recoveryAvailable = true
             await launch {
                 do {
@@ -217,9 +217,10 @@ final class ParentingInlineIntakeModel: ObservableObject {
     func cancel() { stop(publish: .cancelled) }
     func invalidate() { stop(publish: .idle) }
 
-    func isCurrentCandidate(_ value: ParentingIntakeDraft) -> Bool {
+    func isCurrentCandidate(_ value: ParentingIntakeDraft, editTarget: ParentingArrangementEditTarget? = nil) -> Bool {
         guard phase == .ready, candidate == value, let context = work, isCurrent(context) else { return false }
-        return value.sourceText == context.request.sourceText && value.childID == context.request.childID && value.goalID == context.request.goalID
+        return value.sourceText == context.request.sourceText && value.childID == context.request.childID && value.goalID == context.request.goalID &&
+            value.editTarget == context.request.editTarget && value.editTarget == editTarget
     }
 
     private func prepare(_ context: Work) async {

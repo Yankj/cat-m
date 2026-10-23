@@ -8306,5 +8306,141 @@
   "确认完成": {
     "en": "Complete",
     "zh-Hans": "确认完成"
+  },
+  "请补充本次改期的明确日期和钟点；不会沿用原安排时间。": {
+    "en": "Add a clear date and clock time for this change. The original time will not be reused.",
+    "zh-Hans": "请补充本次改期的明确日期和钟点；不会沿用原安排时间。"
+  },
+  "请补充一个明确日期和钟点，例如“明天下午五点”或“2027-02-18 17:00”。有歧义或夏令时变化的时间请手动选择后核对。": {
+    "en": "Add a clear date and clock time, such as tomorrow at 17:00 or 2027-02-18 17:00. For ambiguous times or daylight saving changes, choose and review the time manually.",
+    "zh-Hans": "请补充一个明确日期和钟点，例如“明天下午五点”或“2027-02-18 17:00”。有歧义或夏令时变化的时间请手动选择后核对。"
+  },
+  "育儿调整历史关联无效，已保留原数据。": {
+    "en": "The arrangement change history has invalid references. Original data is preserved.",
+    "zh-Hans": "育儿调整历史关联无效，已保留原数据。"
+  },
+  "请先修改安排，再确认调整。": {
+    "en": "Change the arrangement before confirming.",
+    "zh-Hans": "请先修改安排，再确认调整。"
+  },
+  "安排已发生其他修改，不能撤销这次调整。": {
+    "en": "This arrangement has changed again. This adjustment can no longer be undone.",
+    "zh-Hans": "安排已发生其他修改，不能撤销这次调整。"
+  },
+  "同一时间的安排已变化，请重新核对可能冲突的事项。": {
+    "en": "The arrangements at this time have changed. Review the possible conflicts again.",
+    "zh-Hans": "同一时间的安排已变化，请重新核对可能冲突的事项。"
+  },
+  "上次整理不属于本页的原安排和版本，不能填入。请打开原安排后重新核对。": {
+    "en": "The previous request belongs to a different arrangement or version. Open the original arrangement to review it.",
+    "zh-Hans": "上次整理不属于本页的原安排和版本，不能填入。请打开原安排后重新核对。"
+  },
+  "原安排": {
+    "en": "Original arrangement",
+    "zh-Hans": "原安排"
+  },
+  "原来": {
+    "en": "Before",
+    "zh-Hans": "原来"
+  },
+  "只恢复同一原安排和版本的整理，不会重新发送。恢复的本次原话会替换当前输入，时间建议仍需你采用和确认。": {
+    "en": "Recover only a request for this same arrangement and version, without sending again. Its change instructions replace this input; adopting and confirming the suggested time are still separate.",
+    "zh-Hans": "只恢复同一原安排和版本的整理，不会重新发送。恢复的本次原话会替换当前输入，时间建议仍需你采用和确认。"
+  },
+  "可能同一时间": {
+    "en": "Possibly at the same time",
+    "zh-Hans": "可能同一时间"
+  },
+  "我已核对这些同钟点安排，仍要保存": {
+    "en": "I have reviewed these arrangements at the same time and want to save",
+    "zh-Hans": "我已核对这些同钟点安排，仍要保存"
+  },
+  "撤销上次调整": {
+    "en": "Undo last adjustment",
+    "zh-Hans": "撤销上次调整"
+  },
+  "撤销后时间": {
+    "en": "Time after undo",
+    "zh-Hans": "撤销后时间"
+  },
+  "整理只提出时间建议，采用后仍需点击“确认调整”。不会保存安排或设置提醒；离开或切到后台会停止本页等待并尝试清理临时副本。": {
+    "en": "AI only suggests a time. After adopting it, confirm the adjustment to save. It does not save arrangements or set reminders. Leaving or backgrounding stops this page's wait and attempts to clear temporary copies.",
+    "zh-Hans": "整理只提出时间建议，采用后仍需点击“确认调整”。不会保存安排或设置提醒；离开或切到后台会停止本页等待并尝试清理临时副本。"
+  },
+  "新时间还不明确，原安排时间保持不变。": {
+    "en": "The new time is unclear. The original arrangement time is unchanged.",
+    "zh-Hans": "新时间还不明确，原安排时间保持不变。"
+  },
+  "本次由家长手动调整": {
+    "en": "This change was entered manually",
+    "zh-Hans": "本次由家长手动调整"
+  },
+  "本次解释时区": {
+    "en": "Time zone for this request",
+    "zh-Hans": "本次解释时区"
+  },
+  "本次调整待确认": {
+    "en": "Review this adjustment",
+    "zh-Hans": "本次调整待确认"
+  },
+  "查看调整记录": {
+    "en": "View adjustment history",
+    "zh-Hans": "查看调整记录"
+  },
+  "核对撤销后的同钟点安排": {
+    "en": "Review arrangements at the restored time",
+    "zh-Hans": "核对撤销后的同钟点安排"
+  },
+  "点击后，只发送原安排名称、原时间、本次原话及当前时间、解释时区到现有已选 AI 服务。不会自动附上孩子档案、目标内容或其他安排；需要发送许可时会先请你确认。": {
+    "en": "This sends only the original title and time, these change instructions, the current time, and the interpretation time zone to your selected AI service. Child profiles, goal content, and other arrangements are not attached. Any required sending consent is requested first.",
+    "zh-Hans": "点击后，只发送原安排名称、原时间、本次原话及当前时间、解释时区到现有已选 AI 服务。不会自动附上孩子档案、目标内容或其他安排；需要发送许可时会先请你确认。"
+  },
+  "确认撤销": {
+    "en": "Confirm undo",
+    "zh-Hans": "确认撤销"
+  },
+  "确认调整": {
+    "en": "Confirm adjustment",
+    "zh-Hans": "确认调整"
+  },
+  "让小咪帮你调整": {
+    "en": "Let mimi help adjust",
+    "zh-Hans": "让小咪帮你调整"
+  },
+  "让小咪整理改动": {
+    "en": "Ask mimi to organize the change",
+    "zh-Hans": "让小咪整理改动"
+  },
+  "请核对这次调整，再点击右上角的“确认调整”。最初的原话会保留。": {
+    "en": "Review this change, then use Confirm adjustment in the top corner. The original source is preserved.",
+    "zh-Hans": "请核对这次调整，再点击右上角的“确认调整”。最初的原话会保留。"
+  },
+  "调整后": {
+    "en": "After",
+    "zh-Hans": "调整后"
+  },
+  "调整建议 · 尚未采用或保存": {
+    "en": "Suggested change · not adopted or saved",
+    "zh-Hans": "调整建议 · 尚未采用或保存"
+  },
+  "调整时间": {
+    "en": "Changed at",
+    "zh-Hans": "调整时间"
+  },
+  "这些已安排事项在同一分钟。没有时长信息，暂不能判断是否重叠或能否同时进行。": {
+    "en": "These planned arrangements start in the same minute. Without durations, mimi cannot determine whether they overlap or can happen together.",
+    "zh-Hans": "这些已安排事项在同一分钟。没有时长信息，暂不能判断是否重叠或能否同时进行。"
+  },
+  "这条安排或账本已变更，请关闭此页，查看最新内容后重新调整。": {
+    "en": "This arrangement or ledger has changed. Close this page, review the latest details, and adjust again.",
+    "zh-Hans": "这条安排或账本已变更，请关闭此页，查看最新内容后重新调整。"
+  },
+  "这次想怎么调整": {
+    "en": "What would you like to change?",
+    "zh-Hans": "这次想怎么调整"
+  },
+  "采用只填写新时间，不会更改名称、孩子、目标或最初的原话。请继续核对后确认调整。": {
+    "en": "Adopting fills only the new time. The title, child, goal, and original source stay the same. Review and confirm the adjustment to save.",
+    "zh-Hans": "采用只填写新时间，不会更改名称、孩子、目标或最初的原话。请继续核对后确认调整。"
   }
 }
