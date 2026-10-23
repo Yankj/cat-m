@@ -56,6 +56,8 @@
 </details>
 
 <!-- CATPAW-WEBSITE:START -->
+> Internal `catpaw*` identifiers are kept on purpose. See [docs/internal-identifiers.md](docs/internal-identifiers.md). License: All Rights Reserved, see [LICENSE](LICENSE).
+
 ## 产品官网
 
 **先你一步，把事办妥。** 一个住在 iPhone 里的贴心助理。记住你的偏好，在合适的时候提醒你，确认后把事情办好。
