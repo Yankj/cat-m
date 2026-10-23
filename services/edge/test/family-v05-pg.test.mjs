@@ -84,28 +84,26 @@ test('v0.5 memory model: disputed kept disputed, inference only proposed, confir
   } finally { await sql.end(); }
 });
 
-test('v0.5 grants: viewer reads household-visible memories in scope; writes forbidden; out-of-scope 403; revoke 404; resolve fences', { skip: !url }, async () => {
+test('v0.4 deploy review: grant commands refused (API 422 + command_types); a stray grant row still gives 404 on every memory route', { skip: !url }, async () => {
   const sql = postgres(url, { max: 4, prepare: false, onnotice: () => {} });
   try {
     const { call } = rig(sql); const A = U(), V = U(); await sql`insert into auth.users(id) values(${A}),(${V})`;
     const hh = (await ensure(call, A)).body.objects[0].id;
     const k1 = (await cmd(call, A, hh, { type: 'child.upsert', payload: { display_name: '小米' } })).body.objects[0].id;
-    const k2 = (await cmd(call, A, hh, { type: 'child.upsert', payload: { display_name: '小豆' } })).body.objects[0].id;
-    const SRC = { source_kind: 'user_text', source_ref: 'turn:1' };
-    const m1 = (await cmd(call, A, hh, { type: 'memory.upsert', payload: { member_id: k1, text: '小米喜欢画画', source: SRC } })).body.objects[0];
-    await cmd(call, A, hh, { type: 'memory.upsert', payload: { member_id: k1, text: '小米画画私密备注', visibility: 'private', source: SRC } });
-    assert.equal((await call(V, 'GET', `/households/${hh}/memories/recall?q=画画`)).status, 404, 'no grant -> invisible');
-    assert.equal((await cmd(call, A, hh, { type: 'grant.upsert', payload: { user_id: V, member_scope: [k1] } })).body.status, 'applied');
-    const r = (await call(V, 'GET', `/households/${hh}/memories/recall?q=${encodeURIComponent('小米画画')}&member_id=${k1}`)).body;
-    assert.deepEqual(r.results.map(x => x.memory_id), [m1.id], 'viewer: household-visible only');
-    assert.equal((await call(V, 'GET', `/households/${hh}/memories/recall?q=x&member_id=${k2}`)).status, 403);
-    const w = (await cmd(call, V, hh, { type: 'memory.upsert', payload: { member_id: k1, text: '写入', source: SRC } })).body;
-    assert.equal(w.status, 'rejected'); assert.equal(w.error.code, 'forbidden');
-    const snap = r.snapshot.refs;
-    assert.equal((await cmd(call, A, hh, { type: 'grant.revoke', payload: { user_id: V } })).body.status, 'applied');
-    assert.equal((await call(V, 'POST', `/households/${hh}/memories/resolve`, { refs: snap })).status, 404, 'revoked viewer cannot resolve a frozen snapshot');
-    assert.equal((await cmd(call, A, hh, { type: 'memory.delete', target_id: m1.id, expected_revision: 1 })).body.status, 'applied');
-    const res = (await call(A, 'POST', `/households/${hh}/memories/resolve`, { refs: snap })).body;
-    assert.deepEqual([res.allowed.length, res.fenced.length, res.dispatch], [0, 1, 'BLOCKED']);
+    const m1 = (await cmd(call, A, hh, { type: 'memory.upsert', payload: { member_id: k1, text: '小米喜欢画画', source: { source_kind: 'user_text', source_ref: 'turn:1' } } })).body.objects[0];
+    for (const type of ['grant.upsert', 'grant.revoke']) {
+      const r = await cmd(call, A, hh, { type, payload: { user_id: V, member_scope: [k1] } });
+      assert.equal(r.status, 422, type); assert.equal(r.body.error?.code ?? r.body.code, 'command_invalid');
+    }
+    assert.equal((await sql`select count(*)::int n from family.command_types where type like 'grant.%'`)[0].n, 0, 'migration removed grant types');
+    // defence in depth: even if the API guard regressed, apply_command has no grant dispatch
+    const db = (await sql`select family.apply_command(${A}::uuid, ${JSON.stringify({ command_id: U(), type: 'grant.upsert', household_id: hh, payload: { user_id: V } })}::jsonb, 'h') r`.catch(e => [{ r: { error: { code: e.message } } }]))[0].r;
+    assert.match(JSON.stringify(db), /command_invalid/);
+    assert.equal((await sql`select count(*)::int n from family.household_grants`)[0].n, 0);
+    // a grant row that exists anyway (manual insert) must not open memory routes: owner-only, 404 like a stranger
+    await sql`insert into family.household_grants(household_id, user_id) values(${hh}, ${V})`;
+    for (const [m, p, b] of [['GET', '/memories'], ['GET', '/memories/audit'], ['GET', `/memories/recall?q=${encodeURIComponent('画画')}`], ['POST', '/memories/resolve', { refs: [{ memory_id: m1.id, revision: 1 }] }]])
+      assert.equal((await call(V, m, `/households/${hh}${p}`, b)).status, 404, `grantee ${m} ${p}`);
+    assert.equal((await call(A, 'GET', `/households/${hh}/memories/recall?q=${encodeURIComponent('画画')}`)).status, 200, 'owner still reads');
   } finally { await sql.end(); }
 });
