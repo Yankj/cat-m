@@ -91,7 +91,7 @@ final class ParentingInlineIntakeModel: ObservableObject {
                 let deletionScope = previous.scope, conversationID = previous.conversationID
                 deletionTask = Task { await self.deleteRemote(scope: deletionScope, conversationID: conversationID) }
             }
-        } catch { phase = .failed; error = ParentingInlineIntakeError.storage.localizedDescription; return }
+        } catch { phase = .failed; self.error = ParentingInlineIntakeError.storage.localizedDescription; return }
         if let deletionTask { busy = true; phase = .preparing; await deletionTask.value; busy = false }
         guard generation == owner, !Task.isCancelled else { return }
         guard !deletionPending else { phase = .failed; deletionError = Self.cleanupMessage; return }
