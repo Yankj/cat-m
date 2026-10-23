@@ -1,4 +1,4 @@
-# cat UX-1 R3 完整交互提案
+# mimi UX-1 R3 完整交互提案
 
 14 个入口、42 项设计审阅索引。基础样式/场景来自本仓自有 R2，`interaction.js` 和 `interaction.css` 补充拖动、呈现生命周期、过程、稳定卡、表图与 HIL。
 

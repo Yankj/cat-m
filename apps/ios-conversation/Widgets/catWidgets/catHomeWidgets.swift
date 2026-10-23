@@ -225,7 +225,7 @@ struct catNextSuggestionView: View {
                     .lineLimit(2)
                 Spacer(minLength: 0)
                 WidgetWhyLine(
-                    why: LA.s("有明确变化或需要你决定时才会出现", "cat surfaces only meaningful changes or decisions"),
+                    why: LA.s("有明确变化或需要你决定时才会出现", "mimi surfaces only meaningful changes or decisions"),
                     lines: 2
                 )
             }
@@ -288,7 +288,7 @@ struct catNextMeetingView: View {
                     .lineLimit(2)
                 Spacer(minLength: 0)
                 WidgetWhyLine(
-                    why: LA.s("打开 cat 可以新建对话并安排下一步", "Open cat to start a conversation and plan what is next"),
+                    why: LA.s("打开小咪可以新建对话并安排下一步", "Open mimi to start a conversation and plan what is next"),
                     lines: 2
                 )
             }
@@ -371,7 +371,7 @@ struct catLockScreenWidget: Widget {
         StaticConfiguration(kind: "catpaw.lock-screen", provider: catWidgetProvider()) {
             catLockScreenView(entry: $0)
         }
-        .configurationDisplayName(LA.s("cat 提醒", "cat glance"))
+        .configurationDisplayName(LA.s("小咪提醒", "mimi glance"))
         .description(LA.s("在锁屏查看下一项和原因", "See the next item and why it matters on the Lock Screen"))
         .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
     }

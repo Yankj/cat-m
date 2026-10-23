@@ -189,7 +189,7 @@ import SwiftUI
         return f.date(from: approval.expiresAt) ?? ISO8601DateFormatter().date(from: approval.expiresAt)
     }
     private var riskText: String {
-        switch approval.risk { case "device_write": ui("将修改此设备上的数据"); case "external_write": ui("将修改外部服务中的数据"); default: ui("将修改你的 cat 数据") }
+        switch approval.risk { case "device_write": ui("将修改此设备上的数据"); case "external_write": ui("将修改外部服务中的数据"); default: ui("将修改你的小咪数据") }
     }
 
     var body: some View {

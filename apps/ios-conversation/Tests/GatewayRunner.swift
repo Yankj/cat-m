@@ -41,14 +41,14 @@ struct RemoteSyntheticProvider: AgentProvider {
         let frozen = FrozenRequestConfiguration(conversationID: conversation, userMessageID: message, environmentID: env, projectID: nil, configuration: ConversationConfiguration(model: "dots-free", safety: true, subagents: false), expertRevisions: [:], skillRevisions: [:])
         let request = ChatRequest(context: ProviderContext(scope: Profiles.demo, operationID: operation, environmentID: env, providerID: "catpaw.gateway.v1", runtimeEpoch: 1, authorizationReferences: []), conversationID: conversation, userMessageID: message, frozenText: "synthetic", frozenTextHash: textHash("synthetic"), conversationRevision: 1, frozenConfiguration: frozen)
         var data = try wire(operation, 1, "accepted", ["provider_operation_id": "mock"])
-        data.append(try wire(operation, 2, "text_delta", ["text": "cat"]))
-        data.append(try wire(operation, 3, "message_completed", ["final_text_hash": textHash("cat"), "finish_reason": "stop"]))
+        data.append(try wire(operation, 2, "text_delta", ["text": "mimi"]))
+        data.append(try wire(operation, 3, "message_completed", ["final_text_hash": textHash("mimi"), "finish_reason": "stop"]))
         data.append(try wire(operation, 4, "task_completed", ["receipt_reference": "mock-response:synthetic"]))
         let provider = GatewayAgentProvider(configuration: config, transport: MockGatewayTransport(bytes: data))
         var reducer = OperationReducer(operationID: operation, epoch: 1)
         for try await event in try await provider.reply(to: request) { _ = reducer.accept(event) }
         reducer.endOfStream()
-        try check(reducer.text == "cat" && reducer.taskState == .succeeded, "SSE byte fragments map into existing ProviderEvent/reducer")
+        try check(reducer.text == "mimi" && reducer.taskState == .succeeded, "SSE byte fragments map into existing ProviderEvent/reducer")
         let incomplete = GatewayAgentProvider(configuration: config, transport: MockGatewayTransport(bytes: try wire(operation, 1, "text_delta", ["text": "partial"])))
         do { for try await _ in try await incomplete.reply(to: request) {} ; throw catError.invalid("missing terminal accepted") }
         catch { try check(error.localizedDescription.contains("explicit task terminal"), "native adapter rejects missing terminal") }

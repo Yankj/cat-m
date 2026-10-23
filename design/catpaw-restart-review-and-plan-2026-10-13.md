@@ -1,4 +1,4 @@
-# cat 复盘与重启方案
+# 小咪复盘与重启方案
 
 日期：2026-10-13（Asia/Shanghai）。这是本轮只读核查形成的带日期评审稿，不替代工程仓库 `docs/status/master-plan.md` 的实时进展。产品尚未完成验收，选型建议不代表已迁移或部署。
 
@@ -99,7 +99,7 @@ CopilotKit OSS 有 SSE/自配 runner 路线；两个应用模板对 Intelligence
 
 Dot 的参考价值是持续责任、工作接续与必要时请用户决定；这是由官方说明支持的产品模式，不代表可以复刻其内部系统。[Tasks and memory](https://learn.chatgpt.com/docs/dots/tasks-and-memory)、[Control your dot](https://learn.chatgpt.com/docs/dots/controls)。
 
-本轮手机实见：ChatGPT 侧栏把“你的 dot、定时任务、空间、Codex”分为明确入口；dot 主对话的输入区很简洁，电话在顶部；点击名称可查看云端/个人电脑以及暂停入口。未触发其任务、修改设置或调用语音。对照 cat，可以优先简化输入区，并把执行环境与控制收在次级入口。dot 最近对话也显示用户要求保存成果、写 handoff 后暂停旧工作；这解释了本轮原生副本尚有外部改动，但 handoff 完成与具体源码仍需实际文件验证。
+本轮手机实见：ChatGPT 侧栏把“你的 dot、定时任务、空间、Codex”分为明确入口；dot 主对话的输入区很简洁，电话在顶部；点击名称可查看云端/个人电脑以及暂停入口。未触发其任务、修改设置或调用语音。对照小咪，可以优先简化输入区，并把执行环境与控制收在次级入口。dot 最近对话也显示用户要求保存成果、写 handoff 后暂停旧工作；这解释了本轮原生副本尚有外部改动，但 handoff 完成与具体源码仍需实际文件验证。
 
 ## 6. 建议架构：每种事实只有一个权威
 

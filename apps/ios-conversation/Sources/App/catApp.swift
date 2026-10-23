@@ -270,7 +270,7 @@ import AppIntents
         // Onboarding gate (SPEC-E §5.3): the landing and the chat share one host. Chat mounts underneath the moment the
         // gate flips, the landing stays on top for the ≤1.15 s handoff. Later launches have no landing at all.
         else {
-            FirstRunTransitionHost(onboarding: auth.needsOnboarding, chat: chatSurface, ctaTitle: ui("开始使用"), placeholder: ui("问问 cat")) {
+            FirstRunTransitionHost(onboarding: auth.needsOnboarding, chat: chatSurface, ctaTitle: ui("开始使用"), placeholder: ui("问问小咪")) {
                 NativeLoginView(auth:auth)
                     .task { await auth.prewarmEntryChat() }
                     #if DEBUG
@@ -386,8 +386,8 @@ private struct NativeAuthFixtureProbeContent:View {
 
 /// A foreground-only entry point. Opening never creates an identity or sends a message.
 struct OpencatConversationIntent: AppIntent {
-    static var title: LocalizedStringResource = "Open cat Conversation"
-    static var description = IntentDescription("Open cat to continue a conversation or edit a message. Opening does not send messages.")
+    static var title: LocalizedStringResource = "Open mimi Conversation"
+    static var description = IntentDescription("Open mimi to continue a conversation or edit a message. Opening does not send messages.")
     static var openAppWhenRun = true
     func perform() async throws -> some IntentResult { .result() }
 }

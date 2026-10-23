@@ -4,16 +4,33 @@
   "native_project": "apps/ios-conversation/cat.xcodeproj",
   "native_entry": "apps/ios-conversation/Sources/App/catApp.swift",
   "backend_maintenance": "services/edge/supabase/functions",
-  "backend_entries_present": ["services/edge/supabase/functions/catpaw-api/index.ts"],
+  "backend_entries_present": [
+    "services/edge/supabase/functions/catpaw-api/index.ts"
+  ],
   "backend_shared": "services/edge/supabase/functions/_shared",
   "deployed_snapshots": "services/edge/deployed-baselines",
-  "swift_packages": ["packages/ios-navigation", "packages/ios-image-composer"],
-  "frozen_app_roots": ["apps/ios", "apps/ios-openmuse-demo"],
-  "historical_service_roots": ["services/facade", "services/offline"],
-  "upstream_sources": ["vendor/openmuse", "services/facade/patched-openmuse"],
+  "swift_packages": [
+    "packages/ios-navigation",
+    "packages/ios-image-composer"
+  ],
+  "frozen_app_roots": [
+    "apps/ios",
+    "apps/ios-openmuse-demo"
+  ],
+  "historical_service_roots": [
+    "services/facade",
+    "services/offline"
+  ],
+  "upstream_sources": [
+    "vendor/openmuse",
+    "services/facade/patched-openmuse"
+  ],
   "public_design": "docs/design",
   "public_research": "docs/research",
-  "retained_input_roots": ["design", "research"],
+  "retained_input_roots": [
+    "design",
+    "research"
+  ],
   "live_status": "docs/status/master-plan.md",
   "current_goal": "docs/planning/AF-1/goal.md",
   "private_runtime": "local-audit",
@@ -21,6 +38,6 @@
   "second_active_app_allowed": false,
   "component_owned_model_or_auth_allowed": false,
   "deployment_implied_by_checks": false,
-  "website": "apps/website",
+  "website": "Yankj/heydusk-site/apps/mimi (marketing site moved out; stub at apps/website/README.md)",
   "website_role": "Static product website; independent build and deployment; no native host or backend authority"
 }

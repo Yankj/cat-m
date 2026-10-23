@@ -227,7 +227,7 @@ import UIKit
     private func state(_ id: UUID, _ turn: Turn, _ kind: String, endedAt: Date? = nil) -> CatpawWorkAttributes.ContentState {
         // ux-round-1505: startedAt drives the on-device timer, step = honest dot count, tool → spoken verb in the widget.
         // summary = the user's task text (catTaskTitles, else the latest user message), masked; nil → widget generic title.
-        .init(title: ui("cat 正在工作"), body: turn.body, kind: kind, taskID: id.uuidString,
+        .init(title: ui("小咪正在工作"), body: turn.body, kind: kind, taskID: id.uuidString,
               startedAt: turn.startedAt, endedAt: endedAt, step: turn.step > 0 ? turn.step : nil, tool: turn.tool, summary: turn.summary)
     }
 
@@ -244,7 +244,7 @@ import UIKit
         guard var turn = turns[id], turn.activity == nil, !turn.conversationID.isEmpty else { return }
         guard turn.token != nil, AccountEpoch.shared.isValid(turn.token) else { turns[id] = nil; return }   // signed out / switched: never request
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-        let attributes = CatpawWorkAttributes(taskID: id.uuidString, conversationID: turn.conversationID, title: ui("cat 正在工作"))
+        let attributes = CatpawWorkAttributes(taskID: id.uuidString, conversationID: turn.conversationID, title: ui("小咪正在工作"))
         do {
             let content = ActivityContent(state: state(id, turn, turn.kind), staleDate: Date().addingTimeInterval(120))
             if let activity = try? Activity.request(attributes: attributes, content: content, pushType: .token) {
@@ -314,7 +314,7 @@ import UIKit
     func endOrphanedActivities() {
         let owned = Set(turns.values.compactMap { $0.activity?.id })
         for activity in Activity<CatpawWorkAttributes>.activities where !owned.contains(activity.id) && activity.activityState == .active {
-            let final = CatpawWorkAttributes.ContentState(title: ui("cat 正在工作"), body: ui("打开 cat 查看结果"), kind: CatpawWorkAttributes.ContentState.Kind.needsUser, taskID: activity.attributes.taskID)
+            let final = CatpawWorkAttributes.ContentState(title: ui("小咪正在工作"), body: ui("打开小咪查看结果"), kind: CatpawWorkAttributes.ContentState.Kind.needsUser, taskID: activity.attributes.taskID)
             Task { await activity.end(ActivityContent(state: final, staleDate: nil), dismissalPolicy: .after(Date().addingTimeInterval(60))) }
         }
     }

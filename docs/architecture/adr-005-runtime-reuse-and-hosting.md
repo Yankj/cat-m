@@ -28,7 +28,7 @@
 |---|---|---|
 | 计划、执行与有限 monitor | OpenMuse 参考；逐步 evidence 与完成资格分别核验 | 完成不批量标全部步骤成功；保持既有 frozen patch |
 | 成果编辑与恢复 | OpenDots expectedRevision、generation、autosave/tombstone 算法候选 | 适配现有 Artifact/PG/Swift，不搬 SQLite/Tiptap |
-| 审批与后台工作 | OpenBot consume/result/continuation、PG due 领取和失败分类参考 | 保留 cat Approval/Effect；unknown 先核对，完整 Bun/Intelligence runtime 不接入 |
+| 审批与后台工作 | OpenBot consume/result/continuation、PG due 领取和失败分类参考 | 保留小咪 Approval/Effect；unknown 先核对，完整 Bun/Intelligence runtime 不接入 |
 | 智能 UI | 编译受控 Swift 六卡 registry，完整参数后操作，后台保存/等待 | A2UI wire 先互通证明；任意 HTML/JS viewer 单独提案 |
 | 电脑运行 | Dots/Bot provider seam 可参考 | 仍 Proposed；新增计算预算0，可持续资源/provider/region确认后实施 |
 

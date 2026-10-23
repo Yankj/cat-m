@@ -116,10 +116,10 @@ struct LAModel {
         }
         self.stale = stale && kind != .done && kind != .failed
         step = max(0, s.step ?? 0); startedAt = s.startedAt; endedAt = s.endedAt; tool = s.tool
-        let generic: Set<String> = ["", "cat 正在工作", "cat is working", "cat 正在处理"]
+        let generic: Set<String> = ["", "小咪正在工作", "mimi is working", "小咪正在处理"]
         if let summary = s.summary?.trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty { title = summary }
         else if !generic.contains(s.title) { title = s.title }
-        else { title = LA.s("cat 正在处理", "cat is on it") }
+        else { title = LA.s("小咪正在处理", "mimi is on it") }
         let genericBodies: Set<String> = ["", "正在思考…", "已完成", "未完成，需核对", "等你确认", "正在整理回答…"]
         let body = genericBodies.contains(s.body) ? nil : s.body
         if self.stale { status = LA.s("可能已暂停 · 点按查看", "May be paused · Tap to check"); return }
@@ -238,7 +238,7 @@ struct LAKitten: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("cat · " + model.axKind)
+        .accessibilityLabel("mimi · " + model.axKind)
     }
     private var badgeFill: Color {
         switch model.kind {
@@ -286,7 +286,7 @@ struct LAFooter: View {
         case .done:
             Text(doneLine).font(.caption2.weight(.medium)).foregroundStyle(palette.secondary)
         case .failed:
-            Text(LA.s("点按打开 cat 处理", "Tap to open cat")).font(.caption2.weight(.medium)).foregroundStyle(palette.secondary)
+            Text(LA.s("点按打开小咪处理", "Tap to open mimi")).font(.caption2.weight(.medium)).foregroundStyle(palette.secondary)
         default:
             if model.step > 0 && !model.stale {
                 HStack(spacing: 6) {

@@ -76,7 +76,7 @@ public struct AppBuildInfo: Equatable, Sendable {
     /// Single-line, language-neutral identity for bug reports and the copy action:
     /// `cat 1.1.0 (712) · 1a2b3c4d · 2026-10-17T23:30:00Z · DeviceTrial`.
     public var diagnosticText: String {
-        var parts = ["cat \(version ?? "?") (\(build ?? "?"))"]
+        var parts = ["mimi \(version ?? "?") (\(build ?? "?"))"]
         if let commitLabel { parts.append(commitLabel) }
         if let buildDate {
             let iso = ISO8601DateFormatter()

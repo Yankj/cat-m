@@ -276,7 +276,7 @@ let voiceChatLog = Logger(subsystem: "catpaw", category: "voiceChat")
     private var noticeTitle: String { dictation.notice == .permissionDenied ? ui("需要麦克风和语音识别权限") : ui("暂时无法听写") }
     private var noticeMessage: String {
         switch dictation.notice {
-        case .permissionDenied: return ui("请在“设置”中允许 cat 使用麦克风和语音识别，或直接输入文字。")
+        case .permissionDenied: return ui("请在“设置”中允许小咪使用麦克风和语音识别，或直接输入文字。")
         case .failed: return ui("听写没有成功，可以直接输入文字。")
         default: return ui("此设备暂不支持本地听写，可以直接输入文字。")
         }

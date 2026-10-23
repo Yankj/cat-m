@@ -2,11 +2,11 @@
 
 <div align="center">
 
-# cat
+# mimi
 
 本地品牌迁移与保留身份见 [兼容说明](docs/development/cat-brand-migration.md)，验证范围见 [本地记录](docs/acceptance/cat-brand-2026-10-22.md)。
 
-家庭成长助理入口：[主计划与当前范围](docs/status/master-plan.md) · [本地与云端总交接](docs/acceptance/family-companion/handoff-2026-10-23.md) · [独立官网候选及验证说明](https://github.com/Yankj/cat-m/tree/7ca0c4535dbfb6419a5000eab8275d08be051ceb/apps/website/family)。
+家庭成长助理入口：[主计划与当前范围](docs/status/master-plan.md) · [本地与云端总交接](docs/acceptance/family-companion/handoff-2026-10-23.md) · [独立官网候选及验证说明](https://github.com/Yankj/mimi/tree/7ca0c4535dbfb6419a5000eab8275d08be051ceb/apps/website/family)。
 
 **先你一步，把事办妥。** · *A step ahead. Things handled.*
 
@@ -19,10 +19,10 @@
 ![Deno](https://img.shields.io/badge/Deno-tests-000000?logo=deno&logoColor=white)
 ![Backend](https://img.shields.io/badge/catpaw--api-v55%20(prod)-3ECF8E)
 ![App](https://img.shields.io/badge/App-v1.2.0%20on%20main-brightgreen)
-[![下载](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Releases-2EA44F?logo=github&logoColor=white)](https://github.com/Yankj/cat-m/releases/latest)
+[![下载](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Releases-2EA44F?logo=github&logoColor=white)](https://github.com/Yankj/mimi/releases/latest)
 ![License](https://img.shields.io/badge/license-TBD-lightgrey)
 
-<img src="docs/assets/slides/slide-01.png" alt="cat 介绍图" width="720">
+<img src="docs/assets/slides/slide-01.png" alt="小咪介绍图" width="720">
 
 <sub>设计示意（演示幻灯片封面），非 App 实拍。</sub>
 
@@ -31,7 +31,7 @@
 </div>
 
 > [!NOTE]
-> **版本状态（2026-10-18）**：iOS **v1.2.0**（2026-10-18）已发布，见 [Releases](https://github.com/Yankj/cat-m/releases/latest)，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。线上后端为 `catpaw-api` **v55**（#104）、`catpaw-proactive` **v10**（#101）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
+> **版本状态（2026-10-18）**：iOS **v1.2.0**（2026-10-18）已发布，见 [Releases](https://github.com/Yankj/mimi/releases/latest)，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。线上后端为 `catpaw-api` **v55**（#104）、`catpaw-proactive` **v10**（#101）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
 
 <details>
 <summary><b>目录</b></summary>
@@ -56,25 +56,23 @@
 </details>
 
 <!-- CATPAW-WEBSITE:START -->
-> Internal `catpaw*` identifiers are kept on purpose. See [docs/internal-identifiers.md](docs/internal-identifiers.md). License: All Rights Reserved, see [LICENSE](LICENSE).
-
 ## 产品官网
 
-**先你一步，把事办妥。** 一个住在 iPhone 里的贴心助理。记住你的偏好，在合适的时候提醒你，确认后把事情办好。
+**先你一步，把事办妥。** 家里的事，交给小咪记着。拍一张、说一句，它整理成待你确认的卡片；今天要办的一目了然，我们家的事它都记得，你点头之前什么都不改。
 
-官网源码见 [apps/website](apps/website)；公网站点待部署（计划挂到公司域名）。本地可 `cd apps/website && npm run build` 预览。
+[浏览官网](https://mimi.heydusk.com/) · [观看产品视频](https://mimi.heydusk.com/#film) · [25 页产品介绍](https://mimi.heydusk.com/assets/catpaw-product-deck.pdf) · [安全与隐私](https://mimi.heydusk.com/trust.html) · [技术设计](https://mimi.heydusk.com/technology.html)
 
 - **主动**：到点之前，先来找你。
 - **有记忆**：记住偏好，也真正用上。
 - **能执行**：写进日历，留下回执。
 - **可信**：先问你，再动手。
 
-官网源码位于 [apps/website](apps/website)，独立构建与部署。演示素材保留 v1.1 版本；当前入口、状态与限制以 [能力清单](docs/product/capabilities/catpaw-capabilities.json) 和 [CHANGELOG](CHANGELOG.md) 为准。
+官网源码位于公司站仓库 [Yankj/heydusk-site/apps/mimi](https://github.com/Yankj/heydusk-site/tree/feat/company-site/apps/mimi)，与 heydusk.com 同仓分目录部署；本仓库 [apps/website](apps/website) 仅保留迁出说明。演示素材保留 v1.1 版本；当前入口、状态与限制以 [能力清单](docs/product/capabilities/catpaw-capabilities.json) 和 [CHANGELOG](CHANGELOG.md) 为准。
 <!-- CATPAW-WEBSITE:END -->
 
 ## 背景
 
-传统助理 App 要么是“问一句答一句”的聊天框，要么是需要用户自己拆步骤的工具集合。cat 想做一个**先你一步**的助理：
+传统助理 App 要么是“问一句答一句”的聊天框，要么是需要用户自己拆步骤的工具集合。小咪想做一个**先你一步**的助理：
 
 - **从对话到行动**：用一句话说目标，助理产出计划、报告，或直接调用系统能力（日历、提醒事项、通讯录、地图），而不是只给文字建议。
 - **主动但不打扰**：端上根据日历、提醒等信号判断时机，给出带“为什么找你”解释、可撤销的建议卡片。
@@ -133,8 +131,8 @@
 **步骤**
 
 ```sh
-git clone https://github.com/Yankj/cat-m.git cat
-cd cat
+git clone https://github.com/Yankj/mimi.git mimi
+cd mimi
 open apps/ios-conversation/cat.xcodeproj
 ```
 
@@ -148,10 +146,10 @@ open apps/ios-conversation/cat.xcodeproj
 
 ## 下载与安装
 
-> **操作指南（How-to）**：安装已打包的构建。所有构建都在 [Releases](https://github.com/Yankj/cat-m/releases/latest) 页面；仓库目前是私有的，需要有仓库访问权限才能下载。
+> **操作指南（How-to）**：安装已打包的构建。所有构建都在 [Releases](https://github.com/Yankj/mimi/releases/latest) 页面；仓库目前是私有的，需要有仓库访问权限才能下载。
 
 > [!TIP]
-> 最新版本：[cat 1.2.0](https://github.com/Yankj/cat-m/releases/tag/v1.2.0)（2026-10-18），文件为 `Catpaw-1.2.0-simulator.zip` 和 `Catpaw-1.2.0.ipa`（历史发行物，保留原名）。
+> 最新版本：[mimi v1.2.0](https://github.com/Yankj/mimi/releases/tag/v1.2.0)（2026-10-18），文件为 `Catpaw-1.2.0-simulator.zip` 和 `Catpaw-1.2.0.ipa`（历史发行物，保留原名）。
 
 | 方式 | 文件 | 适合 | 限制 |
 |---|---|---|---|
@@ -327,7 +325,7 @@ sequenceDiagram
 ## 目录结构
 
 ```text
-cat/
+mimi/
 ├── apps/
 │   ├── ios-conversation/        # ★ 当前唯一维护的 iOS App（cat.xcodeproj）
 │   │   ├── Sources/             #   App · Domain · Features · Persistence · Providers · Voice · DesignSystem · Shared

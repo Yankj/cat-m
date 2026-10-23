@@ -9,7 +9,7 @@
 | 身份 | 固定值 |
 |---|---|
 | 本地源码提交 | `95ac3fd20c44b83e274f2728feb66aee2802c56f` |
-| GitHub 源码 | [acb1edd](https://github.com/Yankj/cat-m/commit/acb1edd568c28ac0cf1064d58b5d8485c390880c)，tree `a0810138b50679193bc7847f45703fa70c7af902` |
+| GitHub 源码 | [acb1edd](https://github.com/Yankj/mimi/commit/acb1edd568c28ac0cf1064d58b5d8485c390880c)，tree `a0810138b50679193bc7847f45703fa70c7af902` |
 | 来源 | 接续 build36；20 个明确审阅路径选择性发布，429 个固定输入在本地提交和独立远端索引逐项对应；未发布旧本地历史，未合并 main |
 | App | `0.3.0(37)`，Debug Simulator，原 bundle；32 文件指纹 `f346b1e31ddc2621b343ae3c1129568905415752f8968801377c5b4126766397` |
 | 冻结输入 | [source-snapshot.json](evidence/native-inbox37/source-snapshot.json)；摘要及日志／截图 hash 见 [result.json](evidence/native-inbox37/result.json) |
@@ -45,7 +45,7 @@
 - 最大字号 XCTest PASS 后，外层 shell 使用 zsh只读 status 变量而退出1；已单独恢复 QA 字号并核对，不把包装脚本失败改写成测试失败或重计通过。
 - 本机后台接续检查最初使用不存在的元数据 key 而中断；原行和36配置保持，启动器曾再次打开36。改用实际 synthetic_viewer_window 并验证原仓库逐字节一致后继续更新37；没有新请求发送。
 
-固定“cat 最新体验”原 Simulator 已更新并启动37；同 store、同 subject／scope／route，原后台行复制后完全一致，原会话到期时间保留，未续期。安装完整包指纹读回相等；启动请求计数94→95，但 accepted_posts 0→0、memory_posts 0→0、provider_calls 4→4、turns 2→2。旧36包、source27、状态与回执备份保留；37前端与本机后台均对应95ac3fd。私人启动截图只存忽略的 local-audit，未发布截图像素或用户内容。专用 QA 服务已停止，用户体验服务保留。
+固定“小咪最新体验”原 Simulator 已更新并启动37；同 store、同 subject／scope／route，原后台行复制后完全一致，原会话到期时间保留，未续期。安装完整包指纹读回相等；启动请求计数94→95，但 accepted_posts 0→0、memory_posts 0→0、provider_calls 4→4、turns 2→2。旧36包、source27、状态与回执备份保留；37前端与本机后台均对应95ac3fd。私人启动截图只存忽略的 local-audit，未发布截图像素或用户内容。专用 QA 服务已停止，用户体验服务保留。
 
 仍未验：真实 Auth／模型／PG／手机、独立调度、A 在 B 或 App 离开期间新完成的完整路径、实际账号交替登录 UI、大历史 SQL 性能、浅深色／VO／Reduce Motion／全尺寸矩阵、远端完整会话 hydrate、持久未读／outbox／通知，以及全部 AF／FINAL 门。此 GET 需要同版维护 API；生产旧 API 未部署本片，不能把这个包直接当作已获批手机／生产候选。
 

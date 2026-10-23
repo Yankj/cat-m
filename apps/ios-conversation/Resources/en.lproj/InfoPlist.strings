@@ -1,10 +1,12 @@
+"CFBundleDisplayName" = "mimi";
+"CFBundleName" = "mimi";
 "NSMicrophoneUsageDescription" = "Only while you dictate, or while voice conversation is open (it keeps listening until you end or pause it), capture audio to turn it into text. Raw audio is not stored in long-term records.";
 "NSSpeechRecognitionUsageDescription" = "Only when you dictate or open voice conversation, turn speech into text. Voice conversation uses on-device recognition only; dictation may use Apple's speech recognition service when on-device recognition isn't supported.";
 "NSCameraUsageDescription" = "Only when you choose Take Photo, open the camera and save the confirmed image to this local project. It is not uploaded automatically.";
 "NSPhotoLibraryUsageDescription" = "Only when you select a photo, save that image to this local project. Your photo library is not uploaded automatically.";
 "NSCalendarsFullAccessUsageDescription" = "Only after you confirm a calendar action and allow access, create and verify that event to prevent duplicates and recover its result.";
 
-"NSRemindersFullAccessUsageDescription" = "cat writes a reminder to Reminders only after you confirm.";
+"NSRemindersFullAccessUsageDescription" = "mimi writes a reminder to Reminders only after you confirm.";
 "NSContactsUsageDescription" = "Used to find the person you want to contact, only for this request.";
 "NSPhotoLibraryAddUsageDescription" = "Saves the images you choose to Photos.";
-"NSLocationWhenInUseUsageDescription" = "Used to estimate public transit time to your meeting location, so cat can remind you to leave at the right time.";
+"NSLocationWhenInUseUsageDescription" = "Used to estimate public transit time to your meeting location, so mimi can remind you to leave at the right time.";

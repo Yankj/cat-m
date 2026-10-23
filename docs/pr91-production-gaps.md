@@ -15,7 +15,7 @@
 3. feedback retry（ProactiveFeedbackSync.retryPending）没有可移植测试覆盖，只能在 Mac 上验证。
 4. 以下改动在 Linux 测试环境里无法编译（依赖 EventKit / ActivityKit / UIKit），需要 Mac 构建验证：DeviceToolRouter、ProactiveEngine、CatpawLiveActivityCoordinator、MemoryLibraryView、ConversationSessionService、NativeChatHTTPBackend。
 5. SwiftData 明文记忆行首次读取时改写为密文；这条迁移路径依赖 SwiftData，没有可移植测试。Release 构建没有 sealer 时拒绝写入；Debug 构建仍允许明文（供测试运行）。
-6. 小组件快照（App Group 文件）未加密，只存脱敏字段（固定文案「小猫有一条提醒」「即将开始的日程」「打开 cat 查看」、id、时间），不含标题、原因、地点。
+6. 小组件快照（App Group 文件）未加密，只存脱敏字段（固定文案「小猫有一条提醒」「即将开始的日程」「打开小咪查看」、id、时间），不含标题、原因、地点。
 7. 应用重启后恢复的轮次没有账号 token（不入 journal），这些轮次的 memory.used/update 会被丢弃（安全侧）。
 8. SSE token 的测试走网络层入口 `ConversationSideChannelEvents.deliver`（NativeChatHTTPBackend 调用的同一函数）；完整的会话 send 路径只能在 Mac 原生测试里覆盖。
 9. DeviceLedger 的账号隔离、登出清理、unknown 撤销不在本 PR，归 #89。
