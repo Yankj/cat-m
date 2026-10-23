@@ -99,7 +99,7 @@ public struct SidebarPanel: View {
             }.frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 4) {
-                    Text(snapshot.account?.name ?? "cat").font(theme.headingFont).lineLimit(1)
+                    Text(snapshot.account?.name ?? "mimi").font(theme.headingFont).lineLimit(1)
                         .accessibilityAddTraits(.isHeader).accessibilityFocused($headingFocused)
                     Image(systemName: "chevron.down").font(theme.captionFont).foregroundStyle(theme.secondary).accessibilityHidden(true)
                 }

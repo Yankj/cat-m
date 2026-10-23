@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """v1.2 capability manifest check.
 
-docs/product/capabilities/cat-capabilities.json is the single source of truth for what cat can do.
+docs/product/capabilities/cat-capabilities.json is the single source of truth for what mimi / 小咪 can do.
 This check fails when:
   * the manifest is malformed (ids, status, planned entries carrying a UI entry, ...);
   * a UI anchor (accessibility identifier) named in the manifest does not exist in the iOS app or navigation package;
@@ -19,6 +19,16 @@ DEEPLINKS = ROOT / 'apps/ios-conversation/Sources/Domain/DeepLinks.swift'
 START = 'export const catCapabilities=Object.freeze('
 errors = []
 m = json.loads(MANIFEST.read_text())
+if m.get('product') != 'mimi': errors.append('product display name must be mimi')
+if not all(name in m.get('identity', '') for name in ('mimi', '小咪')):
+    errors.append('identity must name mimi / 小咪')
+# Check display prose only; ids, anchors, exports and catpawm:// links are stable internal identifiers.
+display = [('identity', m.get('identity', ''))]
+for c in m.get('capabilities', []):
+    display.extend((f'{c.get("id", "?")}.{k}', c.get(k, '')) for k in ('name', 'purpose', 'trigger', 'limits'))
+    display.extend((f'{c.get("id", "?")}.ui_entry.{k}', (c.get('ui_entry') or {}).get(k, '')) for k in ('label', 'button'))
+for field, value in display:
+    if re.search(r'\bcat(?:paw)?(?:-m)?\b', value, re.I | re.ASCII): errors.append(f'{field}: legacy display brand')
 data = json.dumps(m, ensure_ascii=False, indent=1)
 mirror = MIRROR.read_text()
 i = mirror.index(START) + len(START); j = mirror.index(');\n', i)
