@@ -6,7 +6,12 @@ final class ParentingWorkspaceUITests: XCTestCase {
     private var currentApp: XCUIApplication?
     override func setUp() { continueAfterFailure = false }
     override func tearDown() {
-        if let app = currentApp { capture(app, "end-of-case") }
+        if let app = currentApp {
+            capture(app, "end-of-case")
+            if (testRun?.totalFailureCount ?? 0) > 0 {
+                print("Synthetic parenting UI failure hierarchy:\n" + app.debugDescription)
+            }
+        }
         currentApp?.terminate()
         currentApp = nil
         super.tearDown()
@@ -598,9 +603,12 @@ final class ParentingWorkspaceUITests: XCTestCase {
     private func input(_ app: XCUIApplication, _ id: String) -> XCUIElement {
         // A virtualized upper field can still exist with a zero frame. Search upward in that case as well.
         let upperField = ["parenting.arrangement.source", "parenting.child.name", "parenting.goal.title"].contains(id)
-        reveal(app, element(app, id), searchTowardBottom: !upperField)
-        wait { self.inputExists(app, id) }
-        return app.textViews[id].exists ? app.textViews[id] : app.textFields[id]
+        // TextEditor and TextField identifiers come from the actual host form; do not scan all AX types.
+        let multiline = ["parenting.arrangement.source", "parenting.record.text"].contains(id)
+        let field = multiline ? app.textViews.matching(identifier: id).firstMatch : app.textFields.matching(identifier: id).firstMatch
+        reveal(app, field, searchTowardBottom: !upperField)
+        wait { field.exists }
+        return field
     }
     private func enter(_ app: XCUIApplication, id: String, text: String) {
         let field = input(app, id)
