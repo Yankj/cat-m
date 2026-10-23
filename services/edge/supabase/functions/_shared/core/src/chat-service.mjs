@@ -83,7 +83,7 @@ export class ChatService {
       check((saved.intake_contract??null)===intakeContract,404,'not_found');return saved;
     });
   }
-  async readConversation(auth,scopeID,id){const {owner,principal}=await this.scoped(auth,scopeID);return this.repository.transaction(tx=>this.conversation(tx,owner,id,principal.subject_id,scopeID));}
+  async readConversation(auth,scopeID,id,{intakeContract=null}={}){const {owner,principal}=await this.scoped(auth,scopeID);return this.repository.transaction(async tx=>{const c=await this.conversation(tx,owner,id,principal.subject_id,scopeID);check((c.intake_contract??null)===intakeContract,404,'not_found');return c;});}
   validateInput(input){
     const vision=input?.schema_version===2?validateVisionTurn(input,this.vision):null;if(vision)input=vision.input;
     shape(input,['turn_id','expected_revision','expected_grant_epoch','message','context']);shape(input.message,['id','text']);
@@ -219,13 +219,14 @@ export class ChatService {
   /** R7 busy retry: restart the SAME turn in place when it failed with `rate_limited` before any
    * model output. Identity, user message, admission and request hash are unchanged; new events
    * continue the original sequence. Any output or any other failure keeps the original result. */
-  async restartRateLimited(auth,scopeID,conversationID,turnID){
+  async restartRateLimited(auth,scopeID,conversationID,turnID,{intakeContract=null}={}){
     const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted;
     await this.integration?.prepare({owner,scope,principal});try{
     const turn=await this.repository.transaction(async tx=>{
       await this.integration?.beforeWrite(tx,{owner,scope});
       await tx.lock(owner,'native-chat-conversations',conversationID);
       const c=await this.conversation(tx,owner,conversationID,principal.subject_id,scopeID),t=await tx.get(owner,'native-chat-turns',turnID);
+      check((c.intake_contract??null)===intakeContract&&(t?.intake_contract??null)===intakeContract,404,'not_found');
       assertBusyRestartable(t,c,principal);
       if(t.intake_contract)check(this.intakeRuntimeFor(owner,turnID)?.input,409,'parenting_intake_content_unavailable');
       let next=restartedTurn(t);
@@ -493,17 +494,22 @@ export class ChatService {
     return snapshot;
   }
   now(){return (this.clockNow??Date.now)();}
-  async readTurnOnce(auth,scopeID,cid,tid,{afterSequence=0,trusted=null}={}){
+  async readTurnOnce(auth,scopeID,cid,tid,{afterSequence=0,trusted=null,intakeContract=null}={}){
     check(Number.isSafeInteger(afterSequence)&&afterSequence>=0,422,'invalid_cursor');trusted??=await this.scoped(auth,scopeID);const {owner,principal}=trusted,started=this.metrics.now();
     try{return await this.repository.transaction(async tx=>{
+      // Deny foreign/wrong-purpose intake identities before consent lookup, using the SAME auth/transaction.
+      // This non-locking precheck never grants authority; observationHead still performs its fresh fences below.
+      if(intakeContract){const identity=await this.conversation(tx,owner,cid,principal.subject_id,scopeID);check(identity.intake_contract===intakeContract,404,'not_found');}
       const c=await this.observationHead(tx,trusted,scopeID,cid);
       if(tx.chatTurnTail){
         const row=await tx.chatTurnTail(owner,tid,afterSequence),t=row?.data;
         check(t?.conversation_id===cid&&t.scope_id===scopeID&&row.subject_id===principal.subject_id,404,'not_found');
+        check((t.intake_contract??null)===intakeContract,404,'not_found');
         check(afterSequence<=row.event_count,422,'invalid_cursor');check(c.state==='active'&&c.grant_epoch===t.grant_epoch,409,'grant_conflict');
         const {revision_target,memory_extraction,memory_proposal_call,source_sensitivity,approval_checkpoint,interrupts,agent_memory,...projection}=t;return {...projection,...interrupts?{pending_approvals:pendingApprovals(t)}:{},...revision_target?{revision_target:clone(revision_target.target)}:{},next_cursor:`${t.id}:${row.event_count}`};
       }
       const t=await tx.get(owner,'native-chat-turns',tid);check(t?.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id,404,'not_found');
+      check((t.intake_contract??null)===intakeContract,404,'not_found');
       check(afterSequence<=t.events.length,422,'invalid_cursor');check(c.state==='active'&&c.grant_epoch===t.grant_epoch,409,'grant_conflict');
       const {input,history,model_history,subject_id,source_auth,dispatch_checkpoint,revision_target,memory_extraction,memory_proposal_call,source_sensitivity,approval_checkpoint,interrupts,agent_memory,...projection}=t;return {...projection,...interrupts?{pending_approvals:pendingApprovals(t)}:{},...revision_target?{revision_target:clone(revision_target.target)}:{},events:t.events.filter(e=>e.sequence>afterSequence),next_cursor:`${t.id}:${t.events.length}`};
     });}finally{this.metrics.record('observer_snapshot',started);}
@@ -556,6 +562,7 @@ export class ChatService {
     const trusted=await this.scoped(auth,scopeID);
     const t=await this.repository.transaction(tx=>tx.get(trusted.owner,'native-chat-turns',tid));
     check(t&&t.conversation_id===cid&&t.subject_id===trusted.principal.subject_id,404,'not_found');
+    check(!t.intake_contract,404,'not_found');
     const it=(t.interrupts??[]).find(i=>i.kind==='device'&&i.call_id===input.call_id);check(it,404,'device_call_not_found');
     return this.decideInterrupt(auth,scopeID,cid,tid,it.interrupt_id,{operation_id:input.operation_id,decision:'device_result',args_hash:input.args_hash,response:{status:input.status,...input.data!==undefined&&input.data!==null?{data:input.data}:{}}});
   }
@@ -569,6 +576,7 @@ export class ChatService {
       await tx.lock(owner,'native-chat-conversations',cid);
       const c=await this.conversation(tx,owner,cid,principal.subject_id,trusted.scope?.scope_id);
       const t=await tx.get(owner,'native-chat-turns',tid);check(t&&t.conversation_id===cid&&t.subject_id===principal.subject_id,404,'not_found');
+      check(!c.intake_contract&&!t.intake_contract,404,'not_found');
       const it=(t.interrupts??[]).find(i=>i.kind==='device'&&i.call_id===input.call_id);check(it,404,'device_call_not_found');
       check(DEVICE_UNDOABLE_TOOLS.includes(it.tool)&&it.status==='reported'&&it.response?.status==='ok',409,'device_undo_not_applicable');
       const prior=c.device_undos?.[input.call_id];
@@ -590,6 +598,7 @@ export class ChatService {
       await this.integration?.beforeWrite(tx,{owner,scope});await tx.lock(owner,'native-chat-conversations',cid);
       const c=await this.conversation(tx,owner,cid,principal.subject_id,scopeID),t=await tx.get(owner,'native-chat-turns',tid);
       check(t&&t.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id,404,'not_found');
+      check(!c.intake_contract&&!t.intake_contract,404,'not_found');
       const original=(t.interrupts??[]).find(i=>i.interrupt_id===iid);check(original,404,'not_found');
       // chat-context-1522 B2 / P1-2: the phone had already run a device call the turn no longer waits on — superseded by
       // the user's next message, or past its card TTL (expired). Its report is recorded idempotently: the turn is never
@@ -654,7 +663,7 @@ export class ChatService {
   // conversation lock, so any executor (this or another instance) is fenced at
   // its next write and its cancel poll aborts the model stream. Already
   // committed events (reasoning_summary/text_delta/tool_*) are kept as-is.
-  async cancel(auth,scopeID,cid,tid){
+  async cancel(auth,scopeID,cid,tid,{intakeContract=null}={}){
     check(UUID.test(cid)&&UUID.test(tid),422,'schema_invalid');
     const {owner,principal}=await this.scoped(auth,scopeID);
     const result=await this.repository.transaction(async tx=>{
@@ -663,6 +672,7 @@ export class ChatService {
       const c=await this.conversation(tx,owner,cid,principal.subject_id,scopeID);
       const t=await tx.get(owner,'native-chat-turns',tid);
       check(t&&t.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id,404,'not_found');
+      check((c.intake_contract??null)===intakeContract&&(t.intake_contract??null)===intakeContract,404,'not_found');
       if(finished(t.state))return {turn:t,cancelled:t.error?.code==='cancelled',changed:false};
       const committed=t.events.filter(e=>e.type==='text_delta').map(e=>e.data.text).join('');
       const error={code:'cancelled',retryable:false,reconciliation_required:false,partial_text_hash:hash(committed),partial_text_length:committed.length};
@@ -692,7 +702,7 @@ export class ChatService {
     const result=await this.repository.transaction(async tx=>{
       await this.integration?.lockScope(tx,scopeID);
       await tx.lock(owner,'native-chat-conversations',cid);
-      const c=await this.conversation(tx,owner,cid,principal.subject_id,scopeID);check(c.state==='active'&&c.revision===input.expected_revision&&c.grant_epoch===input.expected_grant_epoch,409,'grant_conflict');
+      const c=await this.conversation(tx,owner,cid,principal.subject_id,scopeID);check(!c.intake_contract,404,'not_found');check(c.state==='active'&&c.revision===input.expected_revision&&c.grant_epoch===input.expected_grant_epoch,409,'grant_conflict');
       const next={...c,state:input.action==='pause'?'paused':'revoked',revision:c.revision+1,grant_epoch:c.grant_epoch+1};await tx.put(owner,'native-chat-conversations',next);const tasks=[];
       for(const d of await tx.list(owner,'catpaw-delegations'))if(d.conversation_id===cid&&d.state==='active'){
         await tx.put(owner,'catpaw-delegations',{...d,revision:d.revision+1,grant_epoch:d.grant_epoch+1,state:next.state});
@@ -730,7 +740,7 @@ export class ChatService {
     }finally{await this.integration?.release?.(trusted.owner);}
   }
   async waitIdle(){await Promise.all([...this.active.values()].map(e=>e.promise));}
-  async *observe(auth,scopeID,cid,tid,{signal,afterSequence=0,trusted=null,liveText=false}={}){
+  async *observe(auth,scopeID,cid,tid,{signal,afterSequence=0,trusted=null,liveText=false,intakeContract=null}={}){
     check(Number.isSafeInteger(afterSequence)&&afterSequence>=0,422,'invalid_cursor');trusted??=await this.scoped(auth,scopeID);const {owner}=trusted;
     let sequence=afterSequence,wake=null,resync=true;const pending=new Map(),key=`${owner}:${tid}`;
     // live-text.mjs: opt-in previews from this instance's running turn; persisted events always go first.
@@ -740,8 +750,9 @@ export class ChatService {
     try{while(!signal?.aborted){
       for(const n of pending.keys())if(n<=sequence)pending.delete(n);
       if(resync||pending.size&&!pending.has(sequence+1)){
-        resync=false;const t=await this.observeRetry(()=>this.readTurn(auth,scopeID,cid,tid,{trusted,afterSequence:sequence}),signal);
+        resync=false;const t=await this.observeRetry(()=>this.readTurn(auth,scopeID,cid,tid,{trusted,afterSequence:sequence,intakeContract}),signal);
         for(const e of t.events){
+          check((e.intake_contract??null)===intakeContract,404,'not_found');
           if(signal?.aborted)return;
           // A consumer may pause between events while logout/revoke commits.
           await this.observeRetry(()=>this.observationGate(trusted,scopeID,cid,{...t,subject_id:trusted.principal.subject_id}),signal);
@@ -750,6 +761,7 @@ export class ChatService {
         if(terminal(t.state))return;
       }else if(pending.has(sequence+1)){
         const packet=pending.get(sequence+1);await this.observeRetry(()=>this.observationGate(trusted,scopeID,cid,packet),signal);
+        check((packet.event.intake_contract??null)===intakeContract,404,'not_found');
         if(signal?.aborted)return;pending.delete(sequence+1);sequence=packet.event.sequence;yield packet.event;
         if(terminal(packet.state))return;continue;
       }

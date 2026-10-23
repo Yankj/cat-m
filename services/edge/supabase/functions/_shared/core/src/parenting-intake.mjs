@@ -6,25 +6,17 @@ import {parseStrictObjectJSON} from './strict-json.mjs';
 /** Namespace adapter only: the original chat service owns admission, leases, provider policy, receipts and cancellation. */
 export function createParentingIntakeFetchHandler(runtime,{retain=()=>{}}={}){
  const chat=runtime.chat;
- const boundary=async(auth,scopeID,cid,tid=null)=>{
-  const trusted=await chat.scoped(auth,scopeID),{owner,principal}=trusted;
-  await chat.repository.transaction(async tx=>{
-   const c=await chat.conversation(tx,owner,cid,principal.subject_id,scopeID);
-   check(c.intake_contract===PARENTING_INTAKE_CONTRACT,404,'not_found');
-   if(tid){const t=await tx.get(owner,'native-chat-turns',tid);check(t?.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id&&t.intake_contract===PARENTING_INTAKE_CONTRACT&&c.last_turn_id===tid,404,'not_found');}
-  });return trusted;
- };
  const overrides={
   createConversation:(auth,scope,input)=>chat.createConversation(auth,scope,input,{intakeContract:PARENTING_INTAKE_CONTRACT}),
-  async readConversation(auth,scope,cid){await boundary(auth,scope,cid);return chat.readConversation(auth,scope,cid);},
+  readConversation:(auth,scope,cid)=>chat.readConversation(auth,scope,cid,{intakeContract:PARENTING_INTAKE_CONTRACT}),
   async startTurn(auth,scope,cid,input,options){
    check(!options?.memoryProposalContract&&!options?.approvalContract&&!options?.uiContract&&!options?.deviceContract&&!options?.deviceTools&&!options?.uiKinds,422,'parenting_intake_capability_forbidden');
    return chat.startTurn(auth,scope,cid,input,{intakeContract:PARENTING_INTAKE_CONTRACT});
   },
-  async readTurn(auth,scope,cid,tid,options){await boundary(auth,scope,cid,tid);return chat.readTurn(auth,scope,cid,tid,options);},
-  async cancel(auth,scope,cid,tid){await boundary(auth,scope,cid,tid);return {...await chat.cancel(auth,scope,cid,tid),intake_contract:PARENTING_INTAKE_CONTRACT};},
-  async restartRateLimited(auth,scope,cid,tid){await boundary(auth,scope,cid,tid);return chat.restartRateLimited(auth,scope,cid,tid);},
-  async *observe(auth,scope,cid,tid,options){await boundary(auth,scope,cid,tid);yield*chat.observe(auth,scope,cid,tid,options);}
+  readTurn:(auth,scope,cid,tid,options)=>chat.readTurn(auth,scope,cid,tid,{...options,intakeContract:PARENTING_INTAKE_CONTRACT}),
+  async cancel(auth,scope,cid,tid){return {...await chat.cancel(auth,scope,cid,tid,{intakeContract:PARENTING_INTAKE_CONTRACT}),intake_contract:PARENTING_INTAKE_CONTRACT};},
+  restartRateLimited:(auth,scope,cid,tid)=>chat.restartRateLimited(auth,scope,cid,tid,{intakeContract:PARENTING_INTAKE_CONTRACT}),
+  async *observe(auth,scope,cid,tid,options){yield*chat.observe(auth,scope,cid,tid,{...options,intakeContract:PARENTING_INTAKE_CONTRACT});}
  };
  const restricted=new Proxy(chat,{get(target,key){if(Object.hasOwn(overrides,key))return overrides[key];const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;}});
  const handler=createChatFetchHandler({...runtime,chat:restricted,onAccepted:({owner,turnId})=>{

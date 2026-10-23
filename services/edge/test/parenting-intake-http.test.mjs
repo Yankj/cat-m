@@ -55,6 +55,36 @@ test('scope, subject, purpose and single-intent boundaries apply to start, read,
  assert.equal((await f.req(p.path+'/control',{type:'revoke'})).status,404);assert.equal(f.calls.length,1);
 });
 
+test('purpose checks reuse one authentication for ordinary and intake requests',async()=>{
+ const f=await fixture(),p=await f.prepare(),facade=f.runtime.chat.facade,original=facade.authenticate.bind(facade);let authentications=0;
+ facade.authenticate=(...args)=>{authentications++;return original(...args);};
+ const once=async run=>{const before=authentications;const response=await run();await response.text();assert.equal(authentications-before,1);return response.status;};
+ assert.equal(await once(()=>f.req(p.path+'/turns',p.body)),200);await f.runtime.chat.waitIdle();
+ for(const suffix of ['',`/turns/${p.tid}`,`/turns/${p.tid}/events`])assert.equal(await once(()=>f.req(p.path+suffix)),200);
+ assert.equal(await once(()=>f.req(p.path+'/turns/'+p.tid+'/cancel',{})),200);
+ assert.equal(await once(()=>f.req(p.path+'/turns/'+p.tid+'/retry-busy',{})),409);
+ for(const namespace of ['/catpaw/chat/v1','/catpaw/accepted-work/v1','/catpaw/revisions/v1','/catpaw/revision-work/v1']){
+  assert.equal(await once(()=>f.req(p.path.replace(PREFIX,namespace)+'/turns/'+p.tid)),404);
+ }
+ const ordinaryCID=await f.newConversation(),normal=`/catpaw/chat/v1/scopes/${f.scope.scope_id}/conversations/${ordinaryCID}`;
+ assert.equal(await once(()=>f.req(normal)),200);assert.equal(f.calls.length,1);
+});
+
+test('purpose checks also protect the projected conversation-head and turn-tail storage path',async()=>{
+ const f=await fixture(),p=await f.prepare();await f.sendIntake(p);
+ const transaction=f.repository.transaction.bind(f.repository);let tails=0;
+ f.repository.transaction=action=>transaction(tx=>{
+  // Match the repository port shape: the PostgreSQL head omits purpose; the turn data retains it.
+  tx.chatConversationHead=async(owner,cid)=>{const c=await tx.get(owner,'native-chat-conversations',cid);if(!c)return null;const {id,subject_id,scope_id,state,grant_epoch,revision}=c;return {id,subject_id,scope_id,state,grant_epoch,revision};};
+  tx.chatTurnTail=async(owner,tid,after)=>{tails++;const t=await tx.get(owner,'native-chat-turns',tid);return t?{subject_id:t.subject_id,event_count:t.events.length,data:{...t,events:t.events.filter(e=>e.sequence>after)}}:null;};
+  return action(tx);
+ });
+ assert.equal((await f.req(p.path+'/turns/'+p.tid)).status,200);
+ assert.equal((await f.req(p.path.replace(PREFIX,'/catpaw/chat/v1')+'/turns/'+p.tid)).status,404);
+ assert.equal((await f.req(p.path+'/turns/'+p.tid,undefined,'Bearer foreign-fixture')).status,404);
+ assert.ok(tails>=2);assert.equal(f.calls.length,1);
+});
+
 test('duplicate POST replays original receipt; changed input with same identity is rejected without another provider call',async()=>{
  const f=await fixture(),p=await f.prepare(),first=await f.sendIntake(p);
  const replay=await f.req(p.path+'/turns',p.body);assert.equal(replay.status,200);const result=await replay.json();assert.equal(result.replayed,true);assert.deepEqual(result.turn.events,first.turn.events);assert.equal(result.turn.intake_contract,CONTRACT);
@@ -108,7 +138,7 @@ test('unknown outcomes can only be read; explicit busy retry keeps original iden
 test('normal namespace cannot bypass purpose fences using repeated path separators; foreign operations never mutate the intake',async()=>{
  const f=await fixture(),p=await f.prepare();await f.sendIntake(p);
  for(const normal of [p.path.replace(PREFIX,'/catpaw/chat/v1'),p.path.replace(PREFIX,'/catpaw/chat/v1/'),p.path.replace(PREFIX,'/catpaw//chat/v1')]){
-  for(const [suffix,body] of [['',undefined],['/turns/'+p.tid,undefined],['/turns/'+p.tid+'/events',undefined],['/turns/'+p.tid+'/cancel',{}],['/turns/'+p.tid+'/retry-busy',{}],['/control',{type:'revoke'}]])assert.equal((await f.req(normal+suffix,body)).status,404);
+  for(const [suffix,body] of [['',undefined],['/turns/'+p.tid,undefined],['/turns/'+p.tid+'/events',undefined],['/turns/'+p.tid+'/cancel',{}],['/turns/'+p.tid+'/retry-busy',{}],['/control',{action:'revoke',expected_revision:2,expected_grant_epoch:1}]])assert.equal((await f.req(normal+suffix,body)).status,404);
  }
  for(const [suffix,body] of [['/turns',p.body],['/turns/'+p.tid,undefined],['/turns/'+p.tid+'/events',undefined],['/turns/'+p.tid+'/cancel',{}],['/turns/'+p.tid+'/retry-busy',{}]])assert.equal((await f.req(p.path+suffix,body,'Bearer foreign-fixture')).status,404);
  assert.equal((await purge(f,p,'Bearer foreign-fixture')).status,404);assert.equal((await f.json(await f.req(p.path+'/turns/'+p.tid))).turn.state,'completed');assert.equal(f.calls.length,1);
