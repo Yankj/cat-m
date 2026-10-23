@@ -3,6 +3,7 @@
 // The vision model is NOT exercised here: the image extractor is injected and returns the notice text that a model
 // would read. What is real: HTTP handler, image byte validation, extraction->propose->confirm, PG writes, RLS.
 import test from 'node:test'; import assert from 'node:assert/strict';
+import { runtimeOf } from './support/pg-runtime.mjs';
 import postgres from 'npm:postgres@3.4.7';
 import { createPgFamilyStore } from '../supabase/functions/_shared/family/pg-store.mjs';
 import { createFamilyService } from '../supabase/functions/_shared/family/service.mjs';
@@ -13,7 +14,7 @@ const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAZElEQVR4nO3PUQkAIBT
 const NOTICE = '秋游通知：10月30日（周五）秋游，8:00学校门口集合，请带水壶、帽子；11月2日前交费80元';
 function rig(sql, extractors) {
   const seen = [];
-  const svc = createFamilyService({ store: createPgFamilyStore(sql), now: () => Date.parse('2026-10-23T09:00:00+08:00'),
+  const svc = createFamilyService({ store: createPgFamilyStore(runtimeOf(sql)), now: () => Date.parse('2026-10-23T09:00:00+08:00'),
     extraRoutes: [createCaptureRoute({ extractors: extractors === null ? {} : { image: async ({ image }) => { seen.push(image); return NOTICE; } } })],
     verifyUser: async a => { const m = /^Bearer (.+)$/.exec(a); return m ? { sub: m[1] } : null; } });
   const call = async (who, method, path, body) => { const r = await svc.handle(new Request('https://x/catpaw/family/v1' + path, { method, headers: { authorization: 'Bearer ' + who, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })); return { status: r.status, body: await r.json() }; };

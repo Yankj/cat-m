@@ -3,6 +3,7 @@
 // /auth/v1/.well-known/jwks.json. No GoTrue server runs here, so login itself (password/OTP -> token) is NOT exercised.
 // Run: PGHOST=/tmp PGPORT=55432 PGUSER=postgres bash scripts/pg-all-migrations-local.sh test/family-jwt-pg.test.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
+import { runtimeOf } from './support/pg-runtime.mjs';
 import postgres from 'npm:postgres@3.4.7';
 import { generateKeyPair, exportJWK, SignJWT } from 'npm:jose@6.2.12';
 import { createPgFamilyStore } from '../supabase/functions/_shared/family/pg-store.mjs';
@@ -24,7 +25,7 @@ test('family API with the production JWT verifier: valid session works, actor = 
   try {
     const verifyToken = createSupabaseTokenVerifier({ projectUrl: project, mode: 'test', testJWKS: { keys: [jwk] } });
     // wired exactly like api.mjs: verifyUser = h => verifyToken(h)
-    const svc = createFamilyService({ store: createPgFamilyStore(sql), extraRoutes: [createMemoryRoute()], verifyUser: h => verifyToken(h) });
+    const svc = createFamilyService({ store: createPgFamilyStore(runtimeOf(sql)), extraRoutes: [createMemoryRoute()], verifyUser: h => verifyToken(h) });
     const call = async (auth, method, path, body) => { const r = await svc.handle(new Request('https://x/catpaw/family/v1' + path, { method, headers: { authorization: auth, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })); return { status: r.status, body: await r.json() }; };
     const A = U(), B = U(); await sql`insert into auth.users(id) values(${A}),(${B})`;
     const ta = 'Bearer ' + await token(A), tb = 'Bearer ' + await token(B);

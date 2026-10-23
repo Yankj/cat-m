@@ -2,6 +2,7 @@
 // agent-memory changes (tombstone operation_id / clear_generations from 20261023100100) that ship regardless of the flag.
 // Run: PGHOST=/tmp PGPORT=55432 PGUSER=postgres bash scripts/pg-all-migrations-local.sh test/family-flag-off-pg.test.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
+import { runtimeOf } from './support/pg-runtime.mjs';
 import postgres from 'npm:postgres@3.4.7';
 import { createPgAgentMemoryStore } from '../supabase/functions/_shared/agent-memory/pg-store.mjs';
 const url = Deno.env.get('CATPAW_PG_TEST_URL');
@@ -15,7 +16,7 @@ test('flag off still needs 20261023100100: agent-memory save / clear work after 
     const u = crypto.randomUUID(); await sql`insert into auth.users(id) values(${u})`;
     const row = () => ({ id: crypto.randomUUID(), kind: 'fact', content: '喜欢猫', embedding: null, pinned: false, expires_at: null, source_conversation_id: null, source_turn_id: null,
       operation_id: crypto.randomUUID(), created_by: 'user', undo_token_hash: null, undo_expires_at: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
-    const s = createPgAgentMemoryStore(sql);
+    const s = createPgAgentMemoryStore(runtimeOf(sql));   // as the API runtime role (B1)
     assert.ok((await s.insert(u, row())).row, 'save works with 100100 applied');
     await s.removeAll(u); assert.equal(await s.clearGeneration(u), 1, 'clear works with 100100 applied');
     // simulate the pre-100100 schema inside a rolled-back transaction
