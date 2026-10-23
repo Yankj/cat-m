@@ -1,6 +1,7 @@
 // Household memory recall (v0.4). Candidates are already filtered in SQL by owner, household, status, validity window,
 // subject and visibility; ranking here is lexical (no embedding provider; new compute budget is zero).
 import { FamilyError, PROTOCOL, UUID_RE } from './contract.mjs';
+import { errCode } from '../proactive/safe-log.mjs';
 
 const STOP = new Set('的了是在和与及也都就把被给对向从为吗呢吧啊呀哦请帮我们你他她它这那一个些什么怎么哪里还有没有'.split(''));
 const norm = s => String(s ?? '').toLowerCase().replace(/虚构(儿童|角色|成人)?[甲乙丙丁]?/g, ' ').replace(/[\s\p{P}\p{S}]+/gu, ' ');
@@ -120,7 +121,7 @@ export async function runReminderTick(store, nowIso, { log = () => {} } = {}) {
   const claims = await store.claimDueReminders(nowIso, 50); let fired = 0, skipped = 0;
   for (const c of claims) {
     try { if (await store.fireReminder(c.reminder_id, c.claimed_at)) fired++; else skipped++; }
-    catch (e) { skipped++; log('family_reminder_fire_failed', e?.code ?? e?.name ?? 'error'); await store.releaseReminder(c.reminder_id, c.claimed_at).catch(() => {}); }
+    catch (e) { skipped++; log('family_reminder_fire_failed', errCode(e)); await store.releaseReminder(c.reminder_id, c.claimed_at).catch(() => {}); }
   }
   return { claimed: claims.length, fired, skipped };
 }
