@@ -354,7 +354,7 @@ CATPAW_DENO_BIN=<Deno路径> CATPAW_PUBLIC_NPM_CACHE=<公开cache目录> sh scri
 
 - 分支：不在 `main` 直接开发，按 [分支规范](docs/development/branch-management.md) 用短分支；`.githooks` 提供本地守卫。
 - 部署：Edge 函数与数据库迁移只在用户明确批准后部署，步骤见 [部署清单](services/edge/docs/deploy-checklist.md)。
-- CI：执行范围见 [ci.yml](.github/workflows/ci.yml)，按 PR 变更路径选择任务；每次以对应 SHA 的终态和实际执行日志为准。当前结果与缺失验收统一见[主计划](docs/status/master-plan.md)，PR 仍需附适用的本地检查记录。
+- CI：[产品检查](.github/workflows/ci.yml)按 PR 变更路径选择任务；[仓库完整性检查](.github/workflows/repository-integrity.yml)验证目录、冻结来源、合同引用、敏感扫描与本地 hook 回归。官网已迁出，原网站构建 workflow 停用。每次以对应 SHA 的终态和实际执行日志为准，当前结果与缺失验收统一见[主计划](docs/status/master-plan.md)。CI 检查不等于服务器已强制合并保护。
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
 
