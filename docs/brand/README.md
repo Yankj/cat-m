@@ -54,6 +54,8 @@
 | [`wordmark-dark.svg`](wordmark-dark.svg) / [`png/wordmark-dark.png`](png/wordmark-dark.png) | 深色背景字标 |
 | [`lockup.svg`](lockup.svg) / [`png/lockup.png`](png/lockup.png) | 形象 + 字标 + 中文口号组合 |
 
+![brand sheet](png/brand-sheet.png)
+
 ![lockup](png/lockup.png)
 
 使用规则：字标周围留出至少一个 i 的高度的空白；不拉伸、不描边、不加阴影；不把字标改成大写。PNG 由 SVG 用无头 Chrome 导出。
