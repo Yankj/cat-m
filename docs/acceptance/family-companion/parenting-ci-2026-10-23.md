@@ -59,6 +59,27 @@ PR workflow默认checkout GitHub生成的合并候选：初次为 `00d333a7a5b33
 
 本次提交的预期筛选为 **57项模块测试 + 3项UI测试**，新增部分提交时尚未SDK编译/运行；CI定向步骤设20分钟上限，不将数量或静态检查写成通过。XCTest截图以 `Synthetic-Parenting-M1-*` 附件留在runner xcresult；未新增任何上传，runner结束后的持久截图获取仍缺失。无真机、真实模型、PG多实例、系统提醒或线上验收，后端仍未部署；M2暂停。
 
+## M1 scope 与冷重开接续候选
+
+563f07c 的构建和 Edge job 已完成成功，原生模块与 UI 步骤尚在运行；不得把 57+3 的筛选数量当作通过结果。后续候选仍只修 M1，不进入 M2。
+
+独立复审发现默认配置不固定 scope 时，已验证账号可能先打开临时分区，resolver 返回 canonical scope 后再换库；若育儿账本先允许写入，刚保存的数据将从新首页消失。现在仅实际 scope admission 或带 `canonicalScope: true` 的已确认本机 receipt 可以绑定育儿模型，账号验证及固定 epoch 屏障仍必须满足。临时聊天只供原有内部恢复，不再保存 receipt，不获得育儿写入能力。旧三字段 receipt 继续解码并保留原目录，但即使它的 UUID 不像 deterministic provisional scope，也不能证明旧配置 scope 已确认；须等一次实际 resolver 成功。新增标记为可选本机元数据，旧 reader 忽略它，内部安装、存储键和 wire 字段不改。已确认 receipt 在账号验证成功但 scope discovery 暂不可用时仍可编辑本机账本，不以 `networkAdmissionAllowed` 一刀切阻断。此前写入临时目录的数据保留，没有自动跨 scope 迁移。
+
+canonical 打开跨异步磁盘与 detach 时由独立 attempt UUID 占位，迟到 receipt/provisional 不能抢走空槽；取消、账号变更和退出同步失效该占位，旧 attempt 的 defer 不能清除新 attempt。账本等待页增加显式重试，调用既有 foreground/重试机制。
+
+新增3项真实 Auth composition 回归（原1项保留）：无固定 scope 且 resolver 挂起时不暴露账本、解析后只在 canonical 库保存；明确 canonical receipt 在 scope 服务不可用时读写旧账本；迟到旧 receipt 在 canonical 打开窗口被拒绝、原目录保留且新库可写。使用真实 NativeAuthApplicationModel / SwiftData / 生产 presentation，Auth 与 resolver 为合成端口。筛选预期现在为60项模块测试；未运行的新项不能借前个 SHA 的绿色结论。
+
+另有独立待提交的 UI 增强：原有成功旅程增加冷重开时原 arrangement UUID、可见时间、completed 状态、完成记录 UUID 及 goal 关联断言。失败旅程改为真正 terminate/launch，保持同一隔离 store UUID，验证加密 cleanup pending 仍在且阻止有效新原话请求，再由显式清理恢复；仅移除下一进程的合成一次性 transport 失败，不改保存字节。它仍不覆盖真实 Auth/model。
+
+| M1 路径 | 当前证据边界 |
+|---|---|
+| 保存/确认/完成/记录及目标关联 | 产品模块已有回归；增强 UI 候选待实际运行，不以定义当通过 |
+| planned 安排取消后冷重开 | 模块状态机有覆盖；原3 UI没有此旅程，待补最小真实交互或设备验证 |
+| 独立观察新增/更正/删除及冷读 | 模块 CRUD 有覆盖；原3 UI未覆盖，不冒充完成记录旅程已测独立观察 |
+| 保存失败保留表单并重试 | 模块有持久化失败回归；当前UI没有磁盘故障注入结果，待设备/专项验证 |
+| unknown 中断后按原ID核对 | 控制器有mock回归；当前UI fixture.observe明确拒绝unresolved，不具备成功核对证据 |
+| 深色大字号 | 原3 UI仅 accessibility5 冒烟，不能替代全页面可读性或真机验收 |
+
 ## 接续测试范围
 
 d5f739e及之前的CI定向脚本只选择 `catTests/ParentingWorkspaceTests`、`ParentingIntakeTests`、`ParentingInlineIntakeTests` 三类合成用例。使用已安装iPhone runtime创建自己的空白模拟器，结束只删除本次创建的设备；存在Local.xcconfig时拒绝执行，移除四个backend环境配置及继承fixture/connection/simulator-child注入，不安装依赖或下载runtime。测试使用临时文件和mock transport，无真实儿童数据、真实模型、生产Keychain或数据库。空Debug配置使项目Auth/后端启动被guard拦住；现有AppDelegate仍有系统APNs注册/BG任务注册，未测量全进程或系统网络次数，不声称全进程零网络。

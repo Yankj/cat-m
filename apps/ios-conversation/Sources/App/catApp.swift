@@ -234,6 +234,10 @@ import AppIntents
                 VStack(spacing: 20) {
                     BrandMark(size: 56, style: .fill)
                     Text(ui("正在打开你的本机育儿记录…")).foregroundStyle(catColors.secondary)
+                    Button(ui("重试")) { Task { await auth.foreground() } }
+                        .buttonStyle(.bordered)
+                        .disabled(auth.actionBusy || auth.state.phase == .restoring || auth.state.phase == .signingIn)
+                        .accessibilityIdentifier("parenting.account.retry")
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(catColors.background.ignoresSafeArea())
                     .overlay(alignment: .top) { LaunchStatusOverlay(auth: auth) }
