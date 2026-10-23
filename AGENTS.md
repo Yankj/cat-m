@@ -1,6 +1,6 @@
 # mimi workspace instructions
 
-- Brand name is lowercase `cat`. See [brand compatibility](docs/development/cat-brand-migration.md) before changing installation IDs, storage or wire names. Historical evidence and upstream copyright retain their original identity.
+- Display brand is lowercase `mimi` / `小咪`. Preserve the stable internal names in [internal identifiers](docs/internal-identifiers.md); see [brand compatibility](docs/development/cat-brand-migration.md) before changing installation IDs, storage or wire names. Historical evidence and upstream copyright retain their original identity.
 
 ## Quick context (human + AI)
 

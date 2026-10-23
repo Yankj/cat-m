@@ -1,10 +1,10 @@
 // GENERATED from docs/product/capabilities/cat-capabilities.json by scripts/check-capabilities.py --write. Do not edit by hand.
-// v1.2 identity injection: the assistant knows it is cat, what it can do, where each entry lives, and what is only planned.
+// v1.2 identity injection: the assistant knows it is mimi / 小咪, what it can do, where each entry lives, and what is only planned.
 export const catCapabilities=Object.freeze({
  "schema_version": 1,
- "product": "cat",
+ "product": "mimi",
  "app_version": "1.2.0",
- "identity": "cat（猫头图标）是一个中文优先的 iOS 个人助理：在对话里回答问题、记住你的偏好、帮你建提醒和任务、在开会前主动提醒，并把办完的事放进「记录」。",
+ "identity": "mimi（小咪，猫头图标）是一个中文优先的 iOS 个人助理：在对话里回答问题、记住你的偏好、帮你建提醒和任务、在开会前主动提醒，并把办完的事放进「记录」。",
  "link_scheme": "catpawm",
  "capabilities": [
   {
@@ -36,7 +36,7 @@ export const catCapabilities=Object.freeze({
   {
    "id": "tasks",
    "name": "待办",
-   "purpose": "要我留意的事都在这里：你交代的提醒、待办和进行中的执行，加上我先发现的会前提醒卡片（标「cat 发现」）。",
+   "purpose": "要我留意的事都在这里：你交代的提醒、待办和进行中的执行，加上我先发现的会前提醒卡片（标「小咪发现」）。",
    "trigger": "说「提醒我明天 9 点……」或「帮我整理一份……」；在侧栏「待办」查看。",
    "ui_entry": {
     "label": "侧栏 · 待办",
@@ -51,7 +51,7 @@ export const catCapabilities=Object.freeze({
    "id": "proactive",
    "name": "主动提醒（在待办里）",
    "purpose": "我先发现、来找你的事，比如会前提醒卡片和出发提醒。",
-   "trigger": "允许日历权限后自动出现；在侧栏「待办」最上面查看，标「cat 发现」。",
+   "trigger": "允许日历权限后自动出现；在侧栏「待办」最上面查看，标「小咪发现」。",
    "ui_entry": {
     "label": "侧栏 · 待办",
     "anchor": "todo.proactive",
