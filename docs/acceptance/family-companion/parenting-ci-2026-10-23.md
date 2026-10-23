@@ -128,10 +128,32 @@ M1尚未签收、M2暂停。仍无真机、真实模型、生产Auth/PG、系统
 
 本机静态项目239源/4target、capabilities13、品牌兼容472和diff检查通过。敏感扫描无新增项，既有图片与NativeOAuth合成凭据两项待审不改规则；layout/frozen仍是此前独立治理范围的迁站描述及历史ReadoutPolicy hash错误。本次未导入#124。M1未签收、M2暂停；真机、真实模型/生产Auth/PG、多实例、通知和持久截图交付仍未验证，未部署或上传。
 
-## 接续测试范围
+## 7a1a31f：主流程与六条UI通过，最后一条被整组预算截断
+
+[7a1a31f0adb8989cd7076e1308e784e52e5bac73 / CI40019861647](https://github.com/Yankj/mimi/actions/runs/40019861647) 已终态：changes、Edge SUCCESS；[iOS job120641357588](https://github.com/Yankj/mimi/actions/runs/40019861647/job/120641357588) FAILURE。签名build-for-testing、产物guard和**69模块/0失败**通过，模块13.686秒（壁钟16.697秒）。Edge913总数/911通过/0失败/2跳过，保留12个既有隔离文件，94.596秒。
+
+| 实际UI方法 | 终态 |
+|---|---|
+| dark / accessibility5 / 长输入 / 放弃无草稿 | PASS，295.641秒 |
+| 独立观察新增 / 更正 / 原文与更正时间 / 原ID与goal冷读 / 删除再冷读 | PASS，350.772秒 |
+| 原位AI许可 / 候选未自动应用 / 显式采用编辑 / 时间 / 待确认 / 确认 / 调整 / 完成 / 目标回顾 / 原UUID时间状态记录冷读 | PASS，696.413秒 |
+| planned取消 / 同UUID时间状态冷读 / 无完成记录与无提醒文案 | PASS，266.988秒 |
+| 准备失败 / 退出 / pending冷恢复禁发 / 明确清理 / 新整理 / 取消无安排 | PASS，360.708秒 |
+| 真实SwiftData提交失败 / rollback / 输入保留 / 原表单重试 / 冷读唯一孩子 | PASS，57.273秒 |
+| unknown原请求回查 / 候选 / 采用编辑 / 最后原话核对与取消 | 已启动，未到终态；被45分钟整组上限截断，不能计通过或略过 |
+
+前6条执行时间合计2027.795秒。最后一条不是同处重复卡死：21:21:54显式点击原请求核对后，已得到严格解析的候选；随后验证候选未自动应用、原话保留、仍不可保存，21:24:12显式采用、21:24:36实际编辑标题，21:24:47在最后一次返回上方原话检查时拖动，21:24:48 Actions报告45分钟超时。无该方法的失败断言或结束事件，也没有完整7 UI聚合结果和xcodebuild正常结束结果。不能把6条通过、unknown已有局部证据或69模块通过写成整组通过。
+
+下一候选不扩大测试范围或产品功能，仅减少重复AX读取并修正整组预算：每次reveal迭代只采一次app/nav/tab/input边界，传给候选选择、viewport和drag，下一次拖动后重采；toolbar与普通目标的中心判断、候选优先级/回退、raw frame归一化及手势不变。不采用isHittable快速放行，不跨输入/弹窗/冷启缓存；15秒条件等待、16次拖动及全部全文/身份/去重/冷读断言保留。原日志中成功旅程的tearDown也生成名为failure的截图，改为诚实的end-of-case诊断名称；截图不是方法成败依据，仍不上传。
+
+45分钟预算原先由失败旅程估算，未覆盖这次实际完整成功路径。已观察到45分钟仍有明确末尾动作，加上结束导出及运行波动，整组上限改60分钟；不延长单次条件或静默重试，不增加macOS并发job、依赖、artifact上传、真实服务调用或跳过项。新SHA仍须完整重跑同一69模块+7 UI，不能借7a的6条绿色代替其结果。
+
+M1尚未签收，M2未开始；设备与线上状态仍是未验证、后端未部署。独立治理#124未整合。
+
+## 早期接续测试范围（截至d5f739e）
 
 d5f739e及之前的CI定向脚本只选择 `catTests/ParentingWorkspaceTests`、`ParentingIntakeTests`、`ParentingInlineIntakeTests` 三类合成用例。使用已安装iPhone runtime创建自己的空白模拟器，结束只删除本次创建的设备；存在Local.xcconfig时拒绝执行，移除四个backend环境配置及继承fixture/connection/simulator-child注入，不安装依赖或下载runtime。测试使用临时文件和mock transport，无真实儿童数据、真实模型、生产Keychain或数据库。空Debug配置使项目Auth/后端启动被guard拦住；现有AppDelegate仍有系统APNs注册/BG任务注册，未测量全进程或系统网络次数，不声称全进程零网络。
 
-`build-for-testing`只编译，定向XCTest步骤运行后才可报告其实际执行数量。新测试script和workflow的shell/源码检查不能代替SDK执行；此刻仍无原生UI、真机、真实模型、PG多实例、系统通知或线上后端验收。
+`build-for-testing`只编译，定向XCTest步骤运行后才可报告其实际执行数量。新测试script和workflow的shell/源码检查不能代替SDK执行；截至d5f739e尚无原生UI验收；后续原生UI结果见上方固定SHA记录，真机、真实模型、PG多实例、系统通知或线上后端验收仍缺失。
 
 远端Edge job沿现有Node22脚本，包含既有quarantine并安装既定公开依赖；没有本机offline-prelude网络屏障，不能把它改称“与本机70项相同的全部离线测试”。其结果按该job实际分母/失败另列；不据绿色Node结果推断数据库或原生通过。
