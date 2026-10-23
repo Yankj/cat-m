@@ -1045,17 +1045,6 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
                 }
                 if !validReference { ParentingFormIssue(message: "这条安排已变更或删除，请关闭此页后查看最新内容。") }
                 if let saveError { ParentingFormIssue(message: saveError); ParentingReloadButton(model: model) }
-                Section {
-                    Button { save() } label: {
-                        HStack {
-                            if saving { ProgressView() }
-                            Text(ui(saving ? "正在保存" : arrangement == nil ? "保存为待确认" : "保存调整"))
-                        }.frame(maxWidth: .infinity, minHeight: 44)
-                    }
-                    .buttonStyle(ParentingPrimaryButtonStyle())
-                    .disabled(!valid || saving || model.busy || intake.busy || intakeCallID != nil)
-                    .accessibilityIdentifier("parenting.arrangement.save")
-                }.listRowBackground(Color.clear)
             }
             .scrollContentBackground(.hidden).background(catColors.background)
             .foregroundStyle(catColors.ink).scrollDismissesKeyboard(.interactively)
@@ -1068,6 +1057,15 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
                         if hasUnsavedChanges { discardConfirmation = true } else { dismiss() }
                     }.disabled(saving)
                     .accessibilityIdentifier("parenting.arrangement.cancel")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { save() } label: {
+                        if saving { ProgressView() }
+                        else { Text(ui(arrangement == nil ? "保存草稿" : "保存")) }
+                    }
+                    .disabled(!valid || saving || model.busy || intake.busy || intakeCallID != nil)
+                    .accessibilityLabel(ui(saving ? "正在保存" : arrangement == nil ? "保存为待确认" : "保存调整"))
+                    .accessibilityIdentifier("parenting.arrangement.save")
                 }
             }
             .interactiveDismissDisabled(saving || hasUnsavedChanges)
@@ -1600,22 +1598,23 @@ private struct ParentingRecoveredInput {
                 }
                 if !validReference { ParentingFormIssue(message: "原记录或安排已变更，请关闭此页后查看最新内容。") }
                 if let saveError { ParentingFormIssue(message: saveError); ParentingReloadButton(model: model) }
-                Section {
-                    Button { save() } label: {
-                        HStack {
-                            if saving { ProgressView() }
-                            Text(ui(saving ? "正在保存" : completion ? "确认完成并保存记录" : "保存记录"))
-                        }.frame(maxWidth: .infinity, minHeight: 44)
-                    }.buttonStyle(ParentingPrimaryButtonStyle())
-                        .disabled(!valid || saving || model.busy)
-                        .accessibilityIdentifier("parenting.record.save")
-                }.listRowBackground(Color.clear)
             }
             .scrollContentBackground(.hidden).background(catColors.background)
             .foregroundStyle(catColors.ink).scrollDismissesKeyboard(.interactively)
             .disabled(saving || model.busy)
             .navigationTitle(ui(title)).navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(ui("取消")) { dismiss() }.disabled(saving) } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button(ui("取消")) { dismiss() }.disabled(saving) }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { save() } label: {
+                        if saving { ProgressView() }
+                        else { Text(ui(completion ? "确认完成" : "保存")) }
+                    }
+                    .disabled(!valid || saving || model.busy)
+                    .accessibilityLabel(ui(saving ? "正在保存" : completion ? "确认完成并保存记录" : "保存记录"))
+                    .accessibilityIdentifier("parenting.record.save")
+                }
+            }
             .interactiveDismissDisabled(saving)
         }.tint(catColors.actionText)
     }

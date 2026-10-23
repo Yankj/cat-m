@@ -94,6 +94,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
         capture(app, "success-today-confirmed-and-adjusted")
         tap(app, complete)
         enter(app, id: "parenting.record.text", text: note)
+        assertPinnedAction(app, id: "parenting.record.save")
         tap(app, app.buttons["parenting.record.save"])
         wait { !self.inputExists(app, "parenting.record.text") }
         XCTAssertFalse(app.buttons["parenting.complete." + arrangementID].exists)
@@ -226,7 +227,8 @@ final class ParentingWorkspaceUITests: XCTestCase {
         capture(app, "dark-accessibility5-empty")
         addChild(app, name: "Synthetic Large Text Child")
         tap(app, app.buttons["parenting.addArrangement"])
-        enter(app, id: "parenting.arrangement.source", text: "Synthetic large text form remains editable and can be discarded.")
+        enter(app, id: "parenting.arrangement.source", text: String(repeating: "Synthetic long text remains editable and can be discarded. ", count: 8))
+        XCTAssertTrue(app.keyboards.firstMatch.exists, app.debugDescription)
         assertSaveDisabled(app)
         capture(app, "dark-accessibility5-real-editor")
         closeUnsavedArrangement(app)
@@ -292,6 +294,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
         tap(app, goalButton)
         tap(app, app.buttons["parenting.addObservation.forGoal"])
         enter(app, id: "parenting.record.text", text: original)
+        assertPinnedAction(app, id: "parenting.record.save")
         tap(app, app.buttons["parenting.record.save"])
         wait { !self.inputExists(app, "parenting.record.text") }
         let body = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.record.body.")).firstMatch
@@ -310,6 +313,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
         editor.typeText(" Corrected after checking.")
         let corrected = editor.value as? String ?? ""
         XCTAssertTrue(corrected != original && corrected.contains("Corrected after checking."))
+        assertPinnedAction(app, id: "parenting.record.save")
         tap(app, app.buttons["parenting.record.save"])
         wait { !self.inputExists(app, "parenting.record.text") }
         reveal(app, app.staticTexts["parenting.record.body." + recordID])
@@ -500,9 +504,18 @@ final class ParentingWorkspaceUITests: XCTestCase {
     }
     private func assertSaveDisabled(_ app: XCUIApplication) {
         let save = app.buttons["parenting.arrangement.save"]
+        assertPinnedAction(app, id: "parenting.arrangement.save")
         reveal(app, save)
         XCTAssertTrue(save.exists, app.debugDescription)
         XCTAssertFalse(save.isEnabled, "An unreviewed or timeless candidate cannot become a saved arrangement.")
+    }
+    private func assertPinnedAction(_ app: XCUIApplication, id: String) {
+        let button = app.navigationBars.buttons[id]
+        XCTAssertTrue(button.exists, "The sole save action must remain in the existing navigation bar.\n" + app.debugDescription)
+        let rect = button.frame
+        XCTAssertFalse(rect.isEmpty, app.debugDescription)
+        XCTAssertTrue(app.frame.contains(CGPoint(x: rect.midX, y: rect.midY)), app.debugDescription)
+        XCTAssertLessThan(rect.maxY, inputPanelTop(app), "The action must stay above the keyboard and its input accessories.")
     }
     private func closeUnsavedArrangement(_ app: XCUIApplication) {
         tap(app, app.buttons["parenting.arrangement.cancel"])
@@ -520,7 +533,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
     }
     private func assertCancelledArrangement(_ app: XCUIApplication, arrangementID: String, title: String, time: String) -> String {
         // Each call starts with the actual cancelled-history disclosure collapsed, including after a cold launch.
-        tap(app, element(app, "parenting.cancelledHistory"))
+        tapDisclosure(app, id: "parenting.cancelledHistory")
         let card = element(app, "parenting.arrangement." + arrangementID)
         reveal(app, card)
         XCTAssertTrue(card.exists && card.staticTexts[title].exists, app.debugDescription)
@@ -535,7 +548,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
         return state.label
     }
     private func observationSourceAndEditTime(_ app: XCUIApplication, recordID: String, original: String) -> String {
-        tap(app, element(app, "parenting.record.provenance." + recordID))
+        tapDisclosure(app, id: "parenting.record.provenance." + recordID)
         let source = app.staticTexts["parenting.record.source." + recordID]
         reveal(app, source)
         XCTAssertEqual(source.label, original, "Correcting the visible body must preserve the parent's original observation.")
@@ -546,12 +559,20 @@ final class ParentingWorkspaceUITests: XCTestCase {
     }
     private func showCompletedArrangement(_ app: XCUIApplication, arrangementID: String) -> XCUIElement {
         // Both calls start from a fresh, collapsed history (after completion, then after a cold launch).
-        tap(app, element(app, "parenting.completedHistory"))
+        tapDisclosure(app, id: "parenting.completedHistory")
         let card = element(app, "parenting.arrangement." + arrangementID)
         reveal(app, card)
         XCTAssertTrue(card.exists, "The original arrangement UUID must remain in completed history.")
         XCTAssertTrue(element(app, "parenting.arrangement.completed." + arrangementID).exists)
         return card
+    }
+    private func tapDisclosure(_ app: XCUIApplication, id: String) {
+        let group = element(app, id)
+        reveal(app, group)
+        // contain produces an Other group around the actual Disclosure button on the current runtime.
+        let button = group.elementType == .button ? group : group.buttons.firstMatch
+        XCTAssertTrue(button.exists, app.debugDescription)
+        tap(app, button)
     }
     private func arrangementTime(_ app: XCUIApplication, arrangementID: String) -> String {
         let time = app.staticTexts["parenting.arrangement.time." + arrangementID]
@@ -606,20 +627,24 @@ final class ParentingWorkspaceUITests: XCTestCase {
     }
     /// Visibility is separate from tappability: disabled Save and noninteractive groups must remain inspectable.
     private func reveal(_ app: XCUIApplication, _ target: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
-        for attempt in 0..<16 {
-            let scroll = scrollingElement(app)
-            let viewport = visibleScrollFrame(app, scroll: scroll)
+        for _ in 0..<16 {
             var targetFrame: CGRect?
             if target.exists {
                 let rect = target.frame
-                targetFrame = rect
-                let toolbar = app.navigationBars.allElementsBoundByIndex.contains { bar in
-                    bar.isHittable && bar.frame.contains(CGPoint(x: rect.midX, y: rect.midY))
+                if !rect.isEmpty {
+                    targetFrame = rect
+                    let toolbar = app.navigationBars.allElementsBoundByIndex.contains { bar in
+                        bar.isHittable && bar.frame.contains(CGPoint(x: rect.midX, y: rect.midY))
+                    }
+                    if toolbar { return }
                 }
-                if !rect.isEmpty && (toolbar || viewport.contains(CGPoint(x: rect.midX, y: rect.midY))) { return }
             }
-            // Form rows can be virtualized. Search both directions rather than repeatedly pushing into one end.
-            let towardBottom = targetFrame.map { $0.midY >= viewport.minY } ?? (attempt < 8)
+            let scroll = scrollingElement(app)
+            let viewport = visibleScrollFrame(app, scroll: scroll)
+            if let rect = targetFrame, viewport.contains(CGPoint(x: rect.midX, y: rect.midY)) { return }
+            // Missing lower Form rows stay in the forward search; input() explicitly returns upper fields to the header.
+            // Do not reverse blindly halfway through and undo the useful scrolls before a virtual row appears.
+            let towardBottom = targetFrame.map { $0.midY >= viewport.minY } ?? true
             drag(app, towardBottom: towardBottom, scroll: scroll)
         }
         // Reading identifier/frame on a nonexistent target throws before XCTest can print our useful hierarchy.
@@ -649,22 +674,38 @@ final class ParentingWorkspaceUITests: XCTestCase {
         let frame = scroll.frame.intersection(app.frame)
         let navigationBottom = app.navigationBars.allElementsBoundByIndex.filter { $0.isHittable }
             .map { $0.frame.maxY }.max() ?? frame.minY
-        let keyboard = app.keyboards.firstMatch
         let tabTop = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.tab."))
             .allElementsBoundByIndex.filter { $0.isHittable }.map { $0.frame.minY }.min() ?? frame.maxY
         let top = max(frame.minY, navigationBottom) + 12
-        let bottom = min(frame.maxY, tabTop, keyboard.exists ? keyboard.frame.minY : frame.maxY) - 12
+        let bottom = min(frame.maxY, tabTop, inputPanelTop(app)) - 12
         return CGRect(x: frame.minX + 12, y: top, width: max(0, frame.width - 24), height: max(0, bottom - top))
+    }
+    private func inputPanelTop(_ app: XCUIApplication) -> CGFloat {
+        let keyboard = app.keyboards.firstMatch
+        var top = keyboard.exists ? keyboard.frame.minY : app.frame.maxY
+        let accessories = app.otherElements.matching(NSPredicate(format: "identifier == %@ OR identifier == %@", "inputView", "SystemInputAssistantView"))
+        for accessory in accessories.allElementsBoundByIndex where accessory.exists {
+            let rect = accessory.frame.intersection(app.frame)
+            if !rect.isEmpty { top = min(top, rect.minY) }
+        }
+        return top
     }
     private func drag(_ app: XCUIApplication, towardBottom: Bool, scroll supplied: XCUIElement? = nil) {
         let scroll = supplied ?? scrollingElement(app)
         let frame = scroll.frame
         let viewport = visibleScrollFrame(app, scroll: scroll)
         guard viewport.height > 80, frame.width > 0, frame.height > 0 else { return }
-        // Gesture inside the actual Form/ScrollView, away from the presentation's inert outside gutter.
-        let x = viewport.minX + viewport.width * 0.85
-        let startY = towardBottom ? viewport.maxY - 10 : viewport.minY + 10
-        let endY = towardBottom ? viewport.minY + 10 : viewport.maxY - 10
+        // The observed Form cell starts at x20, its TextEditor at x40. Pan inside the cell's padding,
+        // outside nested text/calendar scrollers, and away from the bottom safe area and input accessories.
+        var x = viewport.minX + viewport.width * 0.05
+        let cell = scroll.cells.firstMatch
+        if cell.exists, !cell.frame.isEmpty {
+            x = min(viewport.maxX - 2, max(viewport.minX + 2, cell.frame.minX + 10))
+        }
+        let upper = viewport.minY + viewport.height * 0.2
+        let lower = viewport.minY + viewport.height * 0.8
+        let startY = towardBottom ? lower : upper
+        let endY = towardBottom ? upper : lower
         let start = scroll.coordinate(withNormalizedOffset: .init(dx: (x - frame.minX) / frame.width, dy: (startY - frame.minY) / frame.height))
         let end = scroll.coordinate(withNormalizedOffset: .init(dx: (x - frame.minX) / frame.width, dy: (endY - frame.minY) / frame.height))
         start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.2)
