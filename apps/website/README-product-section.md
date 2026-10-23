@@ -3,7 +3,7 @@
 
 **先你一步，把事办妥。** 一个住在 iPhone 里的贴心助理。记住你的偏好，在合适的时候提醒你，确认后把事情办好。
 
-[浏览官网](https://catpaw-product.kunjie-yan.chatgpt.site/) · [观看产品视频](https://catpaw-product.kunjie-yan.chatgpt.site/#film) · [25 页产品介绍](https://catpaw-product.kunjie-yan.chatgpt.site/assets/catpaw-product-deck.pdf) · [安全与隐私](https://catpaw-product.kunjie-yan.chatgpt.site/trust.html) · [技术设计](https://catpaw-product.kunjie-yan.chatgpt.site/technology.html)
+官网源码见本目录；公网站点待部署（计划挂到公司域名）。本地可 `npm run build` 预览。
 
 - **主动**：到点之前，先来找你。
 - **有记忆**：记住偏好，也真正用上。

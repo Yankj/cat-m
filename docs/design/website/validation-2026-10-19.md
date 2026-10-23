@@ -8,7 +8,7 @@
 - 原始视频、25 页 PDF 及图片的来源与 SHA256：`apps/website/ASSETS.md`。
 - Sites 源码提交：`bdb9744c4e05e2ca7d55b2c264634b2511d46693`。
 - 部署 ID：`appgdep_6ad587972e588191a833aa83fbce5aa9`，原生部署回执为 `succeeded`。
-- 地址：https://catpaw-product.kunjie-yan.chatgpt.site 。本次保持站点默认的所有者私有访问；未切换公开访问。
+- 地址：历史私有预览站点已下线；当前以仓库内 `apps/website` 为准，公网域名待部署。本次验证时站点为所有者私有访问，未切换公开访问。
 
 ## 验证结果
 

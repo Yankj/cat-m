@@ -62,7 +62,7 @@
 
 **先你一步，把事办妥。** 一个住在 iPhone 里的贴心助理。记住你的偏好，在合适的时候提醒你，确认后把事情办好。
 
-[浏览官网](https://catpaw-product.kunjie-yan.chatgpt.site/) · [观看产品视频](https://catpaw-product.kunjie-yan.chatgpt.site/#film) · [25 页产品介绍](https://catpaw-product.kunjie-yan.chatgpt.site/assets/catpaw-product-deck.pdf) · [安全与隐私](https://catpaw-product.kunjie-yan.chatgpt.site/trust.html) · [技术设计](https://catpaw-product.kunjie-yan.chatgpt.site/technology.html)
+官网源码见 [apps/website](apps/website)；公网站点待部署（计划挂到公司域名）。本地可 `cd apps/website && npm run build` 预览。
 
 - **主动**：到点之前，先来找你。
 - **有记忆**：记住偏好，也真正用上。
@@ -81,7 +81,7 @@
 - **人在回路**：任何会改变外部世界的动作都先以审批卡片呈现，确认后才执行；结果未知时按原决定核对，不重复执行。
 - **账号隔离、可恢复**：会话、任务、成果与账号绑定；切换账号时自动停放并在重新登录时恢复，网络中断后按原 turn 续上。
 
-本仓库同时是美团 CatPaw 面试大作业的交付仓：架构文档、可运行 App、后端源码、README 与演示材料。
+本仓库包含产品架构文档、可运行的 iOS App、后端源码与演示材料。
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
 
