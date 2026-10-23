@@ -60,7 +60,16 @@ export class ChatService {
     check(UUID.test(cid),422,'parenting_intake_schema_invalid');const {owner,principal}=await this.scoped(auth,scopeID);
     const removed=await this.repository.transaction(async tx=>{
       await this.integration?.lockScope?.(tx,scopeID);await tx.lock(owner,'native-chat-conversations',cid);
-      const c=await this.conversation(tx,owner,cid,principal.subject_id,scopeID);check(c.intake_contract===PARENTING_INTAKE_CONTRACT,404,'not_found');
+      let c=await tx.get(owner,'native-chat-conversations',cid);
+      if(!c){
+        // A failed/unknown create still needs an authenticated deletion receipt. Reserve this identity
+        // with insert-if-absent: an older creator may not participate in the advisory lock protocol.
+        const tombstone={id:cid,subject_id:principal.subject_id,scope_id:scopeID,intake_contract:PARENTING_INTAKE_CONTRACT,intake_purged:true,revision:1,grant_epoch:1,state:'revoked',policy:LOCAL_POLICY,messages:[],model_messages:[],model_message_meta:[],last_turn_id:null,created_at:iso()};
+        const inserted=await tx.insertIfAbsent(owner,'native-chat-conversations',tombstone);
+        if(inserted)return {already_purged:false,turn_ids:[]};
+        c=await tx.get(owner,'native-chat-conversations',cid);
+      }
+      check(c&&c.subject_id===principal.subject_id&&c.scope_id===scopeID&&c.intake_contract===PARENTING_INTAKE_CONTRACT,404,'not_found');
       if(c.intake_purged)return {already_purged:true,turn_ids:[]};
       // Revoke the original grant in the SAME commit as deletion. A late provider write sees the tombstone/fence.
       const turns=(await tx.list(owner,'native-chat-turns')).filter(t=>t.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id);
@@ -77,10 +86,11 @@ export class ChatService {
     shape(input,['conversation_id']);check(UUID.test(input.conversation_id),422,'schema_invalid');
     const {owner,scope,principal}=await this.scoped(auth,scopeID);check((scope.permissions?.local_output??principal.permissions?.local_output)===true,403,'local_output_permission_required');
     return this.repository.transaction(async tx=>{
+      if(intakeContract){await this.integration?.lockScope?.(tx,scopeID);await tx.lock(owner,'native-chat-conversations',input.conversation_id);}
       const c={id:input.conversation_id,subject_id:principal.subject_id,scope_id:scope.scope_id,revision:1,grant_epoch:1,state:'active',policy:LOCAL_POLICY,messages:[],last_turn_id:null,created_at:iso(),...intakeContract?{intake_contract:intakeContract}:{}};
       const inserted=await tx.insertIfAbsent(owner,'native-chat-conversations',c);
       const saved=inserted??await this.conversation(tx,owner,c.id,principal.subject_id,scopeID);
-      check((saved.intake_contract??null)===intakeContract,404,'not_found');return saved;
+      check((saved.intake_contract??null)===intakeContract,404,'not_found');check(!saved.intake_purged,410,'parenting_intake_deleted');return saved;
     });
   }
   async readConversation(auth,scopeID,id,{intakeContract=null}={}){const {owner,principal}=await this.scoped(auth,scopeID);return this.repository.transaction(async tx=>{const c=await this.conversation(tx,owner,id,principal.subject_id,scopeID);check((c.intake_contract??null)===intakeContract,404,'not_found');return c;});}
@@ -124,6 +134,7 @@ export class ChatService {
       await tx.lock(owner,'native-chat-conversations',conversationID);
       let c=await this.conversation(tx,owner,conversationID,principal.subject_id,scopeID);
       check((c.intake_contract??null)===intakeContract,404,'not_found');
+      check(!c.intake_purged,410,'parenting_intake_deleted');
       const prior=await tx.get(owner,'native-chat-turns',input.turn_id);
       if(prior){check(!prior.intake_purged,410,'parenting_intake_deleted');check(prior.conversation_id===c.id&&prior.admission_hash===admissionHash,409,'turn_conflict');return {turn:prior,replayed:true};}
       if(intakeContract)check(c.last_turn_id===null&&c.messages.length===0,409,'parenting_intake_single_request');
