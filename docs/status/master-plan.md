@@ -1,5 +1,13 @@
 # 小咪重启 Goal 与交付计划
 
+## 2026-10-23 获批 GitHub 接续与逐步里程碑
+
+用户随后明确批准新分支推送及草稿PR，并要求检查差距、逐个继续里程碑。已将原本地候选 `973a8f2cdc468e60ed007c128194adcac334a2ae` 普通推送到 `feat/parenting-core`，创建 [draft PR #123](https://github.com/Yankj/mimi/pull/123)；main读回仍为 `4ec8118b796f7c983ae4436268441c3c9d3d33db`。没有合并、自动合并、部署、发布或附件上传。仓库内发布workflow仅匹配`release/**`或手动dispatch，本分支/草稿PR无已知生产部署触发。
+
+当前只收口M1编译与回归，不同时堆新功能。[M1–M5差距矩阵与依赖](../design/family-companion/parenting-milestones.md)已依据实际实现固定：M2原安排自然语言变更，M3实际记录复盘，M4可纠正事实与最小上下文，M5同步提醒。本机账本不是终局；每片分别报告代码、SDK/模拟器、真实模型、真机及生产证据。
+
+初次远端[CI 39983178500](https://github.com/Yankj/mimi/actions/runs/39983178500)实际启动Xcode26.6；便携编译报新增Domain中的factory typealias引用未纳入的service，宿主build-for-testing因此未执行。最小移动别名到功能层后，`58cada277f5ce8e31242ff593f49017e17275a39`的[CI 39983474486](https://github.com/Yankj/mimi/actions/runs/39983474486)便携357、proactive及官方工程检查通过；宿主编译发现catch中error名称遮蔽，已补self.error。正在将修复和三类54项合成XCTest的独立执行步骤接入同一CI。54项此刻仍未运行，不能因远端有Xcode就计通过。逐次SHA/失败/证据见[CI接续记录](../acceptance/family-companion/parenting-ci-2026-10-23.md)。原Linux本地记录和补丁仍对应973a8f2，保留为提交前证据。
+
 ## 2026-10-23 育儿核心本地实现（本轮）
 
 用户已明确恢复育儿产品改造。本轮仅在云端隔离工作树 `/workspace/mimi-parenting`、本地分支 `feat/parenting-core` 工作，基于已读回的 main `4ec8118b796f7c983ae4436268441c3c9d3d33db`。PR #122 已合并，包含 `ba560b9686e5b2dd8642dd75d351e72418659ecb`；内部 Bundle ID、URL Scheme、旧存储键、服务协议均保留。开放 PR #120 的未接线原生家庭候选（`e2703e5c28f9c27ca9dd729b2d632acda12c5d48`）、#116 规划及 #113 QA 不覆盖、不合并。本轮没有修改旧控制器 Goal 或联系独立任务；此前暂停记录属于其日期证据。
