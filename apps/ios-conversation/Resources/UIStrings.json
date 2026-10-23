@@ -39,17 +39,17 @@
     "en": "Invalid CSV format; unable to parse safely.",
     "zh-Hans": "CSV 格式错误，无法安全解析。"
   },
-  "cat 正在工作": {
-    "en": "cat is working",
-    "zh-Hans": "cat 正在工作"
+  "小咪正在工作": {
+    "en": "mimi is working",
+    "zh-Hans": "小咪正在工作"
   },
-  "cat 原生本地版 0.1.0": {
-    "en": "cat native local edition 0.1.0",
-    "zh-Hans": "cat 原生本地版 0.1.0"
+  "小咪原生本地版 0.1.0": {
+    "en": "mimi native local edition 0.1.0",
+    "zh-Hans": "小咪原生本地版 0.1.0"
   },
-  "cat 本地会话 {0}\n": {
-    "en": "cat local conversation {0}\n",
-    "zh-Hans": "cat 本地会话 {0}\n"
+  "小咪本地会话 {0}\n": {
+    "en": "mimi local conversation {0}\n",
+    "zh-Hans": "小咪本地会话 {0}\n"
   },
   "Fixture · 模拟": {
     "en": "Fixture · simulated",
@@ -444,7 +444,7 @@
     "zh-Hans": "你 · 本机保存"
   },
   "你之前没有允许。可以在系统设置里打开，回来后小猫会继续。": {
-    "en": "You didn't allow this before. Turn it on in Settings and cat will pick up when you're back.",
+    "en": "You didn't allow this before. Turn it on in Settings and mimi will pick up when you're back.",
     "zh-Hans": "你之前没有允许。可以在系统设置里打开，回来后小猫会继续。"
   },
   "你可以随时调整目标、暂停或结束跟进。": {
@@ -672,35 +672,35 @@
     "zh-Hans": "允许发送这张图片到云端模型？"
   },
   "允许小猫使用你的位置": {
-    "en": "Let cat use your location",
+    "en": "Let mimi use your location",
     "zh-Hans": "允许小猫使用你的位置"
   },
   "允许小猫使用提醒事项": {
-    "en": "Let cat use Reminders",
+    "en": "Let mimi use Reminders",
     "zh-Hans": "允许小猫使用提醒事项"
   },
   "允许小猫使用日历": {
-    "en": "Let cat use Calendar",
+    "en": "Let mimi use Calendar",
     "zh-Hans": "允许小猫使用日历"
   },
   "允许小猫使用麦克风": {
-    "en": "Let cat use the microphone",
+    "en": "Let mimi use the microphone",
     "zh-Hans": "允许小猫使用麦克风"
   },
   "允许小猫查找联系人": {
-    "en": "Let cat find contacts",
+    "en": "Let mimi find contacts",
     "zh-Hans": "允许小猫查找联系人"
   },
   "允许小猫给你发通知": {
-    "en": "Let cat send you notifications",
+    "en": "Let mimi send you notifications",
     "zh-Hans": "允许小猫给你发通知"
   },
   "允许小猫访问照片": {
-    "en": "Let cat access Photos",
+    "en": "Let mimi access Photos",
     "zh-Hans": "允许小猫访问照片"
   },
   "允许小猫识别语音": {
-    "en": "Let cat recognize speech",
+    "en": "Let mimi recognize speech",
     "zh-Hans": "允许小猫识别语音"
   },
   "允许此会话图片传输": {
@@ -804,7 +804,7 @@
     "zh-Hans": "关闭侧栏"
   },
   "关闭后只在你明确要求时记住": {
-    "en": "When off, cat only remembers when you ask",
+    "en": "When off, mimi only remembers when you ask",
     "zh-Hans": "关闭后只在你明确要求时记住"
   },
   "关闭后暂停记忆利用，已有记录仍可查看和忘记。": {
@@ -1715,9 +1715,9 @@
     "en": "Export this workspace's local data",
     "zh-Hans": "导出当前 workspace 本地数据"
   },
-  "将修改你的 cat 数据": {
-    "en": "Will change your cat data",
-    "zh-Hans": "将修改你的 cat 数据"
+  "将修改你的小咪数据": {
+    "en": "Will change your mimi data",
+    "zh-Hans": "将修改你的小咪数据"
   },
   "将修改外部服务中的数据": {
     "en": "Will change data in an external service",
@@ -1744,23 +1744,23 @@
     "zh-Hans": "小时 {0}"
   },
   "小猫主动提醒": {
-    "en": "cat heads-up",
+    "en": "mimi heads-up",
     "zh-Hans": "小猫主动提醒"
   },
   "小猫会忘掉所有记住的内容，此操作无法撤销。": {
-    "en": "cat will forget everything it remembered. This can't be undone.",
+    "en": "mimi will forget everything it remembered. This can't be undone.",
     "zh-Hans": "小猫会忘掉所有记住的内容，此操作无法撤销。"
   },
   "小猫注意到": {
-    "en": "What cat noticed",
+    "en": "What mimi noticed",
     "zh-Hans": "小猫注意到"
   },
   "小猫看不到你的会议，所以没法提前提醒出发。可以手动告诉小猫下一场会议，或去设置里打开日历权限。": {
-    "en": "cat can't see your meetings, so it can't remind you when to leave. Tell cat about your next meeting, or turn on calendar access in Settings.",
+    "en": "mimi can't see your meetings, so it can't remind you when to leave. Tell mimi about your next meeting, or turn on calendar access in Settings.",
     "zh-Hans": "小猫看不到你的会议，所以没法提前提醒出发。可以手动告诉小猫下一场会议，或去设置里打开日历权限。"
   },
   "小猫记住了": {
-    "en": "cat remembered",
+    "en": "mimi remembered",
     "zh-Hans": "小猫记住了"
   },
   "尚无任务": {
@@ -2180,7 +2180,7 @@
     "zh-Hans": "已结束"
   },
   "已记下，小猫会按时提醒你": {
-    "en": "Got it. cat will remind you in time.",
+    "en": "Got it. mimi will remind you in time.",
     "zh-Hans": "已记下，小猫会按时提醒你"
   },
   "已记住：{0}": {
@@ -2220,7 +2220,7 @@
     "zh-Hans": "已过期"
   },
   "已过期，需要的话再跟小猫说一次": {
-    "en": "Expired. Ask cat again if you still need it.",
+    "en": "Expired. Ask mimi again if you still need it.",
     "zh-Hans": "已过期，需要的话再跟小猫说一次"
   },
   "已过期；尚未决定或执行。": {
@@ -3819,9 +3819,9 @@
     "en": "Local service records do not prove persistent cloud execution or independent effect verification.",
     "zh-Hans": "本机服务记录不证明云端持久执行或独立副作用核验。"
   },
-  "本机消息 · cat Fixture v1 模拟回复": {
-    "en": "Local messages · cat Fixture v1 simulated replies",
-    "zh-Hans": "本机消息 · cat Fixture v1 模拟回复"
+  "本机消息 · mimi Fixture v1 模拟回复": {
+    "en": "Local messages · mimi Fixture v1 simulated replies",
+    "zh-Hans": "本机消息 · mimi Fixture v1 模拟回复"
   },
   "本机用户": {
     "en": "This device",
@@ -4708,7 +4708,7 @@
     "zh-Hans": "用来把你确认的待办加进提醒事项。"
   },
   "用来挑选你要发给小猫的照片。": {
-    "en": "To pick photos you want to send to cat.",
+    "en": "To pick photos you want to send to mimi.",
     "zh-Hans": "用来挑选你要发给小猫的照片。"
   },
   "用来查找你附近的地点。": {
@@ -5116,12 +5116,12 @@
     "zh-Hans": "结果未知，先核验"
   },
   "结果还没告诉小猫": {
-    "en": "cat hasn't received the result yet",
+    "en": "mimi hasn't received the result yet",
     "zh-Hans": "结果还没告诉小猫"
   },
-  "给 cat 发消息": {
-    "en": "Message cat",
-    "zh-Hans": "给 cat 发消息"
+  "给小咪发消息": {
+    "en": "Message mimi",
+    "zh-Hans": "给小咪发消息"
   },
   "继续": {
     "en": "Continue",
@@ -5292,7 +5292,7 @@
     "zh-Hans": "计划版本"
   },
   "让小猫帮我盯着": {
-    "en": "Let cat keep watch",
+    "en": "Let mimi keep watch",
     "zh-Hans": "让小猫帮我盯着"
   },
   "让重要的事，继续向前。": {
@@ -5336,7 +5336,7 @@
     "zh-Hans": "记忆利用已开启"
   },
   "记忆功能还没为你开通。开通后，小猫记住的事会出现在这里。": {
-    "en": "Memory isn’t turned on for you yet. Once it is, the things cat remembers will show up here.",
+    "en": "Memory isn’t turned on for you yet. Once it is, the things mimi remembers will show up here.",
     "zh-Hans": "记忆功能还没为你开通。开通后，小猫记住的事会出现在这里。"
   },
   "记忆变更已获服务回执。": {
@@ -5455,9 +5455,9 @@
     "en": "Voice conversation is coming soon",
     "zh-Hans": "语音对话即将支持"
   },
-  "说一句想做的事，cat 就开始帮你拆解、执行。": {
-    "en": "Say what you want done — cat breaks it down and gets to work.",
-    "zh-Hans": "说一句想做的事，cat 就开始帮你拆解、执行。"
+  "说一句想做的事，小咪就开始帮你拆解、执行。": {
+    "en": "Say what you want done — mimi breaks it down and gets to work.",
+    "zh-Hans": "说一句想做的事，小咪就开始帮你拆解、执行。"
   },
   "说给助理听": {
     "en": "Speak to your assistant",
@@ -5507,9 +5507,9 @@
     "en": "Verify on-device recognition and permissions on an iOS device.",
     "zh-Hans": "请在 iOS 设备上验证本地识别与权限。"
   },
-  "请在“设置”中允许 cat 使用麦克风和语音识别，或直接输入文字。": {
-    "en": "Allow cat to use the microphone and speech recognition in Settings, or just type.",
-    "zh-Hans": "请在“设置”中允许 cat 使用麦克风和语音识别，或直接输入文字。"
+  "请在“设置”中允许小咪使用麦克风和语音识别，或直接输入文字。": {
+    "en": "Allow mimi to use the microphone and speech recognition in Settings, or just type.",
+    "zh-Hans": "请在“设置”中允许小咪使用麦克风和语音识别，或直接输入文字。"
   },
   "请填写记忆主题与内容。": {
     "en": "Enter a memory topic and content.",
@@ -5632,7 +5632,7 @@
     "zh-Hans": "调试：模拟回复场景"
   },
   "谢谢，小猫记下了": {
-    "en": "Thanks, cat noted it",
+    "en": "Thanks, mimi noted it",
     "zh-Hans": "谢谢，小猫记下了"
   },
   "账户与设置": {
@@ -6083,7 +6083,7 @@
     "en": "Ask a question or tell me what you want to do.",
     "zh-Hans": "问一个问题，或说一件想做的事。"
   },
-  "问问 cat": {
+  "问问小咪": {
     "en": "How can I help you?",
     "zh-Hans": "有什么我可以帮你？"
   },
@@ -6267,12 +6267,12 @@
     "en": "Couldn't undo. Delete it in the system app.",
     "zh-Hans": "撤销未完成，请在系统 App 中删除。"
   },
-  "cat 在本机创建的": {
-    "en": "Created by cat on this phone",
-    "zh-Hans": "cat 在本机创建的"
+  "小咪在本机创建的": {
+    "en": "Created by mimi on this phone",
+    "zh-Hans": "小咪在本机创建的"
   },
   "小猫的回复没有完成": {
-    "en": "cat's reply didn't finish",
+    "en": "mimi's reply didn't finish",
     "zh-Hans": "小猫的回复没有完成"
   },
   "继续回复": {
@@ -6304,7 +6304,7 @@
     "zh-Hans": "明天"
   },
   "这条消息没能确认送达，已停止等待。可以重新发送。": {
-    "en": "This message couldn't be confirmed as delivered, so cat stopped waiting. You can send it again.",
+    "en": "This message couldn't be confirmed as delivered, so mimi stopped waiting. You can send it again.",
     "zh-Hans": "这条消息没能确认送达，已停止等待。可以重新发送。"
   },
   "这次会话需要重新开始，本机对话仍会保留。": {
@@ -6467,9 +6467,9 @@
     "en": "Long-term memory",
     "zh-Hans": "长期记忆"
   },
-  "cat": {
-    "en": "cat",
-    "zh-Hans": "cat"
+  "mimi": {
+    "en": "mimi",
+    "zh-Hans": "mimi"
   },
   "onboarding.chip.reminder": {
     "en": "Smart reminders",
@@ -6572,7 +6572,7 @@
     "zh-Hans": "找谁"
   },
   "点「查找」后，匹配到的姓名和电话才会发给小猫。": {
-    "en": "Names and numbers are shared with cat only after you tap Search.",
+    "en": "Names and numbers are shared with mimi only after you tap Search.",
     "zh-Hans": "点「查找」后，匹配到的姓名和电话才会发给小猫。"
   },
   "追问：{0}": {
@@ -6592,7 +6592,7 @@
     "zh-Hans": "没能撤销，请到日历或提醒事项里删除"
   },
   "这里提到的手机操作没有执行；需要的话再跟小猫说一次": {
-    "en": "The phone action mentioned here did not run. Ask the cat again if you need it.",
+    "en": "The phone action mentioned here did not run. Ask the mimi again if you need it.",
     "zh-Hans": "这里提到的手机操作没有执行；需要的话再跟小猫说一次"
   },
   "没能恢复稍后提醒": {
@@ -6656,16 +6656,16 @@
     "zh-Hans": "升级前存在这台设备上的记忆没有归属账号，已单独加密保存，不会合并进你的账号。可以导出查看。"
   },
   "小猫有一条提醒": {
-    "en": "cat has a reminder for you",
+    "en": "mimi has a reminder for you",
     "zh-Hans": "小猫有一条提醒"
   },
   "即将开始的日程": {
     "en": "Upcoming event",
     "zh-Hans": "即将开始的日程"
   },
-  "打开 cat 查看": {
-    "en": "Open cat to view",
-    "zh-Hans": "打开 cat 查看"
+  "打开小咪查看": {
+    "en": "Open mimi to view",
+    "zh-Hans": "打开小咪查看"
   },
   "已在本机关闭，待同步": {
     "en": "Off on this phone, waiting to sync",
@@ -6696,7 +6696,7 @@
     "zh-Hans": "体验账号 · 绑定后可在其他设备登录，对话不丢失"
   },
   "体验身份的对话会留在本机但无法再访问；你创建的系统日历/提醒事项会逐项询问是否撤销。": {
-    "en": "Trial conversations stay on this device but can no longer be opened. Calendar events and reminders cat created will be listed so you can undo or keep each one.",
+    "en": "Trial conversations stay on this device but can no longer be opened. Calendar events and reminders mimi created will be listed so you can undo or keep each one.",
     "zh-Hans": "体验身份的对话会留在本机但无法再访问；你创建的系统日历/提醒事项会逐项询问是否撤销。"
   },
   "使用 GitHub 继续": {
@@ -6728,12 +6728,12 @@
     "zh-Hans": "已绑定，体验期间的对话都已保留。"
   },
   "当前账号的数据会安全停放，再次登录时自动恢复；你创建的系统日历/提醒事项会逐项询问是否撤销。": {
-    "en": "This account's data is parked safely and restored when you sign in again. Calendar events and reminders cat created will be listed so you can undo or keep each one.",
+    "en": "This account's data is parked safely and restored when you sign in again. Calendar events and reminders mimi created will be listed so you can undo or keep each one.",
     "zh-Hans": "当前账号的数据会安全停放，再次登录时自动恢复；你创建的系统日历/提醒事项会逐项询问是否撤销。"
   },
-  "登录 cat": {
-    "en": "Sign in to cat",
-    "zh-Hans": "登录 cat"
+  "登录小咪": {
+    "en": "Sign in to mimi",
+    "zh-Hans": "登录小咪"
   },
   "登录凭据只保存在本机钥匙串，可随时退出。": {
     "en": "Credentials stay in this device's Keychain. You can sign out anytime.",
@@ -6827,9 +6827,9 @@
     "en": "Organizing to-dos",
     "zh-Hans": "正在整理待办"
   },
-  "打开 cat 查看结果": {
-    "en": "Open cat to see the result",
-    "zh-Hans": "打开 cat 查看结果"
+  "打开小咪查看结果": {
+    "en": "Open mimi to see the result",
+    "zh-Hans": "打开小咪查看结果"
   },
   "未执行：{0}": {
     "en": "Not run: {0}",
@@ -7055,9 +7055,9 @@
     "en": "About you",
     "zh-Hans": "了解你"
   },
-  "cat 发现": {
-    "en": "Found by cat",
-    "zh-Hans": "cat 发现"
+  "小咪发现": {
+    "en": "Found by mimi",
+    "zh-Hans": "小咪发现"
   },
   "你交代的": {
     "en": "You asked",

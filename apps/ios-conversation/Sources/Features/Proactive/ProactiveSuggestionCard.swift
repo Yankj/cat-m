@@ -149,7 +149,7 @@ struct ProactiveStatusRow: View {
             }
         }
         .listStyle(.plain)
-        .navigationTitle(ui("cat 发现")).navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(ui("小咪发现")).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button(ui("完成")) { dismiss() } } }
         .task { await store.load() }
         .refreshable { await store.load() }

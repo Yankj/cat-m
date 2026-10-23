@@ -50,7 +50,7 @@ final class AppBuildInfoTests: XCTestCase {
         XCTAssertNil(info.gitSHA)
         XCTAssertFalse(info.gitDirty)
         XCTAssertEqual(info.versionLabel, "— (build —)")
-        XCTAssertEqual(AppBuildInfo(info: nil).diagnosticText, "cat ? (?)")
+        XCTAssertEqual(AppBuildInfo(info: nil).diagnosticText, "mimi ? (?)")
     }
 
     func testDateLabelIsLocaleIndependent() {

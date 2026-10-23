@@ -310,7 +310,7 @@ private struct ComposerMorph: View, Animatable {
 
 /// The gate's landing/chat branch wrapped so both trees are mounted during the transition (SPEC-E §5.3):
 ///     FirstRunTransitionHost(onboarding: auth.needsOnboarding, chat: chatViewOrNil,
-///                            ctaTitle: ui("开始使用"), placeholder: ui("问问 cat")) { NativeLoginView(auth: auth) }
+///                            ctaTitle: ui("开始使用"), placeholder: ui("问问小咪")) { NativeLoginView(auth: auth) }
 /// `chat` is nil while the chat shell is still attaching.
 struct FirstRunTransitionHost<Landing: View, Chat: View>: View {
     let onboarding: Bool

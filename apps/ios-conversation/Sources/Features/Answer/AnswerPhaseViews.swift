@@ -222,7 +222,7 @@ import UIKit
     /// Running tool step title (e.g. 「正在查日历」) else 「cat 正在工作」.
     private var workingTitle: String {
         if model.usesStatusLine, let line = model.statusLine { return ui(line.title) }
-        return model.steps.last(where: { $0.state == .running })?.title ?? ui("cat 正在工作")
+        return model.steps.last(where: { $0.state == .running })?.title ?? ui("小咪正在工作")
     }
     private func liveTitle(now: Date) -> String {
         let secs = String(max(0, Int(now.timeIntervalSince(model.thinkingStartedAt))))

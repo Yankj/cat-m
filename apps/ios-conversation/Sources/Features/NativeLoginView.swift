@@ -115,7 +115,7 @@ import UIKit
             else if entryWaitVisible { FirstRunEntryCapsule(message: ui("正在进入…"), action: nil, onAction: {}).padding(.top, 8) }
         }
         // Unhosted (today's root): this view draws the flight/morph itself; hosted, FirstRunTransitionHost does.
-        .overlay { if !transition.isHosted { FirstRunTransitionOverlay(ctaTitle: ctaTitle, placeholder: ui("问问 cat")) } }
+        .overlay { if !transition.isHosted { FirstRunTransitionOverlay(ctaTitle: ctaTitle, placeholder: ui("问问小咪")) } }
         .onChange(of: friendlyError, initial: true) { _, message in withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.4, dampingFraction: 0.9)) { toast = message } }
         .onAppear {
             // Wait for the launch mark to hand off (it is still overlaid by the root), so the entrance never competes for frames.
@@ -174,7 +174,7 @@ import UIKit
 
     private var brandAndCopy: some View {
         VStack(alignment: .leading, spacing: 10) {
-            rise(Text(ui("cat"))
+            rise(Text(ui("mimi"))
                 .font(catTypography.Role.secondary.font.weight(.semibold))
                 .foregroundStyle(catColors.ink)
                 .accessibilityAddTraits(.isHeader)

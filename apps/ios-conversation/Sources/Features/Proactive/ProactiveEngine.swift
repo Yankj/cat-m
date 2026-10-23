@@ -228,7 +228,7 @@ struct ProactiveSignal: Equatable, Sendable {
             for e in ProactiveParking.externalItems(inbox: inbox, reminderOps: pendingReminders.mapValues(\.operationID)) where !out.contains(where: { $0.operationID == e.operationID }) { out.append(e) }
         }
         let reminders = pendingReminders
-        return out.map { e in ProactiveParking.parkedItem(e, title: reminders[e.suggestionID].map { "准备：\($0.title)" } ?? "cat 创建的提醒") }
+        return out.map { e in ProactiveParking.parkedItem(e, title: reminders[e.suggestionID].map { "准备：\($0.title)" } ?? "小咪创建的提醒") }
     }
     /// Test seam for the EventKit delete (nil → the real store).
     var externalReminderRemover: ((String) async -> String)?
@@ -988,7 +988,7 @@ struct ProactiveSignal: Equatable, Sendable {
         }
         let r = EKReminder(eventStore: store)
         r.title = "准备：\(p.title)"
-        r.notes = "cat 主动提醒 · operation_id=\(p.operationID)" + (p.place.isEmpty ? "" : "\n地点：\(p.place)")
+        r.notes = "小咪主动提醒 · operation_id=\(p.operationID)" + (p.place.isEmpty ? "" : "\n地点：\(p.place)")
         r.url = marker
         r.calendar = store.defaultCalendarForNewReminders()
         r.dueDateComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: p.due)
@@ -1443,7 +1443,7 @@ extension ProactiveLocalBackend {
         let title = pending?.title ?? "会议"
         let start = pending.map { $0.start.formatted(f) } ?? ""
         let place = pending?.place ?? ""
-        var lines = ["我可能稍晚到一下（cat 提醒）。", "会议：\(title)" + (start.isEmpty ? "" : " · \(start)")]
+        var lines = ["我可能稍晚到一下（小咪提醒）。", "会议：\(title)" + (start.isEmpty ? "" : " · \(start)")]
         if !place.isEmpty { lines.append("地点：\(place)") }
         if let leaveAt = pending?.leaveAt {
             lines.append("我计划 \(leaveAt.formatted(f)) 出发")
