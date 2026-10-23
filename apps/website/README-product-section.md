@@ -1,9 +1,9 @@
 <!-- CATPAW-WEBSITE:START -->
 ## 产品官网
 
-**先你一步，把事办妥。** 一个住在 iPhone 里的贴心助理。记住你的偏好，在合适的时候提醒你，确认后把事情办好。
+**先你一步，把事办妥。** 家里的事，交给小咪记着。拍一张、说一句，它整理成待你确认的卡片；今天要办的一目了然，我们家的事它都记得，你点头之前什么都不改。
 
-官网源码见本目录；公网站点待部署（计划挂到公司域名）。本地可 `npm run build` 预览。
+[浏览官网](https://mimi.heydusk.com/) · [观看产品视频](https://mimi.heydusk.com/#film) · [25 页产品介绍](https://mimi.heydusk.com/assets/catpaw-product-deck.pdf) · [安全与隐私](https://mimi.heydusk.com/trust.html) · [技术设计](https://mimi.heydusk.com/technology.html)
 
 - **主动**：到点之前，先来找你。
 - **有记忆**：记住偏好，也真正用上。

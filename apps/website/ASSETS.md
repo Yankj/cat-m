@@ -1,6 +1,6 @@
 # 官网素材来源
 
-用户提供的产品素材，仅为本次 cat 官网与仓库联动使用。
+用户提供的产品素材，仅为本次小咪官网与仓库联动使用。
 
 - `launch-final-v2.mp4`：用户于2026-10-19提供，原始文件直接复制，SHA-256 `bd531df7a328fac170dba223144f3ba4f28ca5aac4ced0e8683e7019ae53ff1a`。
 - `catpaw-product-deck.pdf`：用户于2026-10-19提供，原始文件直接复制，SHA-256 `8e51b00c4c4344bbed0cc9aeb8537c4e95f8082144cc54b922dfeb76c58a0ea7`。
