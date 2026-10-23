@@ -1,6 +1,6 @@
 # Edge deploy checklist (catpaw-api + catpaw-proactive)
 
-Project ref `dbyklgxdvjbutxzsjeth`. The user runs every step that writes to production. Agents only read: `list_tables` and `list_migrations`.
+Project ref `<your-project-ref>`. The user runs every step that writes to production. Agents only read: `list_tables` and `list_migrations`.
 
 ## 0. Production state (read-only check, 2026-10-15 22:0x UTC+8)
 
@@ -15,14 +15,14 @@ Project ref `dbyklgxdvjbutxzsjeth`. The user runs every step that writes to prod
    - Adds RLS policies and the `claim_due_reminders()` function.
 3. **`20261015120100_proactive_cron.sql`:** schedules `catpaw-proactive-tick` every minute through pg_cron and pg_net. Its Vault secrets (step 4) must exist first.
 4. **Vault secrets** (SQL editor):
-   - `select vault.create_secret('https://dbyklgxdvjbutxzsjeth.supabase.co','catpaw_project_url');`
+   - `select vault.create_secret('https://<your-project-ref>.supabase.co','catpaw_project_url');`
    - `select vault.create_secret('<SECRET>','catpaw_scheduler_secret');`
 5. **`20261015150000_proactive_task_tools_runtime.sql`** (A2):
    - Grants `catpaw_records` (the catpaw-api dedicated login role) USAGE on the schema, select/insert/update on `proactive.tasks`, and select/insert on `proactive.events`.
    - Adds RLS policies for that role.
    - Without this migration, in-process task tools fail with `tool_failed`, which reaches the model as a `tool_result{status:'error'}`.
 
-Apply with `supabase link --project-ref dbyklgxdvjbutxzsjeth && supabase db push` from `services/edge`. Then confirm with `list_migrations`.
+Apply with `supabase link --project-ref <your-project-ref> && supabase db push` from `services/edge`. Then confirm with `list_migrations`.
 
 ## 2. Secrets
 
