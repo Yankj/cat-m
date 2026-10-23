@@ -2620,6 +2620,34 @@
       "category": "unexpected_binary",
       "sha256": "b4928d8d8e63ee00cc17714ef0bb482dcf7b8caea432628dc8934cb13966fdcb",
       "reason": "Reviewed 2026-10-24: 19589-byte brand source from commit a1ce541e, visually inspected as the orange/cream cat icon with historical product lettering. Parsed JPEG metadata contains Screenshot description/comment, capture date/time, orientation/resolution, dimensions and color profile; no GPS, owner, camera serial, account or child data. Preserve original source bytes. This exact-file exception does not allow other JPEGs or changed bytes."
+    },
+    {
+      "path": "scripts/check-git-policy.py",
+      "category": "email_review",
+      "line": 43,
+      "sha256": "88ae29a678b903f065f03852b3a6923888792d2a497bc8b3a164b739f1f6d12b",
+      "reason": "2026-10-24 reviewed public GitHub SSH transport syntax in the exact repository allowlist or its offline fixture; git is the public transport account, not a private email, recipient or credential. Exact path, line and hash only."
+    },
+    {
+      "path": "scripts/check-git-policy.py",
+      "category": "email_review",
+      "line": 45,
+      "sha256": "88ae29a678b903f065f03852b3a6923888792d2a497bc8b3a164b739f1f6d12b",
+      "reason": "2026-10-24 reviewed public GitHub SSH transport syntax in the exact repository allowlist or its offline fixture; git is the public transport account, not a private email, recipient or credential. Exact path, line and hash only."
+    },
+    {
+      "path": "scripts/test-git-policy.py",
+      "category": "email_review",
+      "line": 69,
+      "sha256": "d2158bd75cddebabc0228cf236cbfac01849af382e35b83f8230da3fd51fb39d",
+      "reason": "2026-10-24 reviewed public GitHub SSH transport syntax in the exact repository allowlist or its offline fixture; git is the public transport account, not a private email, recipient or credential. Exact path, line and hash only."
+    },
+    {
+      "path": "scripts/test-git-policy.py",
+      "category": "email_review",
+      "line": 71,
+      "sha256": "d2158bd75cddebabc0228cf236cbfac01849af382e35b83f8230da3fd51fb39d",
+      "reason": "2026-10-24 reviewed public GitHub SSH transport syntax in the exact repository allowlist or its offline fixture; git is the public transport account, not a private email, recipient or credential. Exact path, line and hash only."
     }
   ]
 }

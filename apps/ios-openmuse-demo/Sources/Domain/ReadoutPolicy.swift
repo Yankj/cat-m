@@ -2,7 +2,7 @@ import Foundation
 
 public enum PublicReadoutSample {
     public static let sourceKind = "builtin_public_sample"
-    public static let text = "欢迎使用 cat。本段是随应用提供的公开朗读示例，不包含会话、文件或个人资料。你可以主动播放、暂停和停止声音。"
+    public static let text = "欢迎使用 Catpaw。本段是随应用提供的公开朗读示例，不包含会话、文件或个人资料。你可以主动播放、暂停和停止声音。"
     public static func allows(reference: DocumentReference, sourceKind: String, text: String) -> Bool {
         sourceKind == self.sourceKind && reference.version == 1 && reference.contentHash == textHash(self.text) && textHash(text) == reference.contentHash
     }
