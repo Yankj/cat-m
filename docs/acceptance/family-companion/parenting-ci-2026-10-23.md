@@ -88,6 +88,20 @@ canonical 打开跨异步磁盘与 detach 时由独立 attempt UUID 占位，迟
 
 旧receipt竞态测试进一步使用非空旧配置scope且resolver返回不同canonical scope，明确覆盖旧三字段也可能来自配置临时scope的兼容边界。UI等待失败现在附实际AX tree。下一候选仍为61模块+3 UI，尚待fresh签名构建与实际运行；planned取消、独立观察CRUD的两条UI候选仍未应用，保存失败输入重试与unknown原ID回查也没有UI通过证据。M1未签收，M2暂停。
 
+## 3371c61：真实加密恢复，UI滚动仍失败
+
+[3371c617e68a34c7ddc19af8848cd49c83846aa2 / CI40000305787](https://github.com/Yankj/mimi/actions/runs/40000305787) 已终态：changes、Edge SUCCESS；[iOS job120574431253](https://github.com/Yankj/mimi/actions/runs/40000305787/job/120574431253) FAILURE。Xcode实际签名build-for-testing成功，主App签名、生成的Simulated.xcent与Keychain group核对通过；生产Keychain/AES+真实SwiftData首次保存及fresh cipher/repository冷读真实通过。**61模块方法/0失败**，包含4项Auth/scope，约10.484秒。
+
+3条UI全实际运行失败，已越过昵称保存，失败在安排表单找不到disabled Save或AI整理按钮。日志显示16次拖动均用App窗口x14（约0.03），键盘仍在，未把长Form滚到目标；最终诊断又读取不存在target.identifier，XCTest先抛snapshot错误遮住了完整AX tree。UI共724.235秒，测试操作1066.232秒，非20分钟取消；没有完成主要旅程，不能把61模块和签名成功等同M1 UI通过。
+
+下一候选仅修可达性与受影响验证：测试手势定位实际CollectionView/Form或ScrollView，在容器内部x约0.85拖动，裁剪导航/键盘，逐次重算；disabled按钮与非交互组的可见性和可点击性分开，实际tap仍严格要求enabled+hittable。不存在的目标不读取属性，失败直接附整棵App AX tree。`arrangementHistory`、候选和cleanup组增加`.contain`，避免组identifier传到子控件覆盖其独立标识；已有日志的两个历史Disclosure按钮均被组标识覆盖，后续需实际运行核对，不能仅靠源码断言。
+
+追加8个与本次真实Auth改动相关的既有运行方法：rotation恢复、503重试合并、receipt同chat重试、网络/登出围栏、首次本地读取中登出、离线恢复取消、drain前关闭权限与再次登录、冷验证重试。用方法级allowlist，不改旧测试文件/pins，不加skip或quarantine。该旧类共有35方法，3个以源码检查为主，其中一项仍要求旧聊天首屏；此次不把它们算新育儿入口验证，也不声称跑完整旧类。新增8项会真实执行临时SwiftData、UserDefaults、Keychain删除和通知/LiveActivity清理，仅在无后端配置的一次性Simulator、单并发中运行，不是全链纯mock/零系统作用。
+
+本候选收敛为**69模块+7 UI**，新部分尚未SDK编译或执行。保留原3旅程，另外加入：planned→取消→同UUID/时间冷重开且不生成完成记录；独立观察→更正保留原文/更正时间→同UUID/goal冷读→明确删除→再次冷读；真实SwiftData注入提交失败/rollback→输入保留/同表单重试→冷读仅一个孩子；未知响应→仅按原cid/op/epoch及完整编码请求回查→可编辑候选且不自动应用/保存。后两项仅扩DEBUG合成transport/既有故障缝，不替换生产cipher或持久化。临时transport原文仅在内存，删除清除；不扩生产接口/服务/权限。记录来源组增加contain以保留来源与时间的独立AX标识；实际层级效果仍待CI。
+
+仅调整整组测试预算至45分钟，不改15秒条件等待、16次滚动上限、实际点击enabled+hittable或业务断言。依据上轮UI724.235秒/3×7加非UI341.997秒粗估33.9分钟，再留约33%启动/新增Auth余量；这是7条旅程的串行预算，不把失败改为通过。实际耗时按新SHA日志复核。无skip/quarantine新增。M1未签收，M2暂停。
+
 ## 接续测试范围
 
 d5f739e及之前的CI定向脚本只选择 `catTests/ParentingWorkspaceTests`、`ParentingIntakeTests`、`ParentingInlineIntakeTests` 三类合成用例。使用已安装iPhone runtime创建自己的空白模拟器，结束只删除本次创建的设备；存在Local.xcconfig时拒绝执行，移除四个backend环境配置及继承fixture/connection/simulator-child注入，不安装依赖或下载runtime。测试使用临时文件和mock transport，无真实儿童数据、真实模型、生产Keychain或数据库。空Debug配置使项目Auth/后端启动被guard拦住；现有AppDelegate仍有系统APNs注册/BG任务注册，未测量全进程或系统网络次数，不声称全进程零网络。

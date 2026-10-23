@@ -64,6 +64,6 @@ jobs:
             DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
             "CODE_SIGN_ENTITLEMENTS=$PWD/Configuration/SimulatorFixtureAcceptance.entitlements"
       - name: Parenting synthetic XCTest and UI journeys (fresh simulator, no backend config)
-        timeout-minutes: 20
+        timeout-minutes: 45
         working-directory: apps/ios-conversation
         run: bash Scripts/test-parenting-core-simulator.sh
