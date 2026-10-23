@@ -14,7 +14,7 @@
 | ActivityKit | `CatpawWorkAttributes`、`CatpawLeaveAttributes` | APNs 与系统运行时按属性类型识别 Live Activity，保留真实结构名；周围的宿主、文件、组件代码已用 cat |
 | 外部配置 | `CATPAW_*`、`CatpawBackendOrigin` 等 Info.plist 键、外部项目 ID | 保留既有本地与部署配置接线；没有复制配置、变更凭据或线上权限 |
 | 构建诊断与测试开关 | `CatpawBuildDate`、`CatpawGitSHA`、`-CatpawDemoBackend` 等 | 兼容已有构建诊断/本地验收工具；它们不是品牌显示名 |
-| 仓库与旧发行物 | `Yankj/catpaw-m` URL、历史 `Catpaw-1.2.0.*` 下载名 | 本次不改 GitHub 仓库名，也不伪造已存在的发行物名字 |
+| 仓库与旧发行物 | `Yankj/cat-m` URL、历史 `Catpaw-1.2.0.*` 下载名 | 本次不改 GitHub 仓库名，也不伪造已存在的发行物名字 |
 
 `python3 scripts/check-brand-migration.py` 对比迁移前源码，检查显示名、Bundle ID、entitlement、关键字符串、数据库与部署快照。当前检验 472 项兼容约束；这是源码检查，不代替真实旧安装升级验收。
 

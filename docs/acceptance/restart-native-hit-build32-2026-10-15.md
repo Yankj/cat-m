@@ -1,6 +1,6 @@
 # 原生许可与抽屉 build32 · 2026-10-15
 
-候选 `AF-UX-HIT-DRAWER-20261015-32`，**0.3.0(32)**。`Native32-r1` 最终 **14/14 单元 PASS；7 条原生 UI 为 4 PASS / 3 FAIL**，整轮 FAIL。**build32 未交付用户，“Catpaw 最新体验”仍为 build29，UX 门不关闭。** 本文件为失败日期快照；当前进度只见 [master-plan](../status/master-plan.md)。[build31 失败历史](restart-native-hit-build31-2026-10-15.md)保留，后续 build33 不继承本轮通过数或覆盖失败。
+候选 `AF-UX-HIT-DRAWER-20261015-32`，**0.3.0(32)**。`Native32-r1` 最终 **14/14 单元 PASS；7 条原生 UI 为 4 PASS / 3 FAIL**，整轮 FAIL。**build32 未交付用户，“cat 最新体验”仍为 build29，UX 门不关闭。** 本文件为失败日期快照；当前进度只见 [master-plan](../status/master-plan.md)。[build31 失败历史](restart-native-hit-build31-2026-10-15.md)保留，后续 build33 不继承本轮通过数或覆盖失败。
 
 冻结本地源码 `d2b5d5200d35c5717f591f087da01d3b85d17431`；选择性发布远端 `33c6eb634d1b63370f2eaa7f40ed1beb8d809dae`，tree `3cb0bb80613c6fbf2f65761f53dda2ee8c4163bd`。415 项输入固定于 ignored `build/native-hit-drawer32-20261015/source-snapshot.json`，SHA-256 `a7d577b034b3678ec0c139a893794fb6c4faa9107efb6920833c643ba4e2a459`。以冻结输入裁决，不把正在修33的工作区称作32。
 

@@ -1,4 +1,4 @@
-# Catpaw-m 产品交付基线与主计划
+# cat 产品交付基线与主计划
 
 更新：2026-10-12；本文件是唯一实时状态页。[对应spec](../product/conversation-first-delivery-spec.md)定义页面、4条用户故事、状态和API；[验收清单](../acceptance/README.md)定义测试，[一页用户说明](../product/Catpaw-m_Product_Delivery_Baseline_2026-10-12.md)是此次快照。
 
@@ -34,7 +34,7 @@
 
 ## R1–R3与具体下一步
 
-owner沿用现有线程：API＝“验证 OpenMuse 原生接入契约”；原生＝“开发 Catpaw-m iOS 应用”；存储＝“建设服务端持久化与记忆”；QA＝“验收 Catpaw-m 原生功能”；协调负责批准/预算及产品签收。
+owner沿用现有线程：API＝“验证 OpenMuse 原生接入契约”；原生＝“开发 cat iOS 应用”；存储＝“建设服务端持久化与记忆”；QA＝“验收 cat 原生功能”；协调负责批准/预算及产品签收。
 
 | 顺序/切片 | 负责人和马上做什么 | 放行门槛 / 当前 |
 |---|---|---|

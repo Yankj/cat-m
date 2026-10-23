@@ -7,9 +7,9 @@ dictation fix (PR #85) and before ask_user.
 
 | # | Scenario | What the audience sees |
 |---|---|---|
-| D1 | Natural chat | Speak, and Catpaw answers by voice in about a second. Captions for both sides. |
+| D1 | Natural chat | Speak, and cat answers by voice in about a second. Captions for both sides. |
 | D2 | Barge-in | Talk over a long answer. Playback stops at once and the new question is answered. |
-| D3 | Captions | Live captions for the user (input transcription) and for Catpaw (output transcription), kept in the transcript afterwards. |
+| D3 | Captions | Live captions for the user (input transcription) and for cat (output transcription), kept in the transcript afterwards. |
 | D4 | "明天上午十点加个牙医日程" | The model calls `calendar_create`. The existing device_call confirm card appears, and the voice says 「确认一下」. Tap 执行, and the receipt (with 撤销) shows. |
 | D5 | "附近有什么好吃的" | The model calls `places_search`. The phone runs it and the server auto-emits the grounded **place card** (PR #85 #2), and the voice reads the top two. |
 | D6 | Quota runs out | A friendly line: 「今天的语音额度用完了，先用打字或听写吧」. The chat stays usable by text and dictation. |

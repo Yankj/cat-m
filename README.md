@@ -19,7 +19,7 @@
 ![Deno](https://img.shields.io/badge/Deno-tests-000000?logo=deno&logoColor=white)
 ![Backend](https://img.shields.io/badge/catpaw--api-v55%20(prod)-3ECF8E)
 ![App](https://img.shields.io/badge/App-v1.2.0%20on%20main-brightgreen)
-[![下载](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Releases-2EA44F?logo=github&logoColor=white)](https://github.com/Yankj/catpaw-m/releases/latest)
+[![下载](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Releases-2EA44F?logo=github&logoColor=white)](https://github.com/Yankj/cat-m/releases/latest)
 ![License](https://img.shields.io/badge/license-TBD-lightgrey)
 
 <img src="docs/assets/slides/slide-01.png" alt="cat 介绍图" width="720">
@@ -31,7 +31,7 @@
 </div>
 
 > [!NOTE]
-> **版本状态（2026-10-18）**：iOS **v1.2.0**（2026-10-18）已发布，见 [Releases](https://github.com/Yankj/catpaw-m/releases/latest)，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。线上后端为 `catpaw-api` **v55**（#104）、`catpaw-proactive` **v10**（#101）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
+> **版本状态（2026-10-18）**：iOS **v1.2.0**（2026-10-18）已发布，见 [Releases](https://github.com/Yankj/cat-m/releases/latest)，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。线上后端为 `catpaw-api` **v55**（#104）、`catpaw-proactive` **v10**（#101）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
 
 <details>
 <summary><b>目录</b></summary>
@@ -131,7 +131,7 @@
 **步骤**
 
 ```sh
-git clone https://github.com/Yankj/catpaw-m.git cat
+git clone https://github.com/Yankj/cat-m.git cat
 cd cat
 open apps/ios-conversation/cat.xcodeproj
 ```
@@ -146,10 +146,10 @@ open apps/ios-conversation/cat.xcodeproj
 
 ## 下载与安装
 
-> **操作指南（How-to）**：安装已打包的构建。所有构建都在 [Releases](https://github.com/Yankj/catpaw-m/releases/latest) 页面；仓库目前是私有的，需要有仓库访问权限才能下载。
+> **操作指南（How-to）**：安装已打包的构建。所有构建都在 [Releases](https://github.com/Yankj/cat-m/releases/latest) 页面；仓库目前是私有的，需要有仓库访问权限才能下载。
 
 > [!TIP]
-> 最新版本：[cat 1.2.0](https://github.com/Yankj/catpaw-m/releases/tag/v1.2.0)（2026-10-18），文件为 `Catpaw-1.2.0-simulator.zip` 和 `Catpaw-1.2.0.ipa`（历史发行物，保留原名）。
+> 最新版本：[cat 1.2.0](https://github.com/Yankj/cat-m/releases/tag/v1.2.0)（2026-10-18），文件为 `Catpaw-1.2.0-simulator.zip` 和 `Catpaw-1.2.0.ipa`（历史发行物，保留原名）。
 
 | 方式 | 文件 | 适合 | 限制 |
 |---|---|---|---|

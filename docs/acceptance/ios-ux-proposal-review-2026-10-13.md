@@ -12,4 +12,4 @@
 
 原生键盘/IME、SwiftUI布局、安全区、真实触控/侧滑、最大辅助字号、VoiceOver/Reduce Motion、实际流式与后台恢复，以及模型/云端/SQL/系统日程/通知均未验证。430宽度与完整失败状态矩阵没有在本批浏览器检查；原生要求仍按[12项UX合同](ios-codex-experience-acceptance.md)执行。此处宽度是CSS提案单位，不能作为iOS设备测量。
 
-前期ChatGPT/dot会话观察与Catpaw旧包原图的作用见[参考对照](../design/ios-codex-reference-review-2026-10-13.md)。上图是新提案，不是竞品或旧包截图。
+前期ChatGPT/dot会话观察与cat旧包原图的作用见[参考对照](../design/ios-codex-reference-review-2026-10-13.md)。上图是新提案，不是竞品或旧包截图。
