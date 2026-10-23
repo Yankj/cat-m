@@ -60,9 +60,11 @@ const J = (status, body) => new Response(JSON.stringify({ protocol: PROTOCOL, sc
 export function createMemoryRoute() {
   return async ({ req, url, actor, hh, sub, ctx }) => {
     if (sub !== '/memories' && !sub.startsWith('/memories/')) return null;
-    // v0.4 deploy review: memory routes are owner-only. A grantee (or anyone else) gets 404, exactly like a stranger.
-    const owner = await ctx.store.reader(actor, hh);
-    if (!owner || owner.role !== 'owner') throw new FamilyError(404, 'not_found');
+    // v0.4 deploy review: memory routes are owner-only. A grantee gets 404, exactly like a stranger. A null reader
+    // (stranger, or the owner of an archived household) falls through to the per-route store checks, which return
+    // null -> 404 except /memories/audit (memory_audit is owner-only in SQL and keeps archived households auditable).
+    const rd = await ctx.store.reader(actor, hh);
+    if (rd && rd.role !== 'owner') throw new FamilyError(404, 'not_found');
     if (sub === '/memories/resolve' && req.method === 'POST') {
       const b = await ctx.body(req, 16 * 1024);
       const refs = b?.refs;
