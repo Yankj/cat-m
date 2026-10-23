@@ -61,15 +61,15 @@ PR workflow默认checkout GitHub生成的合并候选：初次为 `00d333a7a5b33
 
 ## M1 scope 与冷重开接续候选
 
-563f07c 的构建和 Edge job 已完成成功，原生模块与 UI 步骤尚在运行；不得把 57+3 的筛选数量当作通过结果。后续候选仍只修 M1，不进入 M2。
+563f07c 的 [CI 39993290367](https://github.com/Yankj/mimi/actions/runs/39993290367) 已到终态：changes / Edge SUCCESS，Edge 913总数、911通过、0失败、2跳过；iOS job120550319708 FAILURE。该job真实 build-for-testing 成功，57项模块测试全部通过（21 workspace + 8 parser + 27 inline + 1 Auth composition），约10.853秒；3条UI全部实际运行失败，共210.160秒，均在填写首个孩子昵称、点击保存后，等输入页消失超时（当时Tests.swift:212）。它们已到真实首页与添加表单，并非模拟器启动超时，也没有执行完主要AI/安排旅程。xcodebuild测试操作743.546秒，返回 `TEST EXECUTE FAILED`，未因20分钟上限取消。当前日志没有打印表单错误，不能据此断定是关闭动作或Keychain/磁盘失败，下一候选增强该失败点诊断。不得将57模块通过写成3UI通过。后续候选仍只修M1，不进入M2。
 
 独立复审发现默认配置不固定 scope 时，已验证账号可能先打开临时分区，resolver 返回 canonical scope 后再换库；若育儿账本先允许写入，刚保存的数据将从新首页消失。现在仅实际 scope admission 或带 `canonicalScope: true` 的已确认本机 receipt 可以绑定育儿模型，账号验证及固定 epoch 屏障仍必须满足。临时聊天只供原有内部恢复，不再保存 receipt，不获得育儿写入能力。旧三字段 receipt 继续解码并保留原目录，但即使它的 UUID 不像 deterministic provisional scope，也不能证明旧配置 scope 已确认；须等一次实际 resolver 成功。新增标记为可选本机元数据，旧 reader 忽略它，内部安装、存储键和 wire 字段不改。已确认 receipt 在账号验证成功但 scope discovery 暂不可用时仍可编辑本机账本，不以 `networkAdmissionAllowed` 一刀切阻断。此前写入临时目录的数据保留，没有自动跨 scope 迁移。
 
 canonical 打开跨异步磁盘与 detach 时由独立 attempt UUID 占位，迟到 receipt/provisional 不能抢走空槽；取消、账号变更和退出同步失效该占位，旧 attempt 的 defer 不能清除新 attempt。账本等待页增加显式重试，调用既有 foreground/重试机制。
 
-新增3项真实 Auth composition 回归（原1项保留）：无固定 scope 且 resolver 挂起时不暴露账本、解析后只在 canonical 库保存；明确 canonical receipt 在 scope 服务不可用时读写旧账本；迟到旧 receipt 在 canonical 打开窗口被拒绝、原目录保留且新库可写。使用真实 NativeAuthApplicationModel / SwiftData / 生产 presentation，Auth 与 resolver 为合成端口。筛选预期现在为60项模块测试；未运行的新项不能借前个 SHA 的绿色结论。
+新增3项真实 Auth composition 回归（原1项保留）：无固定 scope 且 resolver 挂起时不暴露账本、解析后只在 canonical 库保存；明确 canonical receipt 在 scope 服务不可用时读写旧账本；迟到旧 receipt 在 canonical 打开窗口被拒绝、原目录保留且新库可写。使用真实 NativeAuthApplicationModel / SwiftData / 生产 presentation，Auth 与 resolver 为合成端口。另加1项生产 Keychain/AES +真实SwiftData首次保存/新Repository冷读回归，使用随机合成subject，不以测试cipher替代失败。筛选预期现在为61项模块测试；未运行的新项不能借前个 SHA 的绿色结论。
 
-另有独立待提交的 UI 增强：原有成功旅程增加冷重开时原 arrangement UUID、可见时间、completed 状态、完成记录 UUID 及 goal 关联断言。失败旅程改为真正 terminate/launch，保持同一隔离 store UUID，验证加密 cleanup pending 仍在且阻止有效新原话请求，再由显式清理恢复；仅移除下一进程的合成一次性 transport 失败，不改保存字节。它仍不覆盖真实 Auth/model。
+本次独立 UI 增强：原有成功旅程增加冷重开时原 arrangement UUID、可见时间、completed 状态、完成记录 UUID 及 goal 关联断言。失败旅程改为真正 terminate/launch，保持同一隔离 store UUID，验证加密 cleanup pending 仍在且阻止有效新原话请求，再由显式清理恢复；仅移除下一进程的合成一次性 transport 失败，不改保存字节。它仍不覆盖真实 Auth/model。
 
 | M1 路径 | 当前证据边界 |
 |---|---|
