@@ -1,4 +1,4 @@
-# Catpaw façade r2
+# cat façade r2
 
 固定 OpenMuse `1ac68f3909f2478ab6280883f1ab5ea65eb5719d` 的真实 TaskWorker，加一行捕获当前 attempt lease 的事件元数据；ActionService 加受控本地 `catpaw.preview` 解析/执行端口。唯一调度器仍是该 Worker。源码与测试保持 r2 原文，完整差异在 [local-preview.patch](patches/local-preview.patch)。上游原文为仓库 [vendor/openmuse](../../vendor/openmuse/README.md)。
 

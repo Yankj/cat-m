@@ -1,6 +1,6 @@
 # 原生抽屉 build34 · 诊断失败快照 · 2026-10-15
 
-候选 `AF-UX-HIT-DRAWER-20261015-34`，**0.3.0(34)**。原生 `offset` 替换自定义位移后的正式正文横拖专项仍 **FAIL**；同一冻结 App 的独立绝对坐标点击诊断 **PASS**。两者证明的事实不同，**诊断通过不覆盖严格 AX/可命中失败，也未证明 offset 是根因**。build34 未交付用户，固定“Catpaw 最新体验”仍为build29；UX门未关闭。当前进度只见 [master-plan](../status/master-plan.md)，[33失败](restart-native-hit-build33-2026-10-15.md)不改写。
+候选 `AF-UX-HIT-DRAWER-20261015-34`，**0.3.0(34)**。原生 `offset` 替换自定义位移后的正式正文横拖专项仍 **FAIL**；同一冻结 App 的独立绝对坐标点击诊断 **PASS**。两者证明的事实不同，**诊断通过不覆盖严格 AX/可命中失败，也未证明 offset 是根因**。build34 未交付用户，固定“cat 最新体验”仍为build29；UX门未关闭。当前进度只见 [master-plan](../status/master-plan.md)，[33失败](restart-native-hit-build33-2026-10-15.md)不改写。
 
 冻结本地源码 `2d88683d513e9a9b94dbcb967856d2be240a4c58`。**截至本快照，34源码尚未独立远端发布，没有34远端SHA/tree。** manifest的 `base_remote_commit` 是此前33来源，不是34发布证明。ignored `build/native-hit-drawer34-20261015/source-snapshot.json` 固定r1的415项输入，SHA-256 `daedff7fd420208413d6b5060130941bdee3a31eb581bfe80090cdf838effef3`；`source-snapshot-r2.json` 固定416项输入，SHA-256 `c751b962052fc1dc89949aa85adf8a57b2f0afb60204030b95a78647c308b6d0`。逐项比较仅新增 `ConversationDrawerScrimCenterDiagnosticUITests.swift` 并修改PBX的UI测试成员，未变产品源码，原始r1输入保留。
 

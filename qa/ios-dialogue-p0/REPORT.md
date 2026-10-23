@@ -1,4 +1,4 @@
-# Catpaw iOS 对话 P0 独立 QA 小批
+# cat iOS 对话 P0 独立 QA 小批
 
 2026-10-12。产品继续 **FAIL / 不放行**：用户当前手机 build13 的真实失败保留。本报告只复验冻结待集成状态补丁；没有更改生产源码、冻结包、canonical index 或其他 owner worktree，没有真实 Auth/模型、手机安装、部署、推送。
 

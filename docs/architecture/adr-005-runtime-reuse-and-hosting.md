@@ -16,7 +16,7 @@
 | Edge有界分步 | 每次调用预算、checkpoint栅栏、独立调度调用方、恢复/撤权、事务与effects核验 | Proposed，现有适配和离线测试不足以放行长期执行 |
 | 其他durable框架迁移 | 与现有worker/state/store的收益和风险、迁移边界及许可 | Proposed，未Accepted；本批不迁移 |
 
-[OpenMuse研究](../research/openmuse-runtime-source-review.md)提出长任务常驻worker等工程建议；它不是Catpaw-m已接受的部署决定。早期[OpenDot评估](../research/opendot-runtime-assessment.md)描述未确认的composio同名候选；用户现已明确指定 **CopilotKit/OpenDots**，当前依据切换到[该仓固定源码核读](../research/opendots-code-review-2026-10-13.md)。历史候选未采纳，不混用其身份和许可。
+[OpenMuse研究](../research/openmuse-runtime-source-review.md)提出长任务常驻worker等工程建议；它不是cat已接受的部署决定。早期[OpenDot评估](../research/opendot-runtime-assessment.md)描述未确认的composio同名候选；用户现已明确指定 **CopilotKit/OpenDots**，当前依据切换到[该仓固定源码核读](../research/opendots-code-review-2026-10-13.md)。历史候选未采纳，不混用其身份和许可。
 
 评审应比较同一任务在中断/接管/等待审批/撤权/unknown等路径的正确性与成本，形成明确方案和验收门槛后再改变ADR状态。版本来源、部署、用户可用性分别签收，不能用测试数量或安装成功替代产品验收。[现状快照](runtime-state-2026-10-12.md)不宣称性能、图片、侧栏或后端P0已放行。
 
@@ -28,7 +28,7 @@
 |---|---|---|
 | 计划、执行与有限 monitor | OpenMuse 参考；逐步 evidence 与完成资格分别核验 | 完成不批量标全部步骤成功；保持既有 frozen patch |
 | 成果编辑与恢复 | OpenDots expectedRevision、generation、autosave/tombstone 算法候选 | 适配现有 Artifact/PG/Swift，不搬 SQLite/Tiptap |
-| 审批与后台工作 | OpenBot consume/result/continuation、PG due 领取和失败分类参考 | 保留 Catpaw Approval/Effect；unknown 先核对，完整 Bun/Intelligence runtime 不接入 |
+| 审批与后台工作 | OpenBot consume/result/continuation、PG due 领取和失败分类参考 | 保留 cat Approval/Effect；unknown 先核对，完整 Bun/Intelligence runtime 不接入 |
 | 智能 UI | 编译受控 Swift 六卡 registry，完整参数后操作，后台保存/等待 | A2UI wire 先互通证明；任意 HTML/JS viewer 单独提案 |
 | 电脑运行 | Dots/Bot provider seam 可参考 | 仍 Proposed；新增计算预算0，可持续资源/provider/region确认后实施 |
 

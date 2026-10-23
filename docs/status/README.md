@@ -1,6 +1,6 @@
 # 当前进展入口
 
-**只维护 [Catpaw-m 主交付计划](master-plan.md)。** 该文档统一当前产品方向、owner、依赖、DoD、证据、阻塞和项目里程碑；本索引不保留第二套状态表或待办顺序。
+**只维护 [cat 主交付计划](master-plan.md)。** 该文档统一当前产品方向、owner、依赖、DoD、证据、阻塞和项目里程碑；本索引不保留第二套状态表或待办顺序。
 
 接手入口：[handoff](../../handoff.md)、[AF-1 Goal](../planning/AF-1/goal.md)、[执行切片](delivery-slices.json)。过时的计划、旧整合与盘点集中到 [历史归档索引](../archive/README.md)，不作为第二份进度页。
 

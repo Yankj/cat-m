@@ -56,13 +56,13 @@ flowchart LR
 
 图表示代码的接线职责，不表示上述真实用户路径已经验收。领域对象由服务端同scope事务、revision、lease与effect回执维护；客户端本地库负责草稿、阅读/恢复投影和未提交输入。流终态、按钮点击、卡片呈现与真实完成分开。既有CoreContracts和历史服务对象逐步适配，不新造独立执行状态机。
 
-当前TaskWorker已受控vendored复用；模型、Auth、store适配由Catpaw维护。CopilotKit/AG-UI是候选互通/呈现协议，不替代持久任务/审批权威。六类原生卡与表图/计算器沿同工作对象和版本接入；本地交互不产生模型请求，明确跟进才提交，未知结果按原operation核对。
+当前TaskWorker已受控vendored复用；模型、Auth、store适配由cat维护。CopilotKit/AG-UI是候选互通/呈现协议，不替代持久任务/审批权威。六类原生卡与表图/计算器沿同工作对象和版本接入；本地交互不产生模型请求，明确跟进才提交，未知结果按原operation核对。
 
 ## 两个未合入分支的决策
 
 | 候选 | 固定来源/差异 | 本轮决定 |
 |---|---|---|
-| Grok CatCompanion | 38c44457；3个独有提交、落后4；新增CatCompanion、Docs、根Package.swift并改README/gitignore | 保留参考。AppStore内存确认直接显示执行，没有模型/系统回执；不能把整个分支merge为生产App。产品输入已在[固定AppStore源码](https://github.com/Yankj/catpaw-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Core/Stores/AppStore.swift)中细分 |
+| Grok CatCompanion | 38c44457；3个独有提交、落后4；新增CatCompanion、Docs、根Package.swift并改README/gitignore | 保留参考。AppStore内存确认直接显示执行，没有模型/系统回执；不能把整个分支merge为生产App。产品输入已在[固定AppStore源码](https://github.com/Yankj/cat-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Core/Stores/AppStore.swift)中细分 |
 | proactive-goal-kernel | 8e34859a；4个独有提交、落后13；21个文件涉及内核/屏障/存储/合成与PG候选测试 | 保留可复用机制，先做与当前Store/wire的适配审查。源码明确execution_layer=synthetic_test_double并拒绝生产repository；没有HTTP/model/poller/migration，不能取消守卫当上线实现 |
 
 内核的版本CAS、权限重核、待决失效、tombstone与unknown保守处理值得用于S03/S05。restore-dispatch-barrier要求数据库备份之外的新鲜authority；当前没有该外部实现，不能用同库表或静态env替代。其purchase/send_report等合成操作不是本轮工具授权范围。原合成测试报告不能继承为本次PG/云证据。

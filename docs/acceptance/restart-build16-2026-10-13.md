@@ -4,7 +4,7 @@
 
 DeviceTrial/iPhoneOS，0.3.0 (16)，原 bundle。构建 PASS，非 DEBUG；严格签名校验 PASS。原 certificate/profile/entitlements 全部一致，没有新权限或 provisioning 更新。只从已核对 binary hash 的旧 build15 复用五个公开 Info 配置字段，没有读取令牌、账号状态或用户数据。
 
-IPA `Catpaw-m-0.3.0-build16-a905b47.ipa`，6,123,236 bytes，SHA256 `e4c79e35025042c03cc06872ff1cb9216820126deb195f082d2e5296537626dc`。ZIP CRC 与所有 App 文件逐字节核对通过；binary SHA256 `e1fc81a28fadb6cf061c447e4fa57c9fc0636e350a2bb927e8de2725cf32c86a`。签名原 profile 到期 2026-10-18T13:11:47Z。
+IPA `cat-0.3.0-build16-a905b47.ipa`，6,123,236 bytes，SHA256 `e4c79e35025042c03cc06872ff1cb9216820126deb195f082d2e5296537626dc`。ZIP CRC 与所有 App 文件逐字节核对通过；binary SHA256 `e1fc81a28fadb6cf061c447e4fa57c9fc0636e350a2bb927e8de2725cf32c86a`。签名原 profile 到期 2026-10-18T13:11:47Z。
 
 本次准备没有安装手机、调用模型或部署云端。准备过程中的本机 Python 归档参数兼容和证书提取参数问题已修正；最终构建和核对成功。完整日志、原包和 source manifest 保留在忽略的 `apps/ios-conversation/.build/restart-signed16/`；精简结果见 [RESULT](evidence/restart-build16-2026-10-13/RESULT.json)。
 
