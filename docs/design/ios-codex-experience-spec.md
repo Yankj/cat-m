@@ -1,4 +1,4 @@
-# mimi iPhone 产品、布局与交互规格
+# cat iPhone 产品、布局与交互规格
 
 版本：UX-1，2026-10-13，设计修订R5；保留AF-U01–12身份与门槛。[视觉、交互与动效附录R2](taste-visual-motion-r2.md)与[新提案](prototypes/catpaw-taste/index.html)细化实施；产品取舍继续沿用R1。[产品评审](product-experience-review-2026-10-13.md)记录本轮理由。用户明确：**以 iPhone 体验为主，借鉴桌面 Codex 的信息结构。** 本文是 [AF-1 spec](../product/agent-foundation-spec.md) 的必需设计合同；实时状态只见 [master-plan](../status/master-plan.md)。验收见 [UX 验收合同](../acceptance/ios-codex-experience-acceptance.md)，早期布局提案保留在 [历史预览](prototypes/catpaw-ios-ux/index.html)，本轮视觉与连续交互以[R4实施附录](native-interaction-motion-r4.md)、[机器方向与参数](interaction-motion-r4.json)及[独立交互样机](prototypes/catpaw-motion-study-r4/index.html)评审，当前移动端视觉、字体间距、输入、过程与菜单以[R5截图参考修订](mobile-conversation-reference-r5.md)、[语义参数](mobile-conversation-reference-r5.json)及[新样机](prototypes/catpaw-mobile-reference-r5/index.html)为准：中性白／近黑、局部亮蓝动作、深蓝本人消息、正文17／行高1.6／段间24的调试起点；语音对话不纳入本轮。R4保留连续机制，[R4.1](codex-color-detail-r4-1.md)与旧R2保留日期视觉输入。完整对象状态、过程、卡片与HIL继续参考[R3交互附录](interaction-scenarios-r3.md)、[机器场景表](interaction-scenarios-r3.json)和[可操作提案](prototypes/catpaw-interaction-r3/index.html)审阅。
 
@@ -10,9 +10,9 @@
 
 本次从[已找回的截图与会话观察](ios-codex-reference-review-2026-10-13.md)继续，不要求再次解锁或重录。记录中 ChatGPT 的对话输入简洁，侧栏区分“你的 dot / 定时任务 / 空间 / Codex”，名称菜单承载电脑和暂停等次级控制。这里仅继承已观察的结构，不声称已测量 Codex 每个界面的像素。
 
-官方 mobile 文档把发起、跟进、批准和审阅放在手机工作循环；据此将小咪的任务状态、待决事项和成果作为可直接操作的信息，而不是调试面板。[Codex on mobile](https://learn.chatgpt.com/docs/mobile)。官方 iOS 变更记录介绍优先呈现运行中、未读和等待用户的任务，以及可编辑队列；这些是行为参照，不代表小咪已有同等后台队列能力。[2026-09-01 changelog](https://learn.chatgpt.com/docs/changelog)。
+官方 mobile 文档把发起、跟进、批准和审阅放在手机工作循环；据此将 cat 的任务状态、待决事项和成果作为可直接操作的信息，而不是调试面板。[Codex on mobile](https://learn.chatgpt.com/docs/mobile)。官方 iOS 变更记录介绍优先呈现运行中、未读和等待用户的任务，以及可编辑队列；这些是行为参照，不代表 cat 已有同等后台队列能力。[2026-09-01 changelog](https://learn.chatgpt.com/docs/changelog)。
 
-桌面 Codex 的信息组织用来支撑目标/计划、线程、动作审阅和产物回流；iPhone 使用单列和原生详情，不直接缩小桌面多栏。对标的工作引导与审阅模式参见 [官方 mobile field guide](https://developers.openai.com/blog/mastering-codex-remote-for-engineering)。以下具体间距、色彩和布局是小咪的设计决定，不标成 Codex 官方参数。
+桌面 Codex 的信息组织用来支撑目标/计划、线程、动作审阅和产物回流；iPhone 使用单列和原生详情，不直接缩小桌面多栏。对标的工作引导与审阅模式参见 [官方 mobile field guide](https://developers.openai.com/blog/mastering-codex-remote-for-engineering)。以下具体间距、色彩和布局是 cat 的设计决定，不标成 Codex 官方参数。
 
 ## 2. 产品信息架构
 
@@ -107,7 +107,7 @@ FINAL-1细化：完整schema与权威对象就绪后，choice/form/approval即�
 
 沿用 [现有 semantic tokens](design-tokens.json) 和A1正式图标；UI主体使用中性灰阶、黑白主动作、蓝色文字操作和独立状态色。品牌图标保留在应用图标/必要身份位置，主对话不增加大吉祥物或渐变背景。
 
-| 项 | mimi UX-1决定 |
+| 项 | cat UX-1决定 |
 |---|---|
 | 页面 | 使用现有background/panel语义；主阅读为不透明surface，清楚区分内容和控件 |
 | 颜色 | 文字ink/secondary；输入input；主按钮ink/onInk；状态兼具图标/文字，不只靠颜色 |

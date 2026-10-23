@@ -1,4 +1,4 @@
-# 小咪终版质量与竞争优势验收
+# Catpaw 终版质量与竞争优势验收
 
 版本：FINAL-1，2026-10-13，对应[终版规格](../product/catpaw-final-product-spec.md)，机器映射见[JSON](catpaw-final-product-acceptance.json)。这是待执行合同，实际结果只在[主计划](../status/master-plan.md)。当前AF-1-G3-UX1的18功能／12UX／3组合路径保留；不得用下面的质量项取代基础用例。
 

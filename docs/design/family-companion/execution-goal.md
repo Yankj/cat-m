@@ -1,5 +1,7 @@
 # 小咪家庭陪伴改造 · 执行 Goal
 
+适用说明（2026-10-24）：本文保留 2026-10-22 的规划快照，不再作为当前阶段编号、默认导航或启动状态的权威。当前按[用户确认的 M1–M6 Roadmap](../../product/mimi-roadmap.md)执行，进度只见[主计划](../../status/master-plan.md)；以下既有权限、证据与隔离约束按复用范围继续有效。旧 Goal 不因新路线自动完成。
+
 版本：评审 v0.1 · 2026-10-22 · 状态：**PLAN_READY / NOT_STARTED**。
 
 本文件把[技术方案](../../architecture/family-companion-technical-plan.md)转为可执行里程碑，不替代既有规格与验收。用户要求延后启动，具体启动时间/触发条件尚未确认，目标 Mac 尚未授权；本轮只提交计划，没有创建或恢复实施 Goal、启动实现 agent、改应用代码、部署或付费。旧 AF/FINAL Goal 不因本文自动恢复、替换或签收。实时项目交付状态仍只在[主计划](../../status/master-plan.md)维护。

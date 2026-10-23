@@ -5,7 +5,8 @@
   "native_entry": "apps/ios-conversation/Sources/App/catApp.swift",
   "backend_maintenance": "services/edge/supabase/functions",
   "backend_entries_present": [
-    "services/edge/supabase/functions/catpaw-api/index.ts"
+    "services/edge/supabase/functions/catpaw-api/index.ts",
+    "services/edge/supabase/functions/catpaw-proactive/index.ts"
   ],
   "backend_shared": "services/edge/supabase/functions/_shared",
   "deployed_snapshots": "services/edge/deployed-baselines",
@@ -32,12 +33,20 @@
     "research"
   ],
   "live_status": "docs/status/master-plan.md",
-  "current_goal": "docs/planning/AF-1/goal.md",
+  "current_goal": "docs/product/mimi-roadmap.md",
+  "historical_goal_contracts": [
+    "docs/planning/AF-1/goal.md",
+    "docs/design/family-companion/execution-goal.md"
+  ],
   "private_runtime": "local-audit",
   "legacy_shared_files_must_not_be_deduplicated_as_identical": true,
   "second_active_app_allowed": false,
   "component_owned_model_or_auth_allowed": false,
   "deployment_implied_by_checks": false,
-  "website": "Yankj/heydusk-site/apps/mimi (marketing site moved out; stub at apps/website/README.md)",
-  "website_role": "Static product website; independent build and deployment; no native host or backend authority"
+  "website": "apps/website",
+  "website_role": "external_repository_stub",
+  "website_repository": "https://github.com/Yankj/heydusk-site",
+  "website_source_path": "apps/mimi",
+  "website_stub": "apps/website/README.md",
+  "website_authority": "Marketing only; no native host, account, persistence or backend execution authority"
 }

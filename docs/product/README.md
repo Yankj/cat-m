@@ -1,15 +1,13 @@
 # 产品基线与实现范围
 
-FINAL-G1的对话必需细分：[CGUI-1](../design/conversation-generative-ui-spec.md)、[CG验收](../acceptance/conversation-generative-ui-acceptance.md)。完整开发输入由[启动合同](../planning/AF-1/development-start-contract.md)与[长任务prompt](../planning/AF-1/long-task-development-prompt.md)统一，实时状态仍只在主计划。
+当前产品与执行范围以用户确认的 [mimi M1–M6 Roadmap](mimi-roadmap.md) 为准：帮妈妈把孩子的零碎事情接住，把日常安排与长期成长连起来。默认今天，先完成 M1；[育儿交互合同](../design/family-companion/parenting-core.md)细化页面和状态，[架构总览](../architecture.md)说明本机账本、只整理 AI 与既有云能力的边界。实时状态只维护在[主计划](../status/master-plan.md)。
 
-重启产品权威为[AF-1底座](agent-foundation-spec.md)及[UX-1](../design/ios-codex-experience-spec.md)。用户指定Grok分支与本地设计的综合终版见[FINAL-1产品／视觉／技术设计](catpaw-final-product-spec.md)和[质量／具名对照验收](../acceptance/catpaw-final-product-acceptance.md)。当前运行Goal与实际进展仅见[主计划](../status/master-plan.md)；下列v1/r2/r3保留历史身份。
-
-当前执行按 [AF-1 Goal/计划](../planning/AF-1/goal.md)、[18项功能验收](../acceptance/agent-foundation-acceptance.md)、[12项体验验收](../acceptance/ios-codex-experience-acceptance.md)和 CP-01–03。旧 R1–R3 规格、一页说明与 v1/r2/r3 能力表已退出当前开工入口，集中见 [历史归档索引](../archive/README.md)。原件、冻结规格和证据仍保留。
+[AF-1](agent-foundation-spec.md)、[UX-1](../design/ios-codex-experience-spec.md)、[FINAL-1](catpaw-final-product-spec.md)、[CGUI-1](../design/conversation-generative-ui-spec.md)及其验收保留为复用模块约束和历史范围。授权、来源、隔离与恢复要求继续有效；旧聊天默认入口、全量交付范围和暂停记录不覆盖用户最新路线。旧 R1–R3、一页说明与 v1/r2/r3 能力见[历史索引](../archive/README.md)，原件与证据保留。
 
 <details>
 <summary>历史产品规格与 v1/r2/r3 能力边界</summary>
 
-[旧对话式spec](conversation-first-delivery-spec.md)保留当时4条故事、状态/API与R1–R3门槛；[连续多模态P0](../acceptance/r1-continuous-multimodal-issues.md)保留旧失败反馈。[此前一页说明](cat_Product_Delivery_Baseline_2026-10-12.md)是用户真机失败反馈前的快照，不是最新通过声明。
+[旧对话式spec](conversation-first-delivery-spec.md)保留当时4条故事、状态/API与R1–R3门槛；[连续多模态P0](../acceptance/r1-continuous-multimodal-issues.md)保留旧失败反馈。[此前一页说明](Catpaw-m_Product_Delivery_Baseline_2026-10-12.md)是用户真机失败反馈前的快照，不是最新通过声明。
 
 当前产品方向、owner与验收只维护在 [主交付计划](../status/master-plan.md)。用户不接受散装Demo/手建委托；新主线是自然对话中的真实回复、服务端任务卡、审批与产物。下面保留v1规格/能力历史，不能充当当前产品接受。新记忆需求以 [brief v1](../architecture/memory-brief-v1.md) 为建议输入，待Store/合同适配与验收。
 

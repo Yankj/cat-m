@@ -11,7 +11,8 @@ paths = [layout[k] for k in ['native_host', 'native_project', 'native_entry',
          'backend_maintenance', 'backend_shared', 'deployed_snapshots',
          'public_design', 'public_research', 'live_status', 'current_goal', 'website']]
 for key in ['backend_entries_present', 'swift_packages', 'frozen_app_roots',
-            'historical_service_roots', 'upstream_sources', 'retained_input_roots']:
+            'historical_service_roots', 'upstream_sources', 'retained_input_roots',
+            'historical_goal_contracts']:
     paths.extend(layout[key])
 for name in paths:
     path = Path(name)
@@ -19,8 +20,18 @@ for name in paths:
     assert (ROOT / path).exists(), name
 declared_apps = {Path(layout['native_host']).name, *(Path(p).name for p in layout['frozen_app_roots'])}
 declared_apps.add(Path(layout['website']).name)
-assert (ROOT / layout['website'] / 'package.json').is_file(), 'Website build manifest missing'
+assert layout['website_role'] == 'external_repository_stub', 'Unsupported website role'
+assert layout['website_repository'] == 'https://github.com/Yankj/heydusk-site', 'Unreviewed website repository'
+assert layout['website_source_path'] == 'apps/mimi', 'Unreviewed external website source path'
+assert layout['website_stub'] == str(Path(layout['website']) / 'README.md'), 'Website stub must be local README'
+website_stub = ROOT / layout['website_stub']
+assert website_stub.is_file(), 'Website migration notice missing'
+website_notice = website_stub.read_text()
+assert layout['website_repository'] in website_notice and layout['website_source_path'] in website_notice, 'Website migration notice does not match external source'
+assert not (ROOT / layout['website'] / 'package.json').exists(), 'Migrated website cannot become another maintenance source'
 assert not list((ROOT / layout['website']).rglob('*.xcodeproj')), 'Website cannot become another native host'
+backend_entries = {str(p.relative_to(ROOT)) for p in (ROOT / layout['backend_maintenance']).glob('*/index.ts')}
+assert backend_entries == set(layout['backend_entries_present']), 'Backend entry inventory differs from maintenance source'
 actual_apps = {p.name for p in (ROOT / 'apps').iterdir() if p.is_dir() and not p.name.startswith('.')}
 assert actual_apps == declared_apps, 'Undeclared App root; update reviewed layout roles first'
 assert not (ROOT / 'CatCompanion').exists(), 'Second App skeleton cannot be imported as the active host'
@@ -40,5 +51,5 @@ for source in (ROOT / layout['native_host'] / 'Sources/Domain').glob('*.swift'):
 assert not layout['second_active_app_allowed']
 assert not layout['component_owned_model_or_auth_allowed']
 assert not layout['deployment_implied_by_checks']
-print('PASS one active native entry, independent website, two local packages, declared maintenance/history/source paths')
+print('PASS one active native entry, external website stub, two local packages, declared maintenance/history/source paths')
 print('PASS Domain imports and package host/network boundaries; layout validation only')

@@ -1,5 +1,26 @@
 # 小咪重启 Goal 与交付计划
 
+## 2026-10-24 mimi Roadmap 与仓库收口（当前）
+
+用户本次 `/goal` 已处于 ACTIVE，按[确认的 M1–M6 Roadmap](../product/mimi-roadmap.md)整理架构、资产和四个存量 PR；本轮不恢复或签收旧 AF/FINAL Goal。只推进 **M1**，其构建和主流程关闭后再进 M2。用户已明确允许与云端「重构 mimi 育儿核心体验」协调：云端负责 #123 产品修复/CI，本地 `refactor/mimi-roadmap` 负责文档、治理和旧 PR 收口；共享文件按明确路径选择性整合，禁止互相覆盖分支。
+
+| 阶段 | 代码 | 自动测试 | 设备验证 | 线上验收 |
+|---|---|---|---|---|
+| M1 先把一件事办清楚 | #123 draft 候选；新增失败恢复缺陷正修复 | `974dbb1` / CI 39986351154：Edge 906通过/2跳过，Xcode build-for-testing通过；54项定向XCTest步骤运行中，尚无终态 | 本轮 NOT_RUN；本机无完整 Xcode，既有 CI 合成 XCTest 与真机主流程另计 | NOT_RUN；专用后端未部署 |
+| M2 日常变化与本机提醒 | 未启动 | NOT_RUN | NOT_RUN | NOT_RUN |
+| M3 成长回顾 | 未启动；已有轻目标/记录是 M1 基础 | NOT_RUN | NOT_RUN | NOT_RUN |
+| M4 家庭事实记忆 | 未启动；旧记忆模块仅复用资产 | NOT_RUN | NOT_RUN | NOT_RUN |
+| M5 同步、分工、可靠主动 | 未启动；旧 family 后端不等于育儿端已接通 | NOT_RUN | NOT_RUN | NOT_RUN |
+| M6 真实家庭试用 | 未启动 | NOT_RUN | NOT_RUN | NOT_RUN |
+
+**仓库与 PR：**主线基线 `4ec8118`，本地整理基于 #123 `974dbb13db1113a49bd5b5cdc3c645663313b13a`，未合并或部署。README、产品/设计索引、AGENTS、架构图与目录机器清单已对齐新路线，旧日期证据保留；[资产审计](../architecture/mimi-assets-2026-10-24.md)与[PR 审计](../architecture/mimi-pr-disposition-2026-10-24.md)固定来源。#120 已关闭未合并，独有代码/分支及原描述保留。#113 的43文件已逐blob进入main；#116旧路线被替代，两项关闭被自动审批拒绝，等待明确批准只关闭、保留描述和来源。
+
+**验证与待处理：**布局/部署来源/AF计划/CGUI/FINAL计划/能力清单/敏感扫描及扫描器回归通过；治理16正负例通过，259个改动文档本地链接有效。冻结来源检查仍失败：24历史文件被旧品牌替换改写，已准备与原清单完全匹配的恢复patch，尚未应用。另22项历史AF输入仅有品牌/仓库URL漂移，已按每文件原pin恢复，未改清单；原AF Goal检查实跑通过（9项local-only输入仍不可用）。这些治理结果不证明原生或线上通过。
+
+**M1 独立审查：**在 `974dbb1` 的真实HTTP handler/ChatService + 合成Repository复现“未创建远端对象的清理请求连续404”；源码链会让 pending 清理阻挡以后整理。已交云端补受身份约束的幂等删除墓碑与迟到create围栏，不能客户端吞404。Node复现使用既有禁网prelude、模型调用0；原生UI、真实PG、生产Auth未执行。原始复现与恢复patch保存在ignored `build/mimi-roadmap-20261024/`。
+
+以下条目均保留其当日状态；旧“当前”“PAUSED”、版本号与测试数不覆盖本节。
+
 ## 2026-10-23 获批 GitHub 接续与逐步里程碑
 
 用户随后明确批准新分支推送及草稿PR，并要求检查差距、逐个继续里程碑。已将原本地候选 `973a8f2cdc468e60ed007c128194adcac334a2ae` 普通推送到 `feat/parenting-core`，创建 [draft PR #123](https://github.com/Yankj/mimi/pull/123)；main读回仍为 `4ec8118b796f7c983ae4436268441c3c9d3d33db`。没有合并、自动合并、部署、发布或附件上传。仓库内发布workflow仅匹配`release/**`或手动dispatch，本分支/草稿PR无已知生产部署触发。
