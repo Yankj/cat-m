@@ -20,6 +20,21 @@ const TRUST = { user_direct: 'user_direct', external_unverified: 'external', ass
 // Ports the service does not offer: recorded NOT_RUN, never simulated.
 const NOT_RUN_OPS = { extract_image_fields: 'no vision extractor route approved (capability_unavailable in prod wiring)', import_older_notice: 'no source-version lineage port' };
 
+// Shared read-only access (household grants) is OUT OF SCOPE for v0.4 (deploy review): grant.upsert / grant.revoke are
+// refused by the service and removed from command_types. Cases whose setup or steps need a grantee are recorded
+// OUT_OF_SCOPE (never faked with an owner session) and are excluded from the in-scope numbers.
+const GRANT_OPS = new Set(['revoke_membership', 'promote_shared_memory']);
+function grantReason(c) {
+  const q = c.query, init = c.initial_runtime_state;
+  if (['read_only', 'child_a_only', 'revoked'].includes(init.authority_state)) return `authority_state=${init.authority_state} needs a household grant`;
+  const op = c.steps.find(st => GRANT_OPS.has(st.operation)); if (op) return `operation ${op.operation} needs a household grant`;
+  const ownerOf = {}; for (const conv of c.identities.conversations) ownerOf[conv.household_id] ??= conv.owner_user_id;
+  const v = c.identities.subjects.find(s => s.id === q.viewer_user_id);
+  const owner = ownerOf[q.household_id] ?? `owner:${q.household_id}`;
+  if (owner !== q.viewer_user_id && v && v.household_id === q.household_id && KIND[v.fixture_role] === 'adult') return 'non-owner adult viewer reads through a household grant';
+  return null;
+}
+
 async function orderSeeds(caseId, seeds) {
   const h = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map(b => b.toString(16).padStart(2, '0')).join('');
   const keyed = await Promise.all(seeds.map(async s => [await h(`cat-fam-mem-order-v1:${caseId}:${s.memory_ref.id}:${s.memory_ref.revision}`), s]));
@@ -402,6 +417,8 @@ test('M3 gate FULL: recall@6, hard assertions (clarification, disposition, dispa
     let sum = 0, hits = 0, gold = 0, safetyErrors = 0; const byCat = {}, hard = {}, failing = {};
     for (const c of corpus.cases) {
       let r, s;
+      const oos = grantReason(c);
+      if (oos) { out.cases.push({ id: c.id, category: c.category, status: 'OUT_OF_SCOPE', eligible: c.expectation.retrieval_eligible, reason: oos }); continue; }
       try { r = await runCase(sql, call, c); s = score(c, r); }
       catch (e) { out.cases.push({ id: c.id, category: c.category, status: 'ERROR', error: String(e?.message ?? e).slice(0, 200) }); if (c.expectation.retrieval_eligible) gold += c.expectation.eligible_gold_refs.length; continue; }
       const e = c.expectation; let recall = null;
@@ -419,10 +436,14 @@ test('M3 gate FULL: recall@6, hard assertions (clarification, disposition, dispa
     }
     const pass = out.cases.filter(x => x.status === 'PASS').length;
     const macro = sum / 50;
+    const oosCases = out.cases.filter(x => x.status === 'OUT_OF_SCOPE'), inScope = out.cases.filter(x => x.status !== 'OUT_OF_SCOPE');
+    const eligibleIn = inScope.filter(x => x.eligible).length, macroIn = eligibleIn ? sum / eligibleIn : 0, passIn = inScope.filter(x => x.status === 'PASS').length;
     out.summary = { eligible: 50, macro_recall_at_6: macro, micro_recall_at_6: hits / gold, gold_hits: hits, gold_refs: gold, safety_forbidden_ref_cases: safetyErrors,
       cases_pass: pass, cases_fail: out.cases.filter(x => x.status === 'FAIL').length, cases_not_run: out.cases.filter(x => x.status === 'NOT_RUN').length, cases_error: out.cases.filter(x => x.status === 'ERROR').length,
+      out_of_scope: { cases: oosCases.length, eligible: oosCases.filter(x => x.eligible).length, ids: oosCases.map(x => x.id), reason: 'household grants (shared read-only) not in v0.4 scope' },
+      in_scope: { cases: inScope.length, eligible: eligibleIn, macro_recall_at_6: macroIn, cases_pass: passIn, gate_PASS: macroIn >= 0.9 && safetyErrors === 0 && passIn === inScope.length },
       hard_assertions: hard, failing_by_assertion: failing, by_category: byCat,
-      gate: { macro_threshold: 0.9, macro_ok: macro >= 0.9, safety_ok: safetyErrors === 0, all_hard_pass: pass === 100, complete_100: out.cases.length === 100 && !out.cases.some(x => x.status === 'ERROR'), PASS: macro >= 0.9 && safetyErrors === 0 && pass === 100 } };
+      gate: { macro_threshold: 0.9, macro_ok: macro >= 0.9, safety_ok: safetyErrors === 0, all_hard_pass: pass === 100, complete_100: out.cases.length === 100 && !out.cases.some(x => x.status === 'ERROR' || x.status === 'OUT_OF_SCOPE'), PASS: macro >= 0.9 && safetyErrors === 0 && pass === 100 } };
     await Deno.writeTextFile(Deno.env.get('M3_GATE_OUT') ?? '/tmp/family-m3-gate.json', JSON.stringify(out, null, 1));
     console.log('M3', JSON.stringify({ ...out.summary, failing_by_assertion: Object.fromEntries(Object.entries(failing).map(([k, v]) => [k, v.length])) }));
     assert.equal(out.cases.length, 100);
