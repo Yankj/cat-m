@@ -8298,5 +8298,13 @@
   "云端临时整理数据尚未确认清理，可以稍后重试清理。": {
     "en": "Cleanup of temporary server data is not confirmed yet. You can retry cleanup later.",
     "zh-Hans": "云端临时整理数据尚未确认清理，可以稍后重试清理。"
+  },
+  "保存草稿": {
+    "en": "Save draft",
+    "zh-Hans": "保存草稿"
+  },
+  "确认完成": {
+    "en": "Complete",
+    "zh-Hans": "确认完成"
   }
 }

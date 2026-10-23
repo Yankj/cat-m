@@ -102,6 +102,20 @@ canonical 打开跨异步磁盘与 detach 时由独立 attempt UUID 占位，迟
 
 仅调整整组测试预算至45分钟，不改15秒条件等待、16次滚动上限、实际点击enabled+hittable或业务断言。依据上轮UI724.235秒/3×7加非UI341.997秒粗估33.9分钟，再留约33%启动/新增Auth余量；这是7条旅程的串行预算，不把失败改为通过。实际耗时按新SHA日志复核。无skip/quarantine新增。M1未签收，M2暂停。
 
+## c1de83f：69模块通过，保存失败恢复UI通过，表单可达性继续修复
+
+[c1de83f6e3d466e63746929ba4cc086d5ed25f2c / CI40006576610](https://github.com/Yankj/mimi/actions/runs/40006576610) 已终态：changes、Edge SUCCESS，Edge913总数/911通过/0失败/2跳过，保留12个既有隔离文件；[iOS job120595974044](https://github.com/Yankj/mimi/actions/runs/40006576610/job/120595974044) FAILURE。Xcode签名build-for-testing和产物guard成功；**69模块/0失败**，分项为8既有Auth runtime + 4育儿Auth composition + 27 inline + 8 parser + 22 workspace，15.636秒（壁钟16.971秒）。生产Keychain/AES、真实SwiftData冷读、scope和账号围栏继续通过。
+
+7条UI均实际执行，其中真实SwiftData提交故障→rollback→同表单输入保留重试→同store冷启唯一孩子**通过**（76.922秒）；其余6条失败在保存/原位整理/安排名称的表单节点可达性，未到其完整验收终点。失败前原话仍在，记录保存Button在AX树中明确存在，无持久化失败新证据。UI共1735.823秒，测试操作2039.628秒；非45分钟取消，不把69模块或其中1条UI等同M1主流程通过。
+
+完整AX定位了输入面板的几何差异：Keyboard节点y611开始，但inputView/SystemInputAssistantView从y567开始；旧拖动起点约(349,591)，实落44px预测栏。dark前8次同样命中预测栏；第9次反向从Form上部拖动后键盘消失，余下向上搜索使Form停在0%。因此终态无键盘不否定前段遮挡，也不能据此判断按钮消失。这里修正了先前‘TextEditor吞掉全部拖动’的过早归因。
+
+本次同时处理用户主动作可达性：安排和观察/完成记录的**唯一保存按钮**移入现有系统导航栏confirmationAction，沿用已经真实通过的昵称/目标保存模式；删除原Form底部重复位置。save()、操作ID/去重、所有valid/saving/model.busy/intake.busy/intakeCallID禁用条件保持，保存草稿后仍须独立确认安排。可见短文案配完整动作accessibilityLabel，保留保存中进度及A1 tint，不引入浮层或扩大到新功能。时间选择页不在此改动中。
+
+测试保留69模块+7UI和原15秒等待/16次滚动上限；取真实输入面板顶沿裁剪，Form手势落在cell内侧padding（实测cell x20、TextEditor x40），并使用视口20%–80%避开safearea。空frame不作为方向锚点，已知下方虚拟化节点不再盲目半程反向；上方输入仍由既有input()回到页首。Disclosure按当前AX的Other容器定位实际Button点击。新增导航栏位置/键盘上方断言；dark冒烟改约464字符合成长输入并明确检查键盘仍可见，不能把更长输入称已通过。下一SHA构建与7UI仍待真实运行。
+
+M1尚未签收、M2暂停。仍无真机、真实模型、生产Auth/PG、系统通知、部署或持久交付的截图；不增加上传。
+
 ## 接续测试范围
 
 d5f739e及之前的CI定向脚本只选择 `catTests/ParentingWorkspaceTests`、`ParentingIntakeTests`、`ParentingInlineIntakeTests` 三类合成用例。使用已安装iPhone runtime创建自己的空白模拟器，结束只删除本次创建的设备；存在Local.xcconfig时拒绝执行，移除四个backend环境配置及继承fixture/connection/simulator-child注入，不安装依赖或下载runtime。测试使用临时文件和mock transport，无真实儿童数据、真实模型、生产Keychain或数据库。空Debug配置使项目Auth/后端启动被guard拦住；现有AppDelegate仍有系统APNs注册/BG任务注册，未测量全进程或系统网络次数，不声称全进程零网络。
