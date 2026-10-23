@@ -118,6 +118,8 @@
 
 > **教程（Tutorial）**：在模拟器里跑起来，不需要任何账号或密钥。
 
+以下是既有宿主与合成评审入口；M1 候选及可用验证方式见[当前进度](docs/status/master-plan.md)。下载历史发行包或运行旧 fixture 不会自动得到育儿主流程。
+
 **前置条件**
 
 - macOS + **Xcode 26**（iOS 26 SDK；App 部署目标 iOS 17）。无第三方 Swift 依赖，两个本地 package 已随仓库检入。
@@ -190,7 +192,9 @@ xcrun simctl launch booted "$BUNDLE_ID"
 
 ## 使用
 
-> **操作指南（How-to）**：典型对话与期望表现。离线评审模式对应 `run-simulator-review.sh` 的参数，可在无网络时复现界面。
+育儿流程以[育儿交互合同](docs/design/family-companion/parenting-core.md)为准：今天 → 交代一件事 → 编辑草稿 → 确认安排 → 完成与记录。下表保留辅助聊天与旧组件的评审入口；合成展示不证明系统提醒实际执行。
+
+> **历史组件操作指南（How-to）**：离线评审模式对应 `run-simulator-review.sh` 的参数，可在无网络时复现相应合成界面。
 
 | 场景 | 示例对话 | 期望表现 | 离线评审模式 |
 |---|---|---|---|
@@ -350,7 +354,7 @@ CATPAW_DENO_BIN=<Deno路径> CATPAW_PUBLIC_NPM_CACHE=<公开cache目录> sh scri
 
 - 分支：不在 `main` 直接开发，按 [分支规范](docs/development/branch-management.md) 用短分支；`.githooks` 提供本地守卫。
 - 部署：Edge 函数与数据库迁移只在用户明确批准后部署，步骤见 [部署清单](services/edge/docs/deploy-checklist.md)。
-- CI：GitHub Actions 当前因额度用尽暂停，PR 需附本地编译与测试记录。
+- CI：执行范围见 [ci.yml](.github/workflows/ci.yml)，按 PR 变更路径选择任务；每次以对应 SHA 的终态和实际执行日志为准。当前结果与缺失验收统一见[主计划](docs/status/master-plan.md)，PR 仍需附适用的本地检查记录。
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
 
