@@ -2576,6 +2576,37 @@
       "category": "unexpected_binary",
       "sha256": "7a149f1afc5ef9b72c3143578fc66f5204a114e29948fda8557e21b814495ffc",
       "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "docs/architecture/family-companion-technical-plan.pdf",
+      "category": "unexpected_binary",
+      "sha256": "2cd132c23cc2c46c36bf84fbb7e8dc4bb125c12bb0ab0bbdd9c9f089ad8d4fbf",
+      "reason": "User-authorized generated 18-page Chinese technical proposal; all pages rendered and reviewed; PDF metadata only Quartz producer and dates; fictional examples; no app source, credentials, real family data or attachments."
+    },
+    {
+      "path": "docs/design/family-companion/assets/cat-product-architecture-v0.1.pdf",
+      "category": "unexpected_binary",
+      "sha256": "dbc1df843ba1263f3435ea82e8e26a2e7cba4530ddb2102321187e64ced8c832",
+      "reason": "User-authorized one-page product architecture diagram from Library; rendered diagram reviewed; metadata is Matplotlib producer/title/date; fictional proposal, not App implementation."
+    },
+    {
+      "path": "docs/design/family-companion/assets/cat-product-architecture-v0.1.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "113c0125f8c3f10b16c3fd6b1cc54ae24349a764b42f887834fb897c3496ca43",
+      "reason": "User-authorized product diagram; only tEXt Software=Matplotlib version3.10.8 with public matplotlib.org URL; no personal or device metadata."
+    },
+    {
+      "path": "docs/design/family-companion/assets/technical-architecture.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "bae24afe78c6ffe4eb2e3a098e7989c6570b6ebbcb2bbcc27762af8aef4c2123",
+      "reason": "Rendered page of generated technical proposal; eXIf contains only color space and pixel dimensions 595x841; no GPS, device, author or private data."
+    },
+    {
+      "path": "scripts/check-git-policy.py",
+      "category": "email_review",
+      "line": 43,
+      "sha256": "45248ad3fc6ba408948fceae2f7295de6cbc959ee21ae337a33188af2e1d897c",
+      "reason": "Authorized repository rename to Yankj/cat-m; this exact line is the public GitHub SSH transport URL, not a private email, recipient or credential. Only the three exact origin URL identities changed; other push safeguards remain."
     }
   ]
 }

@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-22",
+  "base_commit": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "repository": "Yankj/cat-m",
+  "repository_id": 1413057312,
+  "status": "proposal_assets_only",
+  "data": "fictional_family_examples",
+  "files": [
+    {
+      "path": "docs/architecture/family-companion-technical-plan.md",
+      "bytes": 48653,
+      "sha256": "7d423abef57a5870f63a11c5af4c1b109e3c2fd1d08b3b99d823a9e5d630328e"
+    },
+    {
+      "path": "docs/architecture/family-companion-technical-plan.pdf",
+      "bytes": 624631,
+      "sha256": "2cd132c23cc2c46c36bf84fbb7e8dc4bb125c12bb0ab0bbdd9c9f089ad8d4fbf"
+    },
+    {
+      "path": "docs/design/family-companion/README.md",
+      "bytes": 6014,
+      "sha256": "7f7133e7f3f67cd14fce6ea2342d7144bc88355b529e224c734c25ded4c63086"
+    },
+    {
+      "path": "docs/design/family-companion/assets/cat-product-architecture-v0.1.pdf",
+      "bytes": 200397,
+      "sha256": "dbc1df843ba1263f3435ea82e8e26a2e7cba4530ddb2102321187e64ced8c832"
+    },
+    {
+      "path": "docs/design/family-companion/assets/cat-product-architecture-v0.1.png",
+      "bytes": 824266,
+      "sha256": "113c0125f8c3f10b16c3fd6b1cc54ae24349a764b42f887834fb897c3496ca43"
+    },
+    {
+      "path": "docs/design/family-companion/assets/cat-product-architecture-v0.1.svg",
+      "bytes": 410988,
+      "sha256": "f676f102094e6d2211b9c0e746392cf15eacffa4f5ad7e23bde9d541d6522602",
+      "source_sha256": "7edd3924e0cfdd219d0005240ed97ed511cc70ebaa2180073256041d4453d47c",
+      "normalization": "Trailing whitespace removed only; parsed SVG elements/attributes/text equivalent."
+    },
+    {
+      "path": "docs/design/family-companion/assets/technical-architecture.png",
+      "bytes": 101869,
+      "sha256": "bae24afe78c6ffe4eb2e3a098e7989c6570b6ebbcb2bbcc27762af8aef4c2123"
+    },
+    {
+      "path": "docs/design/family-companion/assets/visual-v0.2-review.png",
+      "bytes": 1447713,
+      "sha256": "6f9a94692ddba2b8e99c352f638ee05112ac378d744a47a984c555d2fdd2848f"
+    },
+    {
+      "path": "docs/design/family-companion/assets/warm-ui-details-v1-review.png",
+      "bytes": 1406730,
+      "sha256": "903730420d6b3b686699a0bef14da90177cdab7de97e938bc968146682adb7bc"
+    },
+    {
+      "path": "docs/design/family-companion/decisions.md",
+      "bytes": 3503,
+      "sha256": "0a6cb7af2f4335918fd54cfec4095b0787bad9baa2f8912c6c6445b141d5b327"
+    },
+    {
+      "path": "docs/design/family-companion/explorations/visual-v0.1-not-implementation-baseline.png",
+      "bytes": 1492832,
+      "sha256": "c434b7459d7626f3fa35b9d6b0f737a2222c73fa811dfe4bfb18e297a4c74d83"
+    },
+    {
+      "path": "docs/design/family-companion/tools/draw-product-architecture.py",
+      "bytes": 7077,
+      "sha256": "a9ea4384ec04e8e6ff95d91dfbda0248fa4a27433ce8aea33254c1e1a3bd6f2e"
+    },
+    {
+      "path": "docs/design/family-companion/tools/render-technical-plan.swift",
+      "bytes": 8070,
+      "sha256": "f29cf578b43185f82c6b3cd070a8e498ee5cddda93ea2dda81d62b1759c34608"
+    },
+    {
+      "path": "docs/design/family-companion/execution-goal.md",
+      "bytes": 16895,
+      "sha256": "d514b8572d985f0c457c3588c1e6aac2e3ffbb17fed1fe803e9ab100892e9418"
+    }
+  ]
+}

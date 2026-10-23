@@ -1,0 +1,1003 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-10-23",
+  "kind": "dated_local_candidate_rerun_not_release_acceptance",
+  "candidate_sha": "88c71ac753bb2f52fa6ddbe2a1c25b6629293946",
+  "candidate_branch": "docs/family-m0",
+  "execution_branch": "test/family-local-recheck",
+  "execution_worktree_alias": "family-local-recheck",
+  "qa_asset_commit": "b5d365f8c8cd49a0525f6ae76d18af74b9759567",
+  "qa_source_base": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "started_at": "2026-10-22T16:46:22.071Z",
+  "ended_at": "2026-10-22T16:46:22.618Z",
+  "runtime": {
+    "node": "v24.19.0",
+    "environment": "explicit empty environment, system PATH, UTC, no inherited credentials",
+    "transport_guard": "JS prelude and reviewed loaders; no claim of an OS network sandbox"
+  },
+  "candidate_product_sources_equal_cloud_baseline": true,
+  "product_fixed_items": [],
+  "product_source_changed_this_turn": false,
+  "target_command": [
+    "node",
+    "qa/family-cloud-verification/offline/run.mjs",
+    "targets",
+    "--candidate",
+    "88c71ac753bb2f52fa6ddbe2a1c25b6629293946"
+  ],
+  "targets": {
+    "exit_code": 1,
+    "tests": 18,
+    "pass": 6,
+    "fail": 12,
+    "cancelled": 0,
+    "skipped": 0,
+    "denominator_complete": true,
+    "observations": [
+      {
+        "id": "BOOT-01",
+        "actual": {
+          "ok": 100,
+          "driverCreated": 1,
+          "roleQueries": 1,
+          "reserved": 1,
+          "released": 1
+        },
+        "target": {
+          "ok": 100,
+          "driverCreated": 1,
+          "roleQueries": 1,
+          "reserved": 1,
+          "released": 1
+        },
+        "product_status": "PASS",
+        "limitation": "Driver boundary only; no real PostgreSQL connections."
+      },
+      {
+        "id": "BOOT-02",
+        "actual": {
+          "recovered": 0,
+          "unavailable": 100,
+          "boundedConstructors": true,
+          "roleQueries": 1,
+          "released": 1,
+          "balancedReservations": true
+        },
+        "target": {
+          "recovered": 100,
+          "unavailable": 0,
+          "boundedConstructors": true,
+          "roleQueries": 2,
+          "released": 2,
+          "balancedReservations": true
+        },
+        "product_status": "FAIL",
+        "limitation": "One initial failure plus 100 concurrent retries. Reusing a pool is allowed; immediate retry target and bounded-backoff timing still need M0 freeze."
+      },
+      {
+        "id": "BOOT-03",
+        "actual": {
+          "status": 503,
+          "code": "configuration_missing",
+          "driverCreated": 0
+        },
+        "target": {
+          "status": 503,
+          "code": "configuration_missing",
+          "driverCreated": 0
+        },
+        "product_status": "PASS",
+        "limitation": null
+      },
+      {
+        "id": "MEM-01",
+        "actual": {
+          "lateStatus": 200,
+          "content": "synthetic-stale-content"
+        },
+        "target": {
+          "lateStatus": 409,
+          "content": "synthetic-new-correction"
+        },
+        "product_status": "FAIL",
+        "limitation": "Current v1 PATCH has no content-CAS field. 409 is the proposed target; its versioned wire extension is still an M0 contract decision."
+      },
+      {
+        "id": "MEM-02",
+        "actual": {
+          "rows": 0,
+          "recalled": 0,
+          "syncDeleted": 1
+        },
+        "target": {
+          "rows": 0,
+          "recalled": 0,
+          "syncDeleted": 1
+        },
+        "product_status": "PASS",
+        "limitation": "Only same-store deletion/recall/tombstone is checked. The 500 response remains a separate API correctness gap."
+      },
+      {
+        "id": "MEM-03",
+        "actual": {
+          "rowsAfterClear": 1,
+          "recalledAfterClear": 1
+        },
+        "target": {
+          "rowsAfterClear": 0,
+          "recalledAfterClear": 0
+        },
+        "product_status": "FAIL",
+        "limitation": "Real journal service and memory store; summary is an inert delayed function. No actual summarization model/cache/index/native client."
+      },
+      {
+        "id": "MEM-04",
+        "actual": {
+          "rowsAfterOriginalOperationReplay": 1,
+          "recalled": 1
+        },
+        "target": {
+          "rowsAfterOriginalOperationReplay": 0,
+          "recalled": 0
+        },
+        "product_status": "FAIL",
+        "limitation": "Reuses the original operation_id without new consent or allow_relearn. Original save idempotency currently lives only on the deleted row."
+      },
+      {
+        "id": "MEM-05",
+        "actual": {
+          "journalRows": 0,
+          "fragments": 0,
+          "writtenOnRetry": 0
+        },
+        "target": {
+          "journalRows": 1,
+          "fragments": 0,
+          "writtenOnRetry": 1
+        },
+        "product_status": "FAIL",
+        "limitation": "Failure at the real store insert port after takeFragments; real transaction/process recovery is unverified."
+      },
+      {
+        "id": "SAFE-01",
+        "actual": {
+          "deniedBeforeTransport": 6
+        },
+        "target": {
+          "deniedBeforeTransport": 6
+        },
+        "product_status": "PASS",
+        "limitation": "These six intentional guard checks are blocked synchronously; maintenance tests must have zero attempted network calls."
+      },
+      {
+        "id": "REM-01",
+        "actual": {
+          "initialClaim": 1,
+          "recoveryClaims": 0,
+          "dueUnresolved": true,
+          "reminderEvents": 0
+        },
+        "target": {
+          "initialClaim": 1,
+          "recoveryClaims": 1,
+          "dueUnresolved": false,
+          "reminderEvents": 1
+        },
+        "product_status": "FAIL",
+        "limitation": "Claim abandonment is injected at the store boundary; worker object restart preserves one in-memory store. No process kill, database persistence or SQL lease proof."
+      },
+      {
+        "id": "REM-02",
+        "actual": {
+          "recoveryClaims": 0,
+          "reminderEvents": 0,
+          "completedOccurrences": 0
+        },
+        "target": {
+          "recoveryClaims": 100,
+          "reminderEvents": 100,
+          "completedOccurrences": 100
+        },
+        "product_status": "FAIL",
+        "limitation": "Two synthetic 60-second periods and limit=50; real SQL fairness/lease timing remains unverified."
+      },
+      {
+        "id": "REM-03",
+        "actual": {
+          "interleavings": 100,
+          "positions": 4,
+          "postCancelEvents": 100,
+          "dispatches": 100,
+          "cancellationRetained": 100
+        },
+        "target": {
+          "interleavings": 100,
+          "positions": 4,
+          "postCancelEvents": 0,
+          "dispatches": 0,
+          "cancellationRetained": 100
+        },
+        "product_status": "FAIL",
+        "limitation": "Dispatches are calls to an inert synthetic APNs adapter; no notification left this process."
+      },
+      {
+        "id": "REM-04",
+        "actual": {
+          "reminderEvents": 0,
+          "fireCount": 1,
+          "nextFire": null
+        },
+        "target": {
+          "reminderEvents": 1,
+          "fireCount": 1,
+          "nextFire": "2026-10-22T13:00:00.000Z"
+        },
+        "product_status": "FAIL",
+        "limitation": "Fault before the real store write; not a database COMMIT failure."
+      },
+      {
+        "id": "REM-05",
+        "actual": {
+          "reminderEvents": 1,
+          "fireCount": 1,
+          "nextFire": null
+        },
+        "target": {
+          "reminderEvents": 1,
+          "fireCount": 1,
+          "nextFire": "2026-10-22T13:00:00.000Z"
+        },
+        "product_status": "FAIL",
+        "limitation": null
+      },
+      {
+        "id": "REM-06",
+        "actual": {
+          "reminderEvents": 1,
+          "fireCount": 0,
+          "nextFire": "2026-10-22T12:00:00.000Z"
+        },
+        "target": {
+          "reminderEvents": 1,
+          "fireCount": 1,
+          "nextFire": "2026-10-22T13:00:00.000Z"
+        },
+        "product_status": "FAIL",
+        "limitation": null
+      },
+      {
+        "id": "REM-07",
+        "actual": {
+          "reminderEvents": 1,
+          "fireCount": 1,
+          "nextFire": "2026-10-22T13:00:00.000Z"
+        },
+        "target": {
+          "reminderEvents": 1,
+          "fireCount": 1,
+          "nextFire": "2026-10-22T13:00:00.000Z"
+        },
+        "product_status": "PASS",
+        "limitation": null
+      },
+      {
+        "id": "REM-08",
+        "actual": {
+          "reminderEvents": 1,
+          "fireCount": 1,
+          "nextFire": "2026-10-22T13:00:00.000Z"
+        },
+        "target": {
+          "reminderEvents": 1,
+          "fireCount": 1,
+          "nextFire": "2026-10-22T13:00:00.000Z"
+        },
+        "product_status": "PASS",
+        "limitation": "Durable-state safety only: first tick still reports fire_failed despite a committed result."
+      },
+      {
+        "id": "REM-09",
+        "actual": {
+          "tasks": 1,
+          "createdEvents": 0
+        },
+        "target": {
+          "tasks": 1,
+          "createdEvents": 1
+        },
+        "product_status": "FAIL",
+        "limitation": "Existing createTask operation identity is retained; this checks a missing creation event, not an external notification."
+      }
+    ]
+  },
+  "existing_suite": {
+    "command": [
+      "node",
+      "qa/family-cloud-verification/run-existing-offline.mjs"
+    ],
+    "test_files": 20,
+    "tests": 223,
+    "pass": 222,
+    "fail": 0,
+    "skipped": 1,
+    "separate_from_18_target_assertions": true
+  },
+  "permission_fixture": {
+    "oracle_consistent": 32,
+    "oracle_total": 32,
+    "real_authorization_executed": 0,
+    "real_authorization_total": 32,
+    "acceptance_status": "NOT_RUN",
+    "real_pg_rls_verified": false
+  },
+  "security": {
+    "source_probes": {
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "audit_head": "88c71ac753bb2f52fa6ddbe2a1c25b6629293946",
+      "source_files": [
+        {
+          "path": "services/edge/supabase/functions/_shared/agent-memory/contract.mjs",
+          "sha256": "7c272f5e4bc75f997497fd7be0ad203332c1d033fe38563e1ca181dc38330c6b"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/agent-memory/explicit-intent.mjs",
+          "sha256": "d6cf5b54b6dc64716c6a0724fb813eed7b3b2ebb9e713275c9f379a6c2cec517"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/agent-memory/memory-store.mjs",
+          "sha256": "5c80d0cfb8aa22442306b29605acb7a1a60d9db195cfd5233bd77080712e6452"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/agent-memory/service.mjs",
+          "sha256": "b5e383bc9c7e6696f2978f8daba2433dadc928665dce2c058786ccb36b1a015a"
+        }
+      ],
+      "source_pin": "MATCH",
+      "contract_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+      "node": "v24.19.0",
+      "synthetic": true,
+      "real_auth": false,
+      "postgres_rls": false,
+      "production_requests": false,
+      "network_attempts": 0,
+      "meaning": "Assertions reproduce current offline behavior, including gaps. No household acceptance criterion is closed.",
+      "total": 9,
+      "results": [
+        {
+          "id": "SP-01",
+          "name": "内存store按用户隔离读取修改删除",
+          "layer": "offline-service-with-memory-store",
+          "classification": "SUPPORTED_OFFLINE",
+          "acceptance_status": "NOT_RUN",
+          "actual": {
+            "foreign_get": null,
+            "foreign_update": null,
+            "foreign_deleted": 0
+          }
+        },
+        {
+          "id": "SP-02",
+          "name": "迟到正文PATCH覆盖较新纠正",
+          "layer": "offline-service-with-memory-store",
+          "classification": "GAP_REPRODUCED",
+          "acceptance_status": "NOT_RUN",
+          "actual": {
+            "corrected_status": 200,
+            "delayed_status": 200,
+            "stale_content_won": true,
+            "expected_revision_supported": false
+          }
+        },
+        {
+          "id": "SP-03",
+          "name": "相同operation重放返回原memory",
+          "layer": "offline-service-with-memory-store",
+          "classification": "SUPPORTED_OFFLINE",
+          "acceptance_status": "NOT_RUN",
+          "actual": {
+            "same_id": true,
+            "rows": 1,
+            "replay_events": 0
+          }
+        },
+        {
+          "id": "SP-04",
+          "name": "相同operation异payload未返回冲突",
+          "layer": "offline-service-with-memory-store",
+          "classification": "GAP_REPRODUCED",
+          "acceptance_status": "NOT_RUN",
+          "actual": {
+            "returned_original_id": true,
+            "status": "saved",
+            "http_409_observed": false
+          }
+        },
+        {
+          "id": "SP-05",
+          "name": "删除后迟到同operation重放重建新memory",
+          "layer": "offline-service-with-memory-store",
+          "classification": "GAP_REPRODUCED",
+          "acceptance_status": "NOT_RUN",
+          "actual": {
+            "new_id": true,
+            "rows_after_replay": 1,
+            "original_operation_same": true
+          }
+        },
+        {
+          "id": "SP-06",
+          "name": "HTTP手工创建重复请求无command回执幂等",
+          "layer": "offline-service-with-memory-store",
+          "classification": "GAP_REPRODUCED",
+          "acceptance_status": "NOT_RUN",
+          "actual": {
+            "statuses": [
+              201,
+              201
+            ],
+            "different_ids": true,
+            "rows": 2,
+            "request_has_command_id": false
+          }
+        },
+        {
+          "id": "SP-07",
+          "name": "agent-memory纠正未更新来源链",
+          "layer": "offline-service-with-memory-store",
+          "classification": "GAP_REPRODUCED",
+          "acceptance_status": "NOT_RUN",
+          "actual": {
+            "content_corrected": true,
+            "source_turn_still_original": true,
+            "operation_still_original": true,
+            "has_previous_source_ref": false,
+            "has_revision_version": false
+          }
+        },
+        {
+          "id": "SP-08",
+          "name": "journal写入失败后唯一fragment已被删除",
+          "layer": "offline-service-with-memory-store",
+          "classification": "GAP_REPRODUCED",
+          "acceptance_status": "NOT_RUN",
+          "actual": {
+            "fragments_after_failure": 0,
+            "journals_after_failure": 0
+          }
+        },
+        {
+          "id": "SP-09",
+          "name": "memory路由把身份服务不可用转成401",
+          "layer": "offline-service-with-memory-store",
+          "classification": "GAP_REPRODUCED",
+          "acceptance_status": "NOT_RUN",
+          "actual": {
+            "injected_auth_status": 503,
+            "response_status": 401,
+            "error": "unauthorized"
+          }
+        }
+      ]
+    },
+    "log_probe": {
+      "id": "LP-01",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "audit_head": "88c71ac753bb2f52fa6ddbe2a1c25b6629293946",
+      "source_files": [
+        {
+          "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/vendor/openmuse/runtime/log.mjs",
+          "sha256": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/chat-metrics.mjs",
+          "sha256": "f4c2c94bded2042dda8cc44466f1f41129910d2df766af27746b73e48adcb711"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/proactive/contract.mjs",
+          "sha256": "b07d53a97c7826480524687921edc30bd10152f801206b3cf6ce6915229b857c"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/proactive/recurrence.mjs",
+          "sha256": "4b05c6bfd2a6e61e0885581d0af4375c49489cd6103b68f627158343fb5ee804"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/proactive/service.mjs",
+          "sha256": "860332dce13220fa07395ca99a2d456a4e7a20bf3d9bb47e9b6ab2eeed27bb90"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/proactive/throttle.mjs",
+          "sha256": "c626275757bce47b9cdf1b6a41409643d36f591803c46c7a4e737b9effbb590c"
+        }
+      ],
+      "source_pin": "MATCH",
+      "layer": "offline-injected-error-only",
+      "classification": "GAP_REPRODUCED",
+      "acceptance_status": "FAIL",
+      "scope": "Captured logger arguments contain a synthetic marker; no real logs, OS logs, database, Auth, model or APNs verified.",
+      "network_attempts": 0,
+      "actual": {
+        "status": 500,
+        "response_body": {
+          "error": "internal_error"
+        },
+        "proactive_logger_contains_canary": true,
+        "sanitized_vendor_logger_contains_canary": false,
+        "chat_metrics_contains_canary": false
+      }
+    },
+    "static_source_audit": {
+      "anchors": 16,
+      "all_patterns_located": true,
+      "source_files": [
+        {
+          "path": "apps/ios-conversation/Sources/Domain/ConversationSessionContracts.swift",
+          "sha256": "b68b5edfc066b022bdbb16fc2a01a8fddeb6a12b1a329caaa92463e66c81a3ae"
+        },
+        {
+          "path": "apps/ios-conversation/Sources/Features/ConversationSessionService.swift",
+          "sha256": "16080a5ecdc88b34f0c83c5ff7b922a2584c65375371ee2affa302fa89547493"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/agent-memory/contract.mjs",
+          "sha256": "7c272f5e4bc75f997497fd7be0ad203332c1d033fe38563e1ca181dc38330c6b"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/agent-memory/explicit-intent.mjs",
+          "sha256": "d6cf5b54b6dc64716c6a0724fb813eed7b3b2ebb9e713275c9f379a6c2cec517"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/agent-memory/pg-store.mjs",
+          "sha256": "51ff077034c25db88e99bc239364e09be5d9a4db92961eb616a66f0cafd6a5f7"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/agent-memory/service.mjs",
+          "sha256": "b5e383bc9c7e6696f2978f8daba2433dadc928665dce2c058786ccb36b1a015a"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/authority.mjs",
+          "sha256": "07472e4fcf95725cdc249f9bdd9046b56dbe97089e5c2882e14bdd4474a6be76"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/facade-r2/patched-openmuse/apps/server/src/errors.ts",
+          "sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/common.mjs",
+          "sha256": "bb37f319f567604ad49ff5739e77be0d0346efe4cdc2ef1ddecd00e46f8976cd"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/facade.mjs",
+          "sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/common.mjs",
+          "sha256": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/foundation.mjs",
+          "sha256": "1852241fd725164c4ea816e31bcf013adaefd2b7ef0a1a0cebe112fcbd825e63"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/accepted-work-execution.mjs",
+          "sha256": "31d44a563eb59cab10b5e6266aef8689ac66fcb2f38c084fda8f10ce510c7f19"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/accepted-work-intent-contract.mjs",
+          "sha256": "1fa4f21f9250c88daa2b3b5ba5881ebdeaa704426c66b2b044841e3300fb9deb"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/device-effect-contract.mjs",
+          "sha256": "3a2f49108789fbc91326f1111f2faafed09de3d286431fe75fe6870657bf8f5c"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/device-effect-service.mjs",
+          "sha256": "2cb283471760eab998387eeb50bbef033b57fe52ac94da16af84b592b28da32d"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/local-output-facade.mjs",
+          "sha256": "ab59f1106fcee8c8dc7de9369ece0168b98e75e00678d6280a81f2ab363fda8a"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/memory-contract.mjs",
+          "sha256": "ee8b711b9fba6fe73fce7ff3a1dbbc714d74c52657da9c897d15f7ed84805ee1"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/memory-service.mjs",
+          "sha256": "86eae308ea3ecda4e3d87a41fc3db6e3372d154ca1cb66513db35d79191b6631"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/plan-contract.mjs",
+          "sha256": "f78a14ea9fe3987b1e60dcf486dccad125fd14481344c5f8629afc279c030b20"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/public-source-contract.mjs",
+          "sha256": "e04ea3847d1b622cdd069a47b152e854e838947795b946eedd4ab3ad618fab41"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/report-completion.mjs",
+          "sha256": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/strict-json.mjs",
+          "sha256": "73204250fcd1975ebe45cebe30bdfc466aac33fa962aa892435d041f936661fc"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/task-action-contract.mjs",
+          "sha256": "cac7f24dfface85b550f28cd9311e4df73e4938d5fd5a28a6c4433b452024502"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/task-action-service.mjs",
+          "sha256": "0794def66e129ce29774dc30f900983ebb5caa6019c741bbfb14afab330658a9"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/task-control-contract.mjs",
+          "sha256": "959823cd5fac7dc73a1d5a720eef870d8807d9a14ae2b5301b71d0cfe7079505"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/task-plan-service.mjs",
+          "sha256": "57b9241e2ae0793a8279948de155ab82dcd0456d06e88c77f8a00699da057389"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/task-revision-contract.mjs",
+          "sha256": "95a6f245758de49536ccd8b136b30d9d1888b826c887c367c50a7dfeb7ce798a"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/task-revision-service.mjs",
+          "sha256": "2b3c1255588566c945d44e63d9303ca71e5af4fd01085d8c3a38267e87041384"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/task-revision-work-contract.mjs",
+          "sha256": "2842900ef482123fd42a7b8d056d8e47c6d1b5d8169d299c64ebf2c5a4c2db75"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/task-revision-work-service.mjs",
+          "sha256": "91d96637ca2cd5931614205b3a38c20f66f5e4a10e4c7a3786ac26e74a43fe40"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/task-source-service.mjs",
+          "sha256": "710ef102a7decbe8f4e464e32ba773f640d9ff3e7fd3c9782e56f50c684f1c7c"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/task-work-execution-selector.mjs",
+          "sha256": "8beae278b95e8bcf287f8be706d2ba6bf727c2dd162a20a86bdf4f60ffb2b8d6"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-contract.mjs",
+          "sha256": "a191adbef8061bb5259f98b891371f5528b5b0e6ba0618783fa52af59694d459"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-lifecycle.mjs",
+          "sha256": "58dc6fd9ad9a393b798a95079e31078a98fabca91a4573815c58f1bdd769222b"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/proactive/contract.mjs",
+          "sha256": "b07d53a97c7826480524687921edc30bd10152f801206b3cf6ce6915229b857c"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/proactive/decision.mjs",
+          "sha256": "e7c04b4a9357301449a824a7145fee504021062e4a4927a3b29957db1d20468f"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/proactive/recurrence.mjs",
+          "sha256": "4b05c6bfd2a6e61e0885581d0af4375c49489cd6103b68f627158343fb5ee804"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/proactive/service.mjs",
+          "sha256": "860332dce13220fa07395ca99a2d456a4e7a20bf3d9bb47e9b6ab2eeed27bb90"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/proactive/throttle.mjs",
+          "sha256": "c626275757bce47b9cdf1b6a41409643d36f591803c46c7a4e737b9effbb590c"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/public-web-reader.mjs",
+          "sha256": "6e75fa1cc8ae41dc7b90ab8c6fd328bda2d5ce04dbd177244c5ad79c7c418ac5"
+        },
+        {
+          "path": "services/edge/supabase/functions/_shared/sensitivity.mjs",
+          "sha256": "4002ea6e28a38b24f9482266d22bc5b275710f2d5cbe35280efe65ef4dc95376"
+        },
+        {
+          "path": "services/edge/supabase/functions/catpaw-proactive/index.ts",
+          "sha256": "7f39216190e6b1fa7456b1dd9434e2da8219ca800365b7f5afb797dcc1cb0b30"
+        },
+        {
+          "path": "services/edge/supabase/migrations/20261016110000_feature_enrollment.sql",
+          "sha256": "8ae9d40fd177ea66021a8e68d24cd52e1fb9f9b206ae66b8308e33d3bf5ab8eb"
+        }
+      ]
+    }
+  },
+  "fresh_source_bindings": [
+    {
+      "path": "services/edge/supabase/functions/_shared/bootstrap.ts",
+      "git_blob": "290555678d3380a3c966feb207bfaf2cff2c0cc5",
+      "sha256": "f4f3a080cdc59aaa6fa8a01671867a066c3e44c64fc55effaf5832a79f88346d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/postgres-pool.mjs",
+      "git_blob": "975801c2f5c04859c3fc3ce291462de4e1501e56",
+      "sha256": "5151efd5cb92adb146f0a6092aa2ef4881c94dbe6745d8721506dc4a65d2cf29"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/service.mjs",
+      "git_blob": "fae32cb9137795ffc510127297161f85c69086d3",
+      "sha256": "860332dce13220fa07395ca99a2d456a4e7a20bf3d9bb47e9b6ab2eeed27bb90"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/memory-store.mjs",
+      "git_blob": "c70fbe14de0e2caa874ebfe5fb1a962a3cbc87df",
+      "sha256": "bf95f7a340392d6cf5ad4e618ec38077e8d392240c63f7dca5a067cb31f7f194"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/pg-store.mjs",
+      "git_blob": "8b7b4e542f594efab25fe1efe00de552a364db24",
+      "sha256": "7f9e3404cc28041e4262c746bd398e41ba1a180b1b7f5014dcbf9d843ca00184"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/service.mjs",
+      "git_blob": "2ff42f4917c7b191baa84bd3996723c87f542e7e",
+      "sha256": "b5e383bc9c7e6696f2978f8daba2433dadc928665dce2c058786ccb36b1a015a"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/memory-store.mjs",
+      "git_blob": "0a961d8e9631ad75b2bef05ca4b19fabc1e67c2d",
+      "sha256": "5c80d0cfb8aa22442306b29605acb7a1a60d9db195cfd5233bd77080712e6452"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/pg-store.mjs",
+      "git_blob": "9d4b2e509232032a5758f97a46cb574d964809d6",
+      "sha256": "51ff077034c25db88e99bc239364e09be5d9a4db92961eb616a66f0cafd6a5f7"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261015120000_proactive_tasks.sql",
+      "git_blob": "4fdf313c47975e063214734a35538e62c5a99703",
+      "sha256": "59d212e000b8d50f4d46c1d4ea5dbc203faefc34c9546ab60eb37bae9efcb4ce"
+    }
+  ],
+  "copied_qa_assets": [
+    {
+      "path": "qa/family-cloud-verification/ASSERTION-MAP.json",
+      "sha256": "b228d50bfadb7a76b67a5bac21b06ad7a437c27950f27a0b02c65ad3cdb8f9d2"
+    },
+    {
+      "path": "qa/family-cloud-verification/BASELINE.json",
+      "sha256": "248010388cac214c40e8bf4ce1faa77d4087b78881069d4d9b195f2713af6d23"
+    },
+    {
+      "path": "qa/family-cloud-verification/CAPABILITIES.json",
+      "sha256": "8694c6a239eab1a77069d42adb84198992fcba5564ff0f3fbf818e220a0762d7"
+    },
+    {
+      "path": "qa/family-cloud-verification/DELIVERY-CHECKS.json",
+      "sha256": "f6203ce49d540353754ac58b124a69ff2f78f57dd5d4c91fa5674303594140fb"
+    },
+    {
+      "path": "qa/family-cloud-verification/FILES.json",
+      "sha256": "21d993927df95f7defe51443654f1f3f69b27ae1c91a7963fcfe93c4f4867151"
+    },
+    {
+      "path": "qa/family-cloud-verification/HANDOFF.md",
+      "sha256": "724b59269f0d990829cf23a4ae0473f96fa5e9f837465cb50a80221b0ef73c9d"
+    },
+    {
+      "path": "qa/family-cloud-verification/OWNERSHIP.md",
+      "sha256": "b16b7d1310b30deba8ca152291e1fc1c402cf1fd5d0b2c05709c834d1fad5724"
+    },
+    {
+      "path": "qa/family-cloud-verification/ROOT-RECHECK.json",
+      "sha256": "d9cb46e7b34fbe5513283f91ce4291fe2eca150cbb87665f04404add7f9893aa"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline-guard.mjs",
+      "sha256": "85ffcfca025c8b481de16d67cd08978da6f97691848721e0c7dfa918234fb9f4"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/ACCEPTANCE-MATRIX.md",
+      "sha256": "764e26d6b0b4ee34df1bd67c0267de5fbd9d389051c454decffee66ef8381784"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/AGENT-CONFIGURATION.json",
+      "sha256": "7d0e80a8d159027130209146de2736c7eb820546e4ea53df3c39f0b1d9d23b16"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/EVIDENCE.json",
+      "sha256": "6a6f7a6d15d25e2a4b308e4412dbefa3302a6ec5f2550243ab376fb865265663"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/REPORT.md",
+      "sha256": "aba9eeb4dfdd464dd1a6fdeeb8c89cbaaf25c9750e0631db50044128106d6d87"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/bootstrap.test.mjs",
+      "sha256": "fa47a0c5e78868e2d3a674f163fbd5359bc290a9e6618ae4ff57f54e5c8cbd2b"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/helpers.mjs",
+      "sha256": "5a827b3a7b34909ea5392103e92bc2bdf6f3b748e03ce24af5379247c45bf47a"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/jose-boundary.mjs",
+      "sha256": "5a5e9843ea6cc5fe5048d3cbe9a48f172bb6f3321f443aa8dcb20dd0be1aa698"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/memory.test.mjs",
+      "sha256": "832b706956e7f6d12223ea4327db1f75180c3f404dc60b24b115532a549b6a35"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/network-guard.test.mjs",
+      "sha256": "2070529076c4a67f9f5a9d376f1a8f772add85ea2f0d233b2918cdfe467696c8"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/offline-loader.mjs",
+      "sha256": "d5d391cf65bbf14f937d87875ed082d9f2242e18c58d428faefa1a78873b8110"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/offline-prelude.mjs",
+      "sha256": "f7b45148c3508ecabc20387d939a589944358ca25b38913b2dba6926d41b3ae0"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/postgres-boundary.mjs",
+      "sha256": "a6aa3f2c5912a9dd314ce43c4b382d49aea1e31188ff734a0fbc56e86e7aaaa6"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/reminder.test.mjs",
+      "sha256": "fc71a429a167876c7917f9985b5f58f53e4d9abe97f330478246747b74c2ac5b"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/run.mjs",
+      "sha256": "05d6793ed1a54786f628e0a0aa8a95067a365cd5003d7677b13143d2bf880845"
+    },
+    {
+      "path": "qa/family-cloud-verification/offline/source-loader.mjs",
+      "sha256": "984c3a75007300c9bb6e10992b24a7fb1dc8b69f32fcb6849bb23241ae986f45"
+    },
+    {
+      "path": "qa/family-cloud-verification/run-existing-offline.mjs",
+      "sha256": "112a580555eb8086f8d463f2b7679336c10a28510a9a13005f64b5db45814d2f"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/README.md",
+      "sha256": "07e26d446af5a436f52b05a896230276cbe22b33eb802e1b48382eb8c77be1db"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/acceptance-checklist.json",
+      "sha256": "a5259276481e0bd271f926c12051555b82bcf9fbcf98315c933faeac53f8a7fb"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/fixture-results.json",
+      "sha256": "7af18fa65add53d2bf28f332ebc82a10b4cb7cf44089186a447101f27c1f484d"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/log-probe-results.json",
+      "sha256": "a90acfb0b8931c8dfc65d0be958c203f81e61b43a620715412fc61c88ca12989"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/permission-fixtures.mjs",
+      "sha256": "c8702f071b04ba37a523d6de4c48f9c77aa3ea501ebeb8fa54d2d4dac9a17df3"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/run-fixtures.mjs",
+      "sha256": "05ee64c1c9a695757cb6533231bd8ff13326a8b217c4082221957d0f5364c853"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/run-ledger.json",
+      "sha256": "e17819c81b3c22d166556fcd37ccce327a42f2287eb88ca6d647126504943551"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/run-log-probe.mjs",
+      "sha256": "14707ce02a07b5681e314642e7067c9a4982b84389eac953014821b7ef9fd40e"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/run-source-probes.mjs",
+      "sha256": "a880d4bd8ab28b669e50a6ce6de1d76d8de4b3384eeb53493ebc0cbefa4d853b"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/source-audit-results.json",
+      "sha256": "83fa3e85df04d2bcbacabffab2e4c9de5a1d232381215de6369db404babcf7e3"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/source-audit.mjs",
+      "sha256": "ca0f3db7e2e1fd9e8bd6e51c2267e74b513f995c752f5130b2b1040fba5c65b2"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/source-pin.mjs",
+      "sha256": "6bd8f7a05a58d018145c146fd1adfee015f4e03797781dd2b9a7befb8d3e8566"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/source-probe-results.json",
+      "sha256": "3fda9fe094d302d8bf54db7c58142d9a51ae7380f09eb79b24f0d9addc44ba78"
+    },
+    {
+      "path": "qa/family-cloud-verification/security/verification-results.json",
+      "sha256": "a129872cb7d594fadf8641f722e804bca0dcdcf544c35b9fab83023e46c47e1b"
+    }
+  ],
+  "qa_asset_bytes_unchanged_after_run": true,
+  "tracked_execution_worktree_bytes_unchanged_after_run": true,
+  "raw_outputs": [
+    {
+      "name": "run-log-probe.stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "name": "source-audit.json",
+      "sha256": "015c8e04f6f20e64ebeac60986962bdac22f2734d8221a1becc219f82ddbe169",
+      "bytes": 23128
+    },
+    {
+      "name": "source-audit.stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "name": "receipt-start.json",
+      "sha256": "928b908b1b04ed5e4edd4b84b331c5ff0a3f9cf4a459f663af8ad51d81e6901f",
+      "bytes": 7151
+    },
+    {
+      "name": "run-fixtures.stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "name": "run-source-probes.stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "name": "targets-summary.txt",
+      "sha256": "d8fc2ffec39c5299ea0977cdd2774df911cb1e5a53b210759440b9523aa8eee2",
+      "bytes": 363
+    },
+    {
+      "name": "run-source-probes.json",
+      "sha256": "a2b8431ebfdc26568d8b076f8f194861317ce882e16cedac2ade0a488825c0cb",
+      "bytes": 4575
+    },
+    {
+      "name": "run-fixtures.json",
+      "sha256": "7af18fa65add53d2bf28f332ebc82a10b4cb7cf44089186a447101f27c1f484d",
+      "bytes": 8223
+    },
+    {
+      "name": "existing.tap",
+      "sha256": "0679473cee9a4a982a51d3397dbe073bfe16319e56ffee6650e86639d7b00c57",
+      "bytes": 31156
+    },
+    {
+      "name": "run-log-probe.json",
+      "sha256": "c000984f637001d8b98c7dbb01fe04e67663c3f1806b120814fb61da41cda092",
+      "bytes": 1803
+    },
+    {
+      "name": "RESULTS.json",
+      "sha256": "bbb14ea53ec0ed7a00d82068efcd0bf84d21c5c5f8bba2df7947f850334b7791",
+      "bytes": 13213
+    },
+    {
+      "name": "targets.tap",
+      "sha256": "d9b4473ef265c3b824b6f62a1d9d9c166cd98a99451bad2381fbb150300af6a4",
+      "bytes": 24129
+    }
+  ],
+  "raw_outputs_directory": "ignored build/family-m0-audit/cloud-recheck-88c71ac",
+  "limitations": [
+    "Original runner hardcoded host/model labels are historical fields, not local run identity.",
+    "B source pin and source audit remain baseline-pinned; candidate product bytes are separately compared, not repinned.",
+    "Real PG, authorization, model and device calls are not authorized or run.",
+    "B was executed locally against unchanged candidate bytes; its baseline pin and old-blob static audit are preserved. It is not repinned family authorization acceptance.",
+    "A report contains historical cloud/model labels. Only this outer receipt describes the local execution identity; no effective cloud model/Goal proof is inferred.",
+    "Permission fixture, current-behavior probes and target assertions are separate denominators and are not summed."
+  ],
+  "real_validation": {
+    "postgres_multi_instance": "NOT_RUN",
+    "real_family_authorization": "NOT_RUN",
+    "physical_device": "NOT_RUN",
+    "image_and_audio_end_to_end": "NOT_RUN",
+    "model_quality": "NOT_RUN",
+    "real_notifications": "NOT_RUN",
+    "deployments": 0
+  }
+}

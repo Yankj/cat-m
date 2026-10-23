@@ -1,0 +1,176 @@
+{
+  "run_id": "cloud-independent-verification-20261022",
+  "base_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "contract_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+  "layer": "offline / synthetic / source-static",
+  "environment": {
+    "os": "Linux x86_64",
+    "node": "v24.19.0",
+    "npm": "11.9.0",
+    "codex_cli": "0.159.2",
+    "deno": null,
+    "swift": null,
+    "pinned_npm_packages": "not installed; existing inert Node harness stubs only"
+  },
+  "existing_tests": {
+    "command": "node qa/family-cloud-verification/run-existing-offline.mjs",
+    "files": 20,
+    "tests": 223,
+    "pass": 222,
+    "fail": 0,
+    "skip": 1,
+    "skip_reason": "B1/B2 real Postgres (CATPAW_TEST_PG_HOST not set)",
+    "exit_code": 0,
+    "stdout_format": "Node spec reporter",
+    "stdout_sha256": "5d92c0e99f8a175e6b60ec17c57cfe5e5a02cf7a226ddee5624a4d512bc20036",
+    "stdout_bytes": 31076,
+    "raw_output": "ignored build/family-cloud-verification/existing-offline.txt",
+    "limits": [
+      "Not the full Deno suite",
+      "No installed jose/postgres exercised",
+      "No real PG/RLS or multi-process database concurrency",
+      "No hosted model/Auth/notification/device execution"
+    ]
+  },
+  "repository_checks": [
+    {
+      "command": "python3 scripts/check-repository-layout.py",
+      "exit_code": 0,
+      "stdout": "PASS one active native entry, independent website, two local packages, declared maintenance/history/source paths\nPASS Domain imports and package host/network boundaries; layout validation only",
+      "stdout_sha256": "96555d463a7edf4a2a76f332a6e976ced39649106e2234a99857fdfa0f534ab6"
+    },
+    {
+      "command": "python3 scripts/check-repository.py",
+      "exit_code": 0,
+      "stdout": "PASS frozen contract, 44 pinned originals (SHA256 + Git blob SHA1), MIT identity\nPASS exact patch reconstruction and all runtime TypeScript copies\nPASS 188 imported bytes/provenance, final v1 source identity, 10 frozen specs, 3 screenshots\nPASS 121 frozen r3 imports, 43 App sources/101-item final manifest, contract/spec/replay and 4 synthetic screenshots\nLIMIT no iOS SDK build, Simulator, service listener, real model/Intelligence/SQL or deployment executed",
+      "stdout_sha256": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d"
+    },
+    {
+      "command": "python3 scripts/check-deployed-source.py",
+      "exit_code": 0,
+      "stdout": "PASS deployed source snapshots: [50, 43], 14 shared-file differences preserved",
+      "stdout_sha256": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228"
+    },
+    {
+      "command": "python3 scripts/scan-repository.py",
+      "exit_code": 0,
+      "stdout": "{\"candidate_files\": 1783, \"candidate_bytes\": 65683358, \"blocking_hits\": [], \"manual_review_hits\": [], \"reviewed_false_positives\": 144, \"png_files\": 115}",
+      "stdout_sha256": "c029dadc62a65897c52b68e06f31e2729d3bfacc9485a7a6e3f350b96e52a3d1"
+    }
+  ],
+  "asset_manifest_verification": [
+    {
+      "path": "docs/architecture/family-companion-technical-plan.md",
+      "expected_sha256": "7d423abef57a5870f63a11c5af4c1b109e3c2fd1d08b3b99d823a9e5d630328e",
+      "actual_sha256": "7d423abef57a5870f63a11c5af4c1b109e3c2fd1d08b3b99d823a9e5d630328e",
+      "expected_bytes": 48653,
+      "actual_bytes": 48653,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/architecture/family-companion-technical-plan.pdf",
+      "expected_sha256": "2cd132c23cc2c46c36bf84fbb7e8dc4bb125c12bb0ab0bbdd9c9f089ad8d4fbf",
+      "actual_sha256": "2cd132c23cc2c46c36bf84fbb7e8dc4bb125c12bb0ab0bbdd9c9f089ad8d4fbf",
+      "expected_bytes": 624631,
+      "actual_bytes": 624631,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/design/family-companion/README.md",
+      "expected_sha256": "7f7133e7f3f67cd14fce6ea2342d7144bc88355b529e224c734c25ded4c63086",
+      "actual_sha256": "7f7133e7f3f67cd14fce6ea2342d7144bc88355b529e224c734c25ded4c63086",
+      "expected_bytes": 6014,
+      "actual_bytes": 6014,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/design/family-companion/assets/cat-product-architecture-v0.1.pdf",
+      "expected_sha256": "dbc1df843ba1263f3435ea82e8e26a2e7cba4530ddb2102321187e64ced8c832",
+      "actual_sha256": "dbc1df843ba1263f3435ea82e8e26a2e7cba4530ddb2102321187e64ced8c832",
+      "expected_bytes": 200397,
+      "actual_bytes": 200397,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/design/family-companion/assets/cat-product-architecture-v0.1.png",
+      "expected_sha256": "113c0125f8c3f10b16c3fd6b1cc54ae24349a764b42f887834fb897c3496ca43",
+      "actual_sha256": "113c0125f8c3f10b16c3fd6b1cc54ae24349a764b42f887834fb897c3496ca43",
+      "expected_bytes": 824266,
+      "actual_bytes": 824266,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/design/family-companion/assets/cat-product-architecture-v0.1.svg",
+      "expected_sha256": "f676f102094e6d2211b9c0e746392cf15eacffa4f5ad7e23bde9d541d6522602",
+      "actual_sha256": "f676f102094e6d2211b9c0e746392cf15eacffa4f5ad7e23bde9d541d6522602",
+      "expected_bytes": 410988,
+      "actual_bytes": 410988,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/design/family-companion/assets/technical-architecture.png",
+      "expected_sha256": "bae24afe78c6ffe4eb2e3a098e7989c6570b6ebbcb2bbcc27762af8aef4c2123",
+      "actual_sha256": "bae24afe78c6ffe4eb2e3a098e7989c6570b6ebbcb2bbcc27762af8aef4c2123",
+      "expected_bytes": 101869,
+      "actual_bytes": 101869,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/design/family-companion/assets/visual-v0.2-review.png",
+      "expected_sha256": "6f9a94692ddba2b8e99c352f638ee05112ac378d744a47a984c555d2fdd2848f",
+      "actual_sha256": "6f9a94692ddba2b8e99c352f638ee05112ac378d744a47a984c555d2fdd2848f",
+      "expected_bytes": 1447713,
+      "actual_bytes": 1447713,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/design/family-companion/assets/warm-ui-details-v1-review.png",
+      "expected_sha256": "903730420d6b3b686699a0bef14da90177cdab7de97e938bc968146682adb7bc",
+      "actual_sha256": "903730420d6b3b686699a0bef14da90177cdab7de97e938bc968146682adb7bc",
+      "expected_bytes": 1406730,
+      "actual_bytes": 1406730,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/design/family-companion/decisions.md",
+      "expected_sha256": "0a6cb7af2f4335918fd54cfec4095b0787bad9baa2f8912c6c6445b141d5b327",
+      "actual_sha256": "0a6cb7af2f4335918fd54cfec4095b0787bad9baa2f8912c6c6445b141d5b327",
+      "expected_bytes": 3503,
+      "actual_bytes": 3503,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/design/family-companion/explorations/visual-v0.1-not-implementation-baseline.png",
+      "expected_sha256": "c434b7459d7626f3fa35b9d6b0f737a2222c73fa811dfe4bfb18e297a4c74d83",
+      "actual_sha256": "c434b7459d7626f3fa35b9d6b0f737a2222c73fa811dfe4bfb18e297a4c74d83",
+      "expected_bytes": 1492832,
+      "actual_bytes": 1492832,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/design/family-companion/tools/draw-product-architecture.py",
+      "expected_sha256": "a9ea4384ec04e8e6ff95d91dfbda0248fa4a27433ce8aea33254c1e1a3bd6f2e",
+      "actual_sha256": "a9ea4384ec04e8e6ff95d91dfbda0248fa4a27433ce8aea33254c1e1a3bd6f2e",
+      "expected_bytes": 7077,
+      "actual_bytes": 7077,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/design/family-companion/tools/render-technical-plan.swift",
+      "expected_sha256": "f29cf578b43185f82c6b3cd070a8e498ee5cddda93ea2dda81d62b1759c34608",
+      "actual_sha256": "f29cf578b43185f82c6b3cd070a8e498ee5cddda93ea2dda81d62b1759c34608",
+      "expected_bytes": 8070,
+      "actual_bytes": 8070,
+      "status": "PASS"
+    },
+    {
+      "path": "docs/design/family-companion/execution-goal.md",
+      "expected_sha256": "d514b8572d985f0c457c3588c1e6aac2e3ffbb17fed1fe803e9ab100892e9418",
+      "actual_sha256": "d514b8572d985f0c457c3588c1e6aac2e3ffbb17fed1fe803e9ab100892e9418",
+      "expected_bytes": 16895,
+      "actual_bytes": 16895,
+      "status": "PASS"
+    }
+  ],
+  "product_files_modified": []
+}

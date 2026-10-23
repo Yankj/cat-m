@@ -19,7 +19,7 @@ create or replace function cron.schedule(text, text, text) returns bigint langua
 create or replace function cron.unschedule(bigint) returns boolean language sql as 'select true';
 SQL
 echo "pg-evidence: head=$(git rev-parse HEAD 2>/dev/null) dirty=$(git status --porcelain 2>/dev/null | wc -l) server=$("${P[@]}" -At -d "$DB" -c 'show server_version') at=$(date -u +%FT%TZ)"
-for f in $(ls supabase/migrations/*proactive*.sql | sort); do
+for f in $(ls supabase/migrations/*proactive*.sql supabase/migrations/*family_m1_reminder_lease*.sql | sort); do
   case "$f" in *20261015120100_proactive_cron.sql) echo "skip (pg_cron/pg_net/vault): $f"; continue;; esac
   # Codex PR90g #5: upgrade with old data — seed what the previous code wrote right before the migration that changes it.
   case "$f" in *20261017010000_*) echo "seed old data: test/fixtures/pg-upgrade-seed-before-010000.sql"; "${P[@]}" -1 -d "$DB" -f test/fixtures/pg-upgrade-seed-before-010000.sql >/dev/null;; esac

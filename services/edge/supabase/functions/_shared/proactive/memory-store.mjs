@@ -1,7 +1,7 @@
 // In-memory store with the same semantics as pg-store (tests / local dev).
 const need = g => { if (g == null) throw new Error('generation_required'); };
 export function createMemoryStore() {
-  const tasks = new Map(), occ = new Set(), events = [], tokens = []; let seq = 0; const idem = new Map(), sig = new Map(), weights = new Map(), feedback = new Map();
+  const LEASE_MS = 30000; const tasks = new Map(), occ = new Map(), events = [], tokens = []; let seq = 0; const idem = new Map(), sig = new Map(), weights = new Map(), feedback = new Map();
   const id = () => crypto.randomUUID(), c = v => structuredClone(v);
   return {
     _dump: () => ({ tasks: [...tasks.values()], events, tokens }),
@@ -14,16 +14,21 @@ export function createMemoryStore() {
     async getTask(uid, tid) { const r = tasks.get(tid); return r && r.user_id === uid ? c(r) : null; },
     async listTasks(uid, { status, limit }) { return [...tasks.values()].filter(r => r.user_id === uid && (status === 'all' || r.status === status)).sort((a, b) => (a.due_at ?? '9').localeCompare(b.due_at ?? '9')).slice(0, limit).map(c); },
     async updateTask(uid, tid, f, rev) { const r = tasks.get(tid); if (!r || r.user_id !== uid || r.revision !== rev) return null; Object.assign(r, f, { revision: r.revision + 1, updated_at: new Date().toISOString() }); return c(r); },
+    // M1 REM-01/02: an occurrence claim is a lease. A claim abandoned by a lost worker becomes claimable again after
+    // LEASE_MS; generated occurrences never are. Expired leases are filtered BEFORE the limit so they cannot starve later rows.
     async claimDue(nowIso, limit) {
-      const out = [];
-      for (const r of [...tasks.values()].filter(r => ['open', 'snoozed'].includes(r.status) && r.next_fire_at && r.next_fire_at <= nowIso).sort((a, b) => a.next_fire_at.localeCompare(b.next_fire_at)).slice(0, limit)) {
-        const k = r.id + '|' + r.next_fire_at; if (occ.has(k)) continue; occ.add(k);
+      const out = [], nowMs = Date.parse(nowIso);
+      const free = r => { const o = occ.get(r.id + '|' + r.next_fire_at); return !o || (o.state === 'claimed' && nowMs - o.at >= LEASE_MS); };
+      for (const r of [...tasks.values()].filter(r => ['open', 'snoozed'].includes(r.status) && r.next_fire_at && r.next_fire_at <= nowIso && free(r)).sort((a, b) => a.next_fire_at.localeCompare(b.next_fire_at)).slice(0, limit)) {
+        occ.set(r.id + '|' + r.next_fire_at, { state: 'claimed', at: nowMs });
         out.push({ task_id: r.id, user_id: r.user_id, conversation_id: r.conversation_id, title: r.title, notes: r.notes, due_at: r.due_at, time_zone: r.time_zone, recurrence: r.recurrence, scheduled_at: r.next_fire_at, fire_count: r.fire_count });
       }
       return out;
     },
-    async finishOccurrence(cl, f) { const r = tasks.get(cl.task_id); if (!r || r.next_fire_at !== cl.scheduled_at) return; Object.assign(r, f, { snooze_until: null, revision: r.revision + 1 }); if (f.next_fire_at && r.recurrence) r.due_at = f.next_fire_at === null ? r.due_at : r.due_at; },
-    async insertEvent(ev) { if (events.some(e => e.user_id === ev.user_id && e.dedupe_key === ev.dedupe_key)) return null; const row = { id: id(), push_state: 'pending', push_error: null, read_at: null, created_at: new Date(Date.now() + seq++).toISOString(), ...ev }; events.push(row); return c(row); },
+    // M1 REM-04/05/06: a failed fire releases the claim and keeps the due, instead of discarding it.
+    async releaseOccurrence(cl) { const k = cl.task_id + '|' + cl.scheduled_at, o = occ.get(k); if (o && o.state === 'claimed') occ.delete(k); },
+    async finishOccurrence(cl, f) { const r = tasks.get(cl.task_id); if (!r || r.next_fire_at !== cl.scheduled_at) return; occ.set(cl.task_id + '|' + cl.scheduled_at, { state: 'generated', at: 0 }); Object.assign(r, f, { snooze_until: null, revision: r.revision + 1 }); if (f.next_fire_at && r.recurrence) r.due_at = f.next_fire_at === null ? r.due_at : r.due_at; },
+    async insertEvent(ev) { if (ev.kind === 'reminder_due' && ev.task_id) { const t = tasks.get(ev.task_id); if (!t || !['open', 'snoozed'].includes(t.status) || t.next_fire_at !== ev.payload?.scheduled_at) return null; } if (events.some(e => e.user_id === ev.user_id && e.dedupe_key === ev.dedupe_key)) return null; const row = { id: id(), push_state: 'pending', push_error: null, read_at: null, created_at: new Date(Date.now() + seq++).toISOString(), ...ev }; events.push(row); return c(row); },
     async listEvents(uid, after, limit) { return events.filter(e => e.user_id === uid && (!after || e.created_at > after)).slice(-limit).map(c); },
     async getEvent(uid, eid) { const e = events.find(e => e.id === eid && e.user_id === uid); return e ? c(e) : null; },
     async recordPushAction(uid, eid, action, at) { const e = events.find(e => e.id === eid && e.user_id === uid); if (!e || e.action) return false; e.action = action; e.opened_at ??= at; e.read_at ??= at; return true; },

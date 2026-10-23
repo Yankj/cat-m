@@ -1,3 +1,4 @@
+import { errCode } from './safe-log.mjs';
 import { validateTaskCreate, validateTaskPatch, computeNextFire, isUUID, TASK_TOOLS, TASK_TOOL_CONTRACT } from './contract.mjs';
 import { nextOccurrence, bad } from './recurrence.mjs';
 import { isQuiet, quietEndsAt, localDayStart, isExempt } from './throttle.mjs';
@@ -21,7 +22,8 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     const task = { ...v, status: 'open', fire_count: 0, created_by: createdBy };
     task.next_fire_at = computeNextFire(task, now());
     const { row, created } = await store.createTask(uid, task);
-    if (created) await store.insertEvent({ user_id: uid, task_id: row.id, conversation_id: row.conversation_id, kind: 'task_created', title: row.title, body: row.due_at ? `已设置提醒：${row.title}` : `已记下：${row.title}`, payload: { task: row, created_by: createdBy }, dedupe_key: 'created:' + row.id, push_state: 'skipped' });
+    // M1 REM-09: always (re)write the creation event; dedupe_key makes a retry with the same operation_id reconcile.
+    await store.insertEvent({ user_id: uid, task_id: row.id, conversation_id: row.conversation_id, kind: 'task_created', title: row.title, body: row.due_at ? `已设置提醒：${row.title}` : `已记下：${row.title}`, payload: { task: row, created_by: createdBy }, dedupe_key: 'created:' + row.id, push_state: 'skipped' });
     return { task: row, created };
   }
   async function patchTask(uid, id, input) {
@@ -59,7 +61,7 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     const at = now(), claimed = await store.claimDue(new Date(at).toISOString(), 50), results = [];
     for (const c of claimed) {
       try { results.push(await fire(c, at)); }
-      catch (e) { log('fire_failed', c.task_id, e.stack ?? e.message); await store.finishOccurrence(c, { next_fire_at: null, fire_count: c.fire_count + 1, status: 'open' }).catch(() => {}); results.push({ task_id: c.task_id, error: 'fire_failed' }); }
+      catch (e) { log('fire_failed', c.task_id, e.name ?? 'Error'); if (store.releaseOccurrence) await store.releaseOccurrence(c).catch(() => {}); results.push({ task_id: c.task_id, error: 'fire_failed' }); }
     }
     const resurfaced = store.resurfaceSnoozed ? await store.resurfaceSnoozed(new Date(at).toISOString()) : [];
     const push = await flushPush();
@@ -69,7 +71,7 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     {
       const fired = c.fire_count + 1;
       let text = null, source = 'template';
-      if (model) { try { text = await model.reminder(c, at); if (text) source = 'model'; } catch (e) { log('model_failed', e.message); } }
+      if (model) { try { text = await model.reminder(c, at); if (text) source = 'model'; } catch (e) { log('model_failed', errCode(e)); } }
       text ||= fallbackText(c);
       const owner = await store.getTask(c.user_id, c.task_id).catch(() => null);
       const ev = await store.insertEvent({ user_id: c.user_id, task_id: c.task_id, conversation_id: c.conversation_id, kind: 'reminder_due', title: c.title, body: text, payload: { scheduled_at: c.scheduled_at, due_at: c.due_at, occurrence: fired, source, created_by: owner?.created_by ?? 'user', time_zone: c.time_zone, actions: ['done', 'snooze_10m', 'snooze_1h', 'open_conversation'] }, dedupe_key: `due:${c.task_id}:${c.scheduled_at}` });
@@ -139,7 +141,7 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
         const stopped = st && st !== 'pending' && store.finishPush ? await store.finishPush(ev.id, claim.claim, ok ? 'sent' : 'skipped', 'stopped_midsend:suggestion_' + st, new Date(now()).toISOString()) : false;
         log(stopped ? 'push_stopped_midsend' : 'push_claim_lost_midsend', ev.id); out.skipped++; return;
       }
-      const r = await apns.send(t, ev).catch(e => ({ ok: false, reason: e.message }));
+      const r = await apns.send(t, ev).catch(e => ({ ok: false, reason: errCode(e) }));
       if (r.ok) ok = true; else { err = r.reason; if (r.unregistered) await store.disableToken(t.id, r.reason); }
     }
     // Completion is bound to this claim (generation): a row re-armed or recovered meanwhile is not overwritten.
@@ -198,7 +200,7 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
   }
   return {
     tick, flushPush, executeTool, createTask, patchTask,
-    async handle(req) { try { return await route(req); } catch (e) { const s = e.status ?? 500; if (s >= 500) log('error', e.stack ?? e.message); return json(s, { error: s >= 500 && !e.status ? 'internal_error' : (e.code ?? 'error') }); } },
+    async handle(req) { try { return await route(req); } catch (e) { const s = e.status ?? 500; if (s >= 500) log('error', errCode(e)); return json(s, { error: s >= 500 && !e.status ? 'internal_error' : (e.code ?? 'error') }); } },
   };
 }
 const summary = t => ({ id: t.id, title: t.title, due_at: t.due_at, time_zone: t.time_zone, status: t.status, recurrence: t.recurrence, next_fire_at: t.next_fire_at, revision: t.revision });
