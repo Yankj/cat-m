@@ -1,6 +1,7 @@
 // v0.5 fixes on REAL Postgres: household re-create after delete, home.children vs adults, memory model (kinds/statuses).
 // Run: PGHOST=/tmp PGPORT=55432 PGUSER=postgres bash scripts/pg-all-migrations-local.sh test/family-v05-pg.test.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
+import { runtimeOf } from './support/pg-runtime.mjs';
 import postgres from 'npm:postgres@3.4.7';
 import { createPgFamilyStore } from '../supabase/functions/_shared/family/pg-store.mjs';
 import { createFamilyService } from '../supabase/functions/_shared/family/service.mjs';
@@ -8,7 +9,7 @@ import { createMemoryRoute } from '../supabase/functions/_shared/family/memory.m
 const url = Deno.env.get('CATPAW_PG_TEST_URL');
 const U = () => crypto.randomUUID();
 export function rig(sql) {
-  const store = createPgFamilyStore(sql);
+  const store = createPgFamilyStore(runtimeOf(sql));
   const svc = createFamilyService({ store, extraRoutes: [createMemoryRoute()], verifyUser: async a => { const m = /^Bearer (.+)$/.exec(a); return m ? { sub: m[1] } : null; } });
   const call = async (who, method, path, body) => { const r = await svc.handle(new Request('https://x/catpaw/family/v1' + path, { method, headers: { authorization: 'Bearer ' + who, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })); return { status: r.status, body: await r.json() }; };
   return { store, call };

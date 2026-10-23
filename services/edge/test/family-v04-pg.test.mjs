@@ -1,6 +1,7 @@
 // v0.4 on REAL Postgres: household memory correct / pause / delete + recall, restrained reminders + dispatcher lease.
 // Run: PGHOST=/tmp PGPORT=55432 PGUSER=postgres bash scripts/pg-all-migrations-local.sh test/family-v04-pg.test.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
+import { runtimeOf } from './support/pg-runtime.mjs';
 import postgres from 'npm:postgres@3.4.7';
 import { createPgFamilyStore } from '../supabase/functions/_shared/family/pg-store.mjs';
 import { createFamilyService } from '../supabase/functions/_shared/family/service.mjs';
@@ -9,7 +10,7 @@ const url = Deno.env.get('CATPAW_PG_TEST_URL');
 const U = () => crypto.randomUUID();
 const SRC = { source_kind: 'user_text', source_ref: 'turn:m1' };
 function rig(sql) {
-  const store = createPgFamilyStore(sql);
+  const store = createPgFamilyStore(runtimeOf(sql));
   const svc = createFamilyService({ store, extraRoutes: [createMemoryRoute()], verifyUser: async a => { const m = /^Bearer (.+)$/.exec(a); return m ? { sub: m[1] } : null; } });
   const call = async (who, method, path, body) => { const r = await svc.handle(new Request('https://x/catpaw/family/v1' + path, { method, headers: { authorization: 'Bearer ' + who, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })); return { status: r.status, body: await r.json() }; };
   return { store, call };
@@ -115,7 +116,10 @@ test('v0.4 reminders: confirmed only, quiet 21:00–08:00, max 2/day, cancel/res
 test('v0.4 dispatcher: 30 s lease, fire once -> outbox reminder.due, cancel-first wins, paused household not fired', { skip: !url }, async () => {
   const sql = postgres(url, { max: 4, prepare: false, onnotice: () => {} });
   try {
-    const { call, store } = rig(sql); const { A, hh } = await setup(sql, call);
+    // dispatcher functions have no API caller and stay service_role-only: drive them with the admin (service) pool;
+    // the API runtime role must be refused (B2 least privilege)
+    const { call } = rig(sql), store = createPgFamilyStore(sql); const { A, hh } = await setup(sql, call);
+    await assert.rejects(createPgFamilyStore(runtimeOf(sql)).claimDueReminders(new Date().toISOString()), /permission denied/);
     const item = await scheduledItem(call, A, hh, '2027-06-02');
     const r1 = (await rem(call, A, hh, item, 2, '2027-06-01T19:00:00+08:00')).body.objects[0];
     const r2 = (await rem(call, A, hh, item, 2, '2027-06-01T10:00:00+08:00')).body.objects[0];
