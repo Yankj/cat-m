@@ -3,17 +3,11 @@
 // Run: PGHOST=/tmp PGPORT=55432 PGUSER=postgres bash scripts/pg-all-migrations-local.sh test/family-flag-off-pg.test.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
 import postgres from 'npm:postgres@3.4.7';
-import { readFeatureGate } from '../supabase/functions/_shared/config.mjs';
 import { createPgAgentMemoryStore } from '../supabase/functions/_shared/agent-memory/pg-store.mjs';
 const url = Deno.env.get('CATPAW_PG_TEST_URL');
 const ROLLBACK = new Error('rollback');
 
-test('flag off: CATPAW_FAMILY_ENABLED unset/empty/off/false/0 -> off (api.mjs then leaves runtime.family unset -> /catpaw/family/v1/* 404)', async () => {
-  for (const v of [undefined, '', 'off', 'false', '0']) assert.equal(readFeatureGate(v, 'off'), 'off', String(v));
-  const api = await Deno.readTextFile(new URL('../supabase/functions/_shared/api.mjs', import.meta.url));
-  assert.match(api, /if\(familyStore&&\(config\.family\?\?'off'\)!=='off'\)\{runtime\.family=/);
-  assert.match(api, /if\(path\.startsWith\('\/catpaw\/family\/v1\/'\)\)\{check\(runtime\.family,404,'not_found'\)/);
-});
+// HTTP flag behaviour (404 when off, allowlist) is tested through the real handler in test/family-flag-gate.test.mjs.
 
 test('flag off still needs 20261023100100: agent-memory save / clear work after it, fail without it', { skip: !url }, async () => {
   const sql = postgres(url, { max: 2, prepare: false, onnotice: () => {} });
