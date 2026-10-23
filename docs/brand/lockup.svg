@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 220" role="img" aria-label="mimi 小咪">
+  <title>mimi 小咪</title>
+  <g transform="translate(0 10) scale(0.8)">
+  <!-- ears -->
+  <path d="M52 104 L62 36 Q66 26 75 33 L116 70 Z" fill="#E9894A" stroke="#2B2622" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M188 104 L178 36 Q174 26 165 33 L124 70 Z" fill="#E9894A" stroke="#2B2622" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M70 52 L94 74 L68 84 Z" fill="#F6D9BF"/>
+  <path d="M170 52 L146 74 L172 84 Z" fill="#F6D9BF"/>
+  <!-- head -->
+  <ellipse cx="120" cy="134" rx="84" ry="74" fill="#E9894A" stroke="#2B2622" stroke-width="8"/>
+  <!-- muzzle -->
+  <ellipse cx="120" cy="160" rx="40" ry="28" fill="#FBF6EE"/>
+  <!-- calm closed eyes -->
+  <path d="M78 128 Q90 140 102 128" fill="none" stroke="#2B2622" stroke-width="8" stroke-linecap="round"/>
+  <path d="M138 128 Q150 140 162 128" fill="none" stroke="#2B2622" stroke-width="8" stroke-linecap="round"/>
+  <!-- nose + smile -->
+  <path d="M113 150 h14 l-7 8 z" fill="#2B2622" stroke="#2B2622" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M120 158 q-6 10 -16 6 M120 158 q6 10 16 6" fill="none" stroke="#2B2622" stroke-width="6" stroke-linecap="round"/>
+  <!-- cheeks -->
+  <circle cx="72" cy="156" r="9" fill="#F2B48A"/>
+  <circle cx="168" cy="156" r="9" fill="#F2B48A"/>
+</g>
+  <g transform="translate(232 40) scale(1.25)">
+  <g fill="none" stroke="#2B2622" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M0 90 V50 A20 20 0 0 1 40 50 V90 M40 50 A20 20 0 0 1 80 50 V90"/>
+    <path d="M114 36 V90"/>
+    <path d="M148 90 V50 A20 20 0 0 1 188 50 V90 M188 50 A20 20 0 0 1 228 50 V90"/>
+    <path d="M262 36 V90"/>
+  </g>
+  <!-- the two i-dots are tiny cat ears -->
+  <path d="M104 14 L108 0 L114 8 L120 0 L124 14 Z" fill="#E9894A" stroke="#E9894A" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M252 14 L256 0 L262 8 L268 0 L272 14 Z" fill="#E9894A" stroke="#E9894A" stroke-width="4" stroke-linejoin="round"/>
+</g>
+  <text x="236" y="200" font-family="PingFang SC, Noto Sans CJK SC, sans-serif" font-size="30" fill="#7A6E64" letter-spacing="4">小咪 · 先你一步，把事办妥</text>
+</svg>

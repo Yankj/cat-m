@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -8 300 112" role="img" aria-label="mimi">
+  <title>mimi</title>
+  <g fill="none" stroke="#2B2622" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M0 90 V50 A20 20 0 0 1 40 50 V90 M40 50 A20 20 0 0 1 80 50 V90"/>
+    <path d="M114 36 V90"/>
+    <path d="M148 90 V50 A20 20 0 0 1 188 50 V90 M188 50 A20 20 0 0 1 228 50 V90"/>
+    <path d="M262 36 V90"/>
+  </g>
+  <!-- the two i-dots are tiny cat ears -->
+  <path d="M104 14 L108 0 L114 8 L120 0 L124 14 Z" fill="#E9894A" stroke="#E9894A" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M252 14 L256 0 L262 8 L268 0 L272 14 Z" fill="#E9894A" stroke="#E9894A" stroke-width="4" stroke-linejoin="round"/>
+</svg>
