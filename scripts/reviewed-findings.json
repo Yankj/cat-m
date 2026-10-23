@@ -2607,6 +2607,19 @@
       "line": 43,
       "sha256": "45248ad3fc6ba408948fceae2f7295de6cbc959ee21ae337a33188af2e1d897c",
       "reason": "Authorized repository rename to Yankj/cat-m; this exact line is the public GitHub SSH transport URL, not a private email, recipient or credential. Only the three exact origin URL identities changed; other push safeguards remain."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeOAuthTests.swift",
+      "category": "secret_assignment_review",
+      "line": 106,
+      "sha256": "c139dd8533e1e693d3d7846a0680b8237d3f10c6c60a4f1ef9d6db25b71e0d78",
+      "reason": "Reviewed 2026-10-24: OAuthFakeRemote supplies synthetic token markers only to the injected offline test remote. The triggering line is unchanged from the prior reviewed fixture; commit 7e45e902 changed the unrelated brand anchor in the source-structure test. Exact current-file hash re-pinned; no real credential or scanner rule change."
+    },
+    {
+      "path": "docs/brand/png/source-logo.jpg",
+      "category": "unexpected_binary",
+      "sha256": "b4928d8d8e63ee00cc17714ef0bb482dcf7b8caea432628dc8934cb13966fdcb",
+      "reason": "Reviewed 2026-10-24: 19589-byte brand source from commit a1ce541e, visually inspected as the orange/cream cat icon with historical product lettering. Parsed JPEG metadata contains Screenshot description/comment, capture date/time, orientation/resolution, dimensions and color profile; no GPS, owner, camera serial, account or child data. Preserve original source bytes. This exact-file exception does not allow other JPEGs or changed bytes."
     }
   ]
 }

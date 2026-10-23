@@ -1,5 +1,7 @@
 # 验收标准与证据索引
 
+当前阶段由 [M1–M6 Roadmap](../product/mimi-roadmap.md)定义；代码、自动测试、设备验证、线上验收分别见[主计划](../status/master-plan.md)。[M1 初始审查](family-companion/parenting-core-review.md)与[CI 接续](family-companion/parenting-ci-2026-10-23.md)保留固定候选事实。下列历史合同与报告继续可追溯，不用旧测试总数抵扣新产品验收。
+
 重启验收合同：[18A基础](agent-foundation-acceptance.md)、[12U原生体验](ios-codex-experience-acceptance.md)、[FINAL-1质量与对照](catpaw-final-product-acceptance.md)、[CGUI-1对话细分](conversation-generative-ui-acceptance.md)。实际状态均查主计划；下面历史报告保留当时范围。
 
 所有结果按实际层与源码身份报告：fixture、合成本地服务、原生设备/UI、真实云/模型/效果核验分别记账。成功终态、hash 对应和明确未验项是验收前提。最近未编译的修改不能沿用之前通过结果。
