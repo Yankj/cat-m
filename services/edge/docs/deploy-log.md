@@ -1,4 +1,4 @@
-# catpaw-api 部署记录（生产 dbyklgxdvjbutxzsjeth）
+# catpaw-api 部署记录（生产 <your-project-ref>）
 
 整理时间 2026-10-18（UTC+8）。本文件不含任何密钥。部署包（bundle）不入库，可按下文从提交重建。
 约定（2026-10-17）：只从已推送到 origin 的 SHA 部署；部署当天合入 main（分支历史已有 merge commit 时用 merge commit，保留生产 SHA，不 squash）；每个函数版本 ↔ SHA 都记在这里。
