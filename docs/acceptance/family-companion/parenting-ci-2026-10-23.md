@@ -80,6 +80,14 @@ canonical 打开跨异步磁盘与 detach 时由独立 attempt UUID 占位，迟
 | unknown 中断后按原ID核对 | 控制器有mock回归；当前UI fixture.observe明确拒绝unresolved，不具备成功核对证据 |
 | 深色大字号 | 原3 UI仅 accessibility5 冒烟，不能替代全页面可读性或真机验收 |
 
+## d92bc91 诊断与 Simulator 签名修复
+
+[d92bc912a0f8993fe26af33e490b004df80f7322 / CI39997128533](https://github.com/Yankj/mimi/actions/runs/39997128533) 已终态：changes、Edge SUCCESS，Edge911通过/0失败/2跳过（913总数）；[iOS job120563531153](https://github.com/Yankj/mimi/actions/runs/39997128533/job/120563531153) FAILURE。真实 build-for-testing 成功；4项 Auth composition 全通过，包括临时scope禁止写入、已确认receipt在scope发现失败时本机可写、迟到旧receipt的打开竞态，以及原同chat认证恢复。模块61个方法中60个通过、1个失败；真实cipher首写显式记录 `cat.L2SecureStoreError.keychain(-34018)`，该方法的断言及再次抛错合计2个failure events（1 unexpected），不能误报2个方法失败。3 UI均实际失败于首个昵称保存，表单直接显示同类L2SecureStoreError，尚未完成主要旅程。模块执行10.796秒，UI249.172秒，测试操作736.377秒，非20分钟取消。
+
+这确认当前无签名Simulator测试包缺少真实Keychain首写所需权限；此前57项使用synthetic cipher的绿色无法证明该边界。修复只调整本CI Simulator lane：由Xcode用仓库既有 `SimulatorFixtureAcceptance.entitlements` 生成本地ad-hoc完整测试产物，build/test共用固定DerivedData和参数。没有真实团队、证书、provisioning profile或设备签名，没有手工重签、测试cipher替换、修改生产entitlements或稳定Bundle ID。运行前精确核对主App的Info.plist、Xcode生成的Simulated.xcent、展开后的application identifier与唯一对应Keychain group、空team，以及本地ad-hoc签名；该静态/产物验证仍不能代替真实Keychain测试。
+
+旧receipt竞态测试进一步使用非空旧配置scope且resolver返回不同canonical scope，明确覆盖旧三字段也可能来自配置临时scope的兼容边界。UI等待失败现在附实际AX tree。下一候选仍为61模块+3 UI，尚待fresh签名构建与实际运行；planned取消、独立观察CRUD的两条UI候选仍未应用，保存失败输入重试与unknown原ID回查也没有UI通过证据。M1未签收，M2暂停。
+
 ## 接续测试范围
 
 d5f739e及之前的CI定向脚本只选择 `catTests/ParentingWorkspaceTests`、`ParentingIntakeTests`、`ParentingInlineIntakeTests` 三类合成用例。使用已安装iPhone runtime创建自己的空白模拟器，结束只删除本次创建的设备；存在Local.xcconfig时拒绝执行，移除四个backend环境配置及继承fixture/connection/simulator-child注入，不安装依赖或下载runtime。测试使用临时文件和mock transport，无真实儿童数据、真实模型、生产Keychain或数据库。空Debug配置使项目Auth/后端启动被guard拦住；现有AppDelegate仍有系统APNs注册/BG任务注册，未测量全进程或系统网络次数，不声称全进程零网络。

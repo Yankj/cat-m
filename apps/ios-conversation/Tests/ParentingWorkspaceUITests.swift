@@ -367,7 +367,7 @@ final class ParentingWorkspaceUITests: XCTestCase {
             if condition() { return }
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
-        XCTFail("Synthetic native UI condition timed out", file: file, line: line)
+        XCTFail("Synthetic native UI condition timed out\n" + (currentApp?.debugDescription ?? "No active synthetic application"), file: file, line: line)
     }
     private func reveal(_ app: XCUIApplication, _ target: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
         for _ in 0..<16 {
