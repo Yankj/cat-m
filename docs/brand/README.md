@@ -4,7 +4,7 @@
 
 本系列的主标识来自用户确认保留的 **橙底奶油猫标 App 图标**（见 [`png/source-logo.jpg`](png/source-logo.jpg)）。所有平面标识、字标与组合标都从这枚图标的几何与配色衍生，不另起猫脸。
 
-公司品牌 **HeyDusk / 理想三旬** 有独立标识系统（见 `heydusk-site/design-system/logo/`），与本手册分开使用。
+公司品牌 **HeyDusk / 理想三旬** 有独立标识系统（见 `heydusk-site/apps/company/design-system/logo/`），与本手册分开使用。
 
 ## 命名
 
@@ -84,5 +84,5 @@
 | 站点 | 仓库 | 域名 | 角色 |
 |---|---|---|---|
 | 公司站 | `Yankj/heydusk-site` | heydusk.com | 独立公司官网；产品卡片外链到 mimi |
-| 产品站 | `Yankj/mimi` → `apps/website/` | mimi.heydusk.com | 小咪产品营销站，独立部署 |
+| 产品站 | `Yankj/heydusk-site` → `apps/mimi/` | mimi.heydusk.com | 小咪产品营销站；与公司站同仓分目录。品牌源文件仍在本目录 `docs/brand/` |
 

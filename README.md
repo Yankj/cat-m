@@ -67,7 +67,7 @@
 - **能执行**：写进日历，留下回执。
 - **可信**：先问你，再动手。
 
-官网源码位于 [apps/website](apps/website)，独立构建与部署。演示素材保留 v1.1 版本；当前入口、状态与限制以 [能力清单](docs/product/capabilities/catpaw-capabilities.json) 和 [CHANGELOG](CHANGELOG.md) 为准。
+官网源码位于公司站仓库 [Yankj/heydusk-site/apps/mimi](https://github.com/Yankj/heydusk-site/tree/feat/company-site/apps/mimi)，与 heydusk.com 同仓分目录部署；本仓库 [apps/website](apps/website) 仅保留迁出说明。演示素材保留 v1.1 版本；当前入口、状态与限制以 [能力清单](docs/product/capabilities/catpaw-capabilities.json) 和 [CHANGELOG](CHANGELOG.md) 为准。
 <!-- CATPAW-WEBSITE:END -->
 
 ## 背景
