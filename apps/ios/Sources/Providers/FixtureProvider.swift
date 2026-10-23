@@ -9,7 +9,7 @@ public struct FixtureProvider: AgentProvider {
         ProviderDescriptor(id: "catpaw.fixture.v1", version: "1.0", capabilities: [ProviderCapability(capabilityID: "reply", availability: .fixtureAvailable, requiredAuthorizationKinds: [])])
     }
     public func reply(to request: ChatRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> {
-        let text = "【模拟回复 · cat Fixture v1】\n已将你的输入保存到本机：\n\(request.frozenText)\n\n这条回复用于验证消息流、取消和成果关联。真实模型、研究与远程工具尚未连接。"
+        let text = "【模拟回复 · Catpaw Fixture v1】\n已将你的输入保存到本机：\n\(request.frozenText)\n\n这条回复用于验证消息流、取消和成果关联。真实模型、研究与远程工具尚未连接。"
         return stream(context: request.context, text: text)
     }
     private func stream(context: ProviderContext, text: String) -> AsyncThrowingStream<ProviderEvent, Error> {
