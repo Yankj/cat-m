@@ -99,6 +99,8 @@ env -u CATPAW_SUPABASE_PROJECT_URL -u CATPAW_SUPABASE_PUBLISHABLE_KEY \
     -parallel-testing-enabled NO \
     -maximum-concurrent-test-simulator-destinations 1 \
     -only-testing:catTests/ParentingWorkspaceTests \
+    -only-testing:catTests/ParentingArrangementEditTests \
+    -only-testing:catTests/ParentingRescheduleIntakeTests \
     -only-testing:catTests/ParentingIntakeTests \
     -only-testing:catTests/ParentingInlineIntakeTests \
     -only-testing:catTests/ParentingAccountLifecycleTests \

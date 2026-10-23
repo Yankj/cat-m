@@ -166,6 +166,108 @@ final class ParentingWorkspaceUITests: XCTestCase {
         capture(app, "success-cold-relaunch-real-ledger-restored")
     }
 
+    func testSyntheticSelectedArrangementRescheduleAndUndoPersistAcrossColdRelaunch() {
+        let app = launch("p0-ui-parenting-adjustment")
+        let child = "Synthetic Reschedule Child"
+        let goal = "Synthetic retained growth goal"
+        let title = "Synthetic original arrangement"
+        let originalSource = "Synthetic original request remains the arrangement source."
+        let changeSource = "Change to 2027-02-18T17:00:00Z."
+        assertEmpty(app)
+        addChild(app, name: child)
+        tab(app, "growth")
+        tap(app, app.buttons["parenting.addGoal"])
+        enter(app, id: "parenting.goal.title", text: goal)
+        tap(app, app.buttons["parenting.name.save"])
+        wait { !self.inputExists(app, "parenting.goal.title") }
+        tab(app, "today")
+        tap(app, app.buttons["parenting.addArrangement"])
+        tap(app, element(app, "parenting.editor.goal"))
+        let goalOption = app.buttons.matching(NSPredicate(format: "label == %@", goal)).firstMatch
+        XCTAssertTrue(goalOption.waitForExistence(timeout: 5), app.debugDescription)
+        goalOption.tap()
+        enter(app, id: "parenting.arrangement.source", text: originalSource)
+        enter(app, id: "parenting.arrangement.title", text: title)
+        chooseExplicitTime(app)
+        tap(app, app.buttons["parenting.arrangement.save"])
+        wait { !self.inputExists(app, "parenting.arrangement.source") }
+        let confirm = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.confirm.")).firstMatch
+        reveal(app, confirm)
+        let arrangementID = String(confirm.identifier.dropFirst("parenting.confirm.".count))
+        XCTAssertNotNil(UUID(uuidString: arrangementID))
+        tap(app, confirm)
+        wait { app.buttons["parenting.complete." + arrangementID].exists }
+        let originalTime = arrangementTime(app, arrangementID: arrangementID)
+        assertArrangementGoal(app, arrangementID: arrangementID, goal: goal)
+
+        tap(app, app.buttons["parenting.adjust." + arrangementID])
+        XCTAssertEqual(input(app, "parenting.arrangement.source").value as? String, "",
+                       "A change must not silently resend the arrangement's original source.")
+        enter(app, id: "parenting.arrangement.source", text: changeSource)
+        requestAndAllow(app)
+        let before = app.staticTexts["parenting.adjustment.originalTime"]
+        let after = app.staticTexts["parenting.adjustment.proposedTime"]
+        reveal(app, before)
+        XCTAssertFalse(before.label.isEmpty, app.debugDescription)
+        reveal(app, after)
+        XCTAssertFalse(after.label.isEmpty, app.debugDescription)
+        XCTAssertNotEqual(before.label, after.label)
+        XCTAssertEqual(input(app, "parenting.arrangement.title").value as? String, title,
+                       "A reschedule candidate must preserve the selected title, not use the model's replacement title.")
+        assertSaveDisabled(app)
+        capture(app, "adjustment-candidate-not-applied")
+        tap(app, app.buttons["parenting.inline.adopt"])
+        let review = element(app, "parenting.adjustment.review")
+        reveal(app, review)
+        XCTAssertTrue(review.exists, app.debugDescription)
+        assertPinnedAction(app, id: "parenting.arrangement.save")
+        tap(app, app.buttons["parenting.arrangement.save"])
+        wait { !self.inputExists(app, "parenting.arrangement.source") }
+        let changedTime = arrangementTime(app, arrangementID: arrangementID)
+        XCTAssertNotEqual(changedTime, originalTime)
+        XCTAssertTrue(element(app, "parenting.arrangement." + arrangementID).staticTexts[title].exists, app.debugDescription)
+        assertArrangementGoal(app, arrangementID: arrangementID, goal: goal)
+
+        app.terminate()
+        app.launch()
+        ready(app)
+        XCTAssertEqual(arrangementTime(app, arrangementID: arrangementID), changedTime)
+        XCTAssertTrue(element(app, "parenting.arrangement." + arrangementID).staticTexts[title].exists, app.debugDescription)
+        assertArrangementGoal(app, arrangementID: arrangementID, goal: goal)
+        tapDisclosure(app, id: "parenting.adjustmentHistory." + arrangementID)
+        let source = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.adjustment.source.")).firstMatch
+        reveal(app, source)
+        XCTAssertEqual(source.label, changeSource)
+        let editID = String(source.identifier.dropFirst("parenting.adjustment.source.".count))
+        XCTAssertNotNil(UUID(uuidString: editID))
+        capture(app, "adjustment-same-id-and-source-cold-read")
+        tap(app, app.buttons["parenting.arrangement.menu." + arrangementID])
+        let undo = app.buttons.matching(identifier: "parenting.undoAdjustment." + arrangementID).firstMatch
+        XCTAssertTrue(undo.waitForExistence(timeout: 5), app.debugDescription)
+        wait { undo.isEnabled && undo.isHittable }
+        undo.tap()
+        wait { app.staticTexts["parenting.arrangement.time." + arrangementID].label == originalTime }
+        XCTAssertTrue(app.buttons["parenting.complete." + arrangementID].exists)
+
+        app.terminate()
+        app.launch()
+        ready(app)
+        XCTAssertEqual(arrangementTime(app, arrangementID: arrangementID), originalTime)
+        XCTAssertTrue(element(app, "parenting.arrangement." + arrangementID).staticTexts[title].exists, app.debugDescription)
+        assertArrangementGoal(app, arrangementID: arrangementID, goal: goal)
+        tapDisclosure(app, id: "parenting.adjustmentHistory." + arrangementID)
+        let persistedSource = app.staticTexts["parenting.adjustment.source." + editID]
+        reveal(app, persistedSource)
+        XCTAssertEqual(persistedSource.label, changeSource)
+        let reverted = element(app, "parenting.adjustment.reverted." + editID)
+        reveal(app, reverted)
+        XCTAssertFalse(reverted.label.isEmpty, app.debugDescription)
+        capture(app, "adjustment-undone-same-id-time-and-history-cold-read")
+        tab(app, "records")
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "parenting.record.body.")).count, 0,
+                       "Rescheduling and undo must not manufacture a completion record.")
+    }
+
     func testSyntheticPreparationFailureCancelCleanupAndNewIntake() {
         let app = launch("p0-ui-parenting-preparation-failure")
         assertEmpty(app)

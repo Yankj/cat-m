@@ -17,6 +17,7 @@ import Combine
     @State private var chatPresented = false
     @State private var settingsPresented = false
     @State private var deletion: ParentingDeletion?
+    @State private var undoReview: ParentingUndoReview?
     @State private var operations: [String: UUID] = [:]
     @State private var completedExpanded = false
     @State private var cancelledExpanded = false
@@ -144,6 +145,16 @@ import Combine
             Button(ui("删除"), role: .destructive) { delete(target) }
             Button(ui("取消"), role: .cancel) { deletion = nil }
         } message: { target in Text(ui(target.explanation)) }
+        .confirmationDialog(ui("核对撤销后的同钟点安排"), isPresented: undoPresented,
+                            titleVisibility: .visible, presenting: undoReview) { review in
+            Button(ui("确认撤销")) {
+                perform(.undoArrangementEdit(id: review.editID, acknowledgedConflictIDs: review.conflictIDs),
+                        key: "undoAdjustment.\(review.editID)", expectedRevision: review.workspaceRevision)
+                undoReview = nil
+            }
+            .accessibilityIdentifier("parenting.undoAdjustment.confirm")
+            Button(ui("取消"), role: .cancel) { undoReview = nil }
+        } message: { review in Text(verbatim: review.message) }
         .modifier(catPrivacyShield(lockedText: ui("解锁后查看育儿记录"), identifier: "parenting.privacyShield"))
     }
 
@@ -315,6 +326,13 @@ import Combine
                 }
                 Spacer(minLength: 4)
                 Menu {
+                    if let edit = workspace.editHistory.last(where: { $0.after.id == item.id && $0.canUndo(in: workspace) }) {
+                        Text(verbatim: ui("撤销后时间") + " · " + edit.before.dueAt.formatted(date: .complete, time: .shortened))
+                        Button(ui("撤销上次调整"), systemImage: "arrow.uturn.backward") {
+                            reviewUndo(edit)
+                        }
+                        .accessibilityIdentifier("parenting.undoAdjustment.\(item.id)")
+                    }
                     if item.state == .draft || item.state == .planned {
                         Button(ui("取消这件事"), systemImage: "minus.circle") {
                             perform(.cancelArrangement(id: item.id), key: "cancel.\(item.id)")
@@ -338,6 +356,7 @@ import Combine
                 .foregroundStyle(catColors.calmSecondary).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
             }
             .font(catTypography.Role.caption.font).tint(catColors.calmSecondary)
+            arrangementEditHistory(item)
             if item.state == .draft {
                 Text(ui("待确认 · 尚未进入安排")).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention)
                 ViewThatFits(in: .horizontal) {
@@ -371,6 +390,37 @@ import Combine
         .parentingCard()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("parenting.arrangement.\(item.id)")
+    }
+
+    @ViewBuilder private func arrangementEditHistory(_ item: ParentingArrangement) -> some View {
+        let history = workspace.editHistory.filter { $0.after.id == item.id }
+        if !history.isEmpty {
+            DisclosureGroup(ui("查看调整记录")) {
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(history.reversed()) { edit in
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text(verbatim: ui("原来") + " · " + edit.before.dueAt.formatted(date: .complete, time: .shortened))
+                            Text(verbatim: ui("调整后") + " · " + edit.after.dueAt.formatted(date: .complete, time: .shortened))
+                            if !edit.sourceText.isEmpty {
+                                Text(verbatim: edit.sourceText).textSelection(.enabled)
+                                    .accessibilityIdentifier("parenting.adjustment.source.\(edit.id)")
+                            } else { Text(ui("本次由家长手动调整")) }
+                            Text(verbatim: ui("调整时间") + " · " + edit.createdAt.formatted(date: .abbreviated, time: .shortened))
+                            if let revertedAt = edit.revertedAt {
+                                Text(verbatim: ui("已撤销") + " · " + revertedAt.formatted(date: .abbreviated, time: .shortened))
+                                    .accessibilityIdentifier("parenting.adjustment.reverted.\(edit.id)")
+                            }
+                        }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("parenting.adjustmentHistory.entry.\(edit.id)")
+                    }
+                }
+                .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+            }
+            .font(catTypography.Role.caption.font).tint(catColors.calmSecondary)
+            .accessibilityIdentifier("parenting.adjustmentHistory.\(item.id)")
+        }
     }
 
     private func arrangementConfirm(_ item: ParentingArrangement) -> some View {
@@ -715,11 +765,32 @@ import Combine
         guard sheet == nil, !settingsPresented, catRouteCenter.shared.pending != nil else { return }
         chatPresented = true
     }
-    private func perform(_ command: ParentingCommand, key: String) {
+    private func reviewUndo(_ edit: ParentingArrangementEdit) {
+        guard !model.busy, edit.canUndo(in: workspace) else { return }
+        let revision = workspace.revision
+        let conflicts = workspace.sameTimeConflicts(arrangementID: edit.before.id, dueAt: edit.before.dueAt)
+        if conflicts.isEmpty {
+            perform(.undoArrangementEdit(id: edit.id, acknowledgedConflictIDs: []),
+                    key: "undoAdjustment.\(edit.id)", expectedRevision: revision)
+            return
+        }
+        let current = ui("原来") + " · " + edit.after.dueAt.formatted(date: .complete, time: .shortened)
+        let restored = ui("撤销后时间") + " · " + edit.before.dueAt.formatted(date: .complete, time: .shortened)
+        let items = conflicts.map { $0.title + " · " + $0.dueAt.formatted(date: .complete, time: .shortened) }
+        let explanation = ui("这些已安排事项在同一分钟。没有时长信息，暂不能判断是否重叠或能否同时进行。")
+        undoReview = ParentingUndoReview(editID: edit.id, workspaceRevision: revision, conflictIDs: conflicts.map(\.id),
+                                        message: ([current, restored, TimeZone.current.identifier] + items + [explanation]).joined(separator: "\n"))
+    }
+    private var undoPresented: Binding<Bool> {
+        Binding(get: { undoReview != nil }, set: { if !$0 { undoReview = nil } })
+    }
+    private func perform(_ command: ParentingCommand, key: String, expectedRevision: Int? = nil) {
         guard !model.busy else { return }
         let operationID = operations[key] ?? UUID()
         operations[key] = operationID
-        Task { if await model.apply(command, operationID: operationID) { operations.removeValue(forKey: key) } }
+        Task {
+            if await model.apply(command, operationID: operationID, expectedRevision: expectedRevision) { operations.removeValue(forKey: key) }
+        }
     }
     private var deletionPresented: Binding<Bool> {
         Binding(get: { deletion != nil }, set: { if !$0 { deletion = nil } })
@@ -761,6 +832,12 @@ private enum ParentingDeletion {
         case .record: "删除这条记录。原安排的完成状态不会改变。删除后无法恢复。"
         }
     }
+}
+private struct ParentingUndoReview {
+    let editID: UUID
+    let workspaceRevision: Int
+    let conflictIDs: [UUID]
+    let message: String
 }
 private enum ParentingSheet: Identifiable {
     case newChild, editChild(ParentingChild), newGoal(UUID)
@@ -934,6 +1011,8 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
     @StateObject private var intake: ParentingInlineIntakeModel
     @StateObject private var admissionGate: ParentingEditorAdmissionGate
     let arrangement: ParentingArrangement?
+    @State private var editTarget: ParentingArrangementEditTarget?
+    @State private var interpretationTimeZone: TimeZone
     @Environment(\.locale) private var locale
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
@@ -959,12 +1038,20 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
     @State private var recoveredInput: ParentingRecoveredInput?
     @State private var recoveryNotice: String?
     @State private var cleanupRunning = false
+    @State private var acknowledgedConflictIDs: [UUID] = []
+    @State private var adoptedEditTime: Date?
+    @State private var preAdoptionTime: Date?
+    @State private var intakeTimeZoneID: String
 
     init(model: ParentingWorkspaceModel, chat: ConversationFirstModel,
          arrangement: ParentingArrangement? = nil, childID: UUID? = nil, goalID: UUID? = nil) {
         self.model = model
         self.chat = chat
         self.arrangement = arrangement
+        _editTarget = State(initialValue: arrangement.map { ParentingArrangementEditTarget(arrangement: $0, workspaceRevision: model.workspace.revision) })
+        let timeZone = TimeZone.current
+        _interpretationTimeZone = State(initialValue: timeZone)
+        _intakeTimeZoneID = State(initialValue: timeZone.identifier)
         let admissionGate = ParentingEditorAdmissionGate()
         _admissionGate = StateObject(wrappedValue: admissionGate)
         _intake = StateObject(wrappedValue: ParentingInlineIntakeModel(
@@ -976,7 +1063,7 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
         _childID = State(initialValue: arrangement?.childID ?? childID ?? onlyChild)
         _goalID = State(initialValue: arrangement?.goalID ?? goalID)
         _title = State(initialValue: arrangement?.title ?? "")
-        _sourceText = State(initialValue: arrangement?.sourceText ?? "")
+        _sourceText = State(initialValue: "")
         _dueAt = State(initialValue: arrangement?.dueAt)
     }
     private func ui(_ key: String) -> String { AppLanguage(locale: locale).ui(key) }
@@ -985,15 +1072,32 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
     private var valid: Bool {
         model.workspace.children.contains { $0.id == childID } &&
         !cleanedTitle.isEmpty && cleanedTitle.count <= 160 && dueAt != nil &&
-        (arrangement != nil || (!cleanedSource.isEmpty && sourceText.count <= 8000)) && validReference
+        sourceText.count <= 8000 && (arrangement != nil || !cleanedSource.isEmpty) && validReference &&
+        (arrangement == nil || (hasArrangementChanges && conflictsAcknowledged))
     }
     private var validReference: Bool {
-        guard let arrangement else { return true }
-        return model.workspace.arrangements.contains { $0.id == arrangement.id && ($0.state == .draft || $0.state == .planned) }
+        guard let editTarget else { return true }
+        return [.draft, .planned].contains(editTarget.arrangement.state) && editTarget.matches(workspace: model.workspace)
+    }
+    private var hasArrangementChanges: Bool {
+        guard let arrangement else { return false }
+        return cleanedTitle != arrangement.title || dueAt != arrangement.dueAt || goalID != arrangement.goalID
+    }
+    private var sameTimeConflicts: [ParentingArrangement] {
+        guard let arrangement, let dueAt else { return [] }
+        return model.workspace.sameTimeConflicts(arrangementID: arrangement.id, dueAt: dueAt)
+    }
+    private var conflictsAcknowledged: Bool {
+        sameTimeConflicts.isEmpty || acknowledgedConflictIDs == sameTimeConflicts.map(\.id)
+    }
+    private var conflictAcknowledgement: Binding<Bool> {
+        Binding(get: { !sameTimeConflicts.isEmpty && conflictsAcknowledged }, set: { acknowledged in
+            acknowledgedConflictIDs = acknowledged ? sameTimeConflicts.map(\.id) : []
+        })
     }
     private var hasUnsavedChanges: Bool {
-        if let arrangement {
-            return title != arrangement.title || dueAt != arrangement.dueAt || goalID != arrangement.goalID
+        if arrangement != nil {
+            return hasArrangementChanges || !sourceText.isEmpty || imported
         }
         return !sourceText.isEmpty || !title.isEmpty || dueAt != nil || imported
     }
@@ -1003,11 +1107,10 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
             Form {
                 ParentingChildGoalFields(workspace: model.workspace, childID: $childID, goalID: $goalID,
                                          childEditable: arrangement == nil)
-                if arrangement == nil {
-                    sourceSection
-                    inlineIntakeSection
-                }
-                if imported {
+                if let arrangement { originalArrangementSection(arrangement) }
+                sourceSection
+                inlineIntakeSection
+                if imported && arrangement == nil {
                     Section {
                         Text(ui("请核对整理结果。保存后仍是待确认，需要再次明确确认才进入安排。"))
                             .font(.subheadline).foregroundStyle(catColors.calmSecondary)
@@ -1039,6 +1142,8 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
                     if cleanedTitle.count > 160 { ParentingFormIssue(message: "安排名称不能超过 160 字。") }
                 } header: { Text(ui(arrangement == nil ? "核对安排内容" : "调整安排内容")) }
                 footer: { Text(ui("安排只保存在本机，不会添加系统日历，也不会发送提醒。")) }
+                if arrangement != nil && hasArrangementChanges { adjustmentReviewSection }
+                if !sameTimeConflicts.isEmpty { sameTimeConflictSection }
                 if let arrangement {
                     Section {
                         Text(verbatim: arrangement.sourceText).font(.subheadline).textSelection(.enabled)
@@ -1046,7 +1151,10 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
                             .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
                     } header: { Text(ui("最初的原话")) }
                 }
-                if !validReference { ParentingFormIssue(message: "这条安排已变更或删除，请关闭此页后查看最新内容。") }
+                if !validReference {
+                    ParentingFormIssue(message: "这条安排或账本已变更，请关闭此页，查看最新内容后重新调整。")
+                        .accessibilityIdentifier("parenting.adjustment.stale")
+                }
                 if let saveError { ParentingFormIssue(message: saveError); ParentingReloadButton(model: model) }
             }
             .scrollContentBackground(.hidden).background(catColors.background)
@@ -1064,10 +1172,10 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
                 ToolbarItem(placement: .confirmationAction) {
                     Button { save() } label: {
                         if saving { ProgressView() }
-                        else { Text(ui(arrangement == nil ? "保存草稿" : "保存")) }
+                        else { Text(ui(arrangement == nil ? "保存草稿" : "确认调整")) }
                     }
                     .disabled(!valid || saving || model.busy || intake.busy || intakeCallID != nil)
-                    .accessibilityLabel(ui(saving ? "正在保存" : arrangement == nil ? "保存为待确认" : "保存调整"))
+                    .accessibilityLabel(ui(saving ? "正在保存" : arrangement == nil ? "保存为待确认" : "确认调整"))
                     .accessibilityIdentifier("parenting.arrangement.save")
                 }
             }
@@ -1087,6 +1195,10 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
         .onChange(of: sourceText) { _, _ in invalidateIntake() }
         .onChange(of: childID) { _, _ in invalidateIntake() }
         .onChange(of: goalID) { _, _ in invalidateIntake() }
+        .onChange(of: dueAt) { _, _ in acknowledgedConflictIDs = [] }
+        .onChange(of: model.workspace.revision) { _, _ in
+            if editTarget != nil && !validReference && !saving { invalidateIntake(); acknowledgedConflictIDs = [] }
+        }
         .onChange(of: intake.consentID) { _, _ in reconcileConsent() }
         .onChange(of: intake.recoveredRequest) { _, reference in
             if let reference { restoreInput(reference) }
@@ -1096,7 +1208,14 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
             stopIntake()
         }
         .sheet(isPresented: $timePresented, onDismiss: reconcileConsent) {
-            ParentingTimePicker(initial: dueAt) { selected in dueAt = selected }
+            ParentingTimePicker(initial: dueAt) { selected in
+                if editTarget != nil {
+                    imported = false
+                    adoptedEditTime = nil
+                    preAdoptionTime = nil
+                }
+                dueAt = selected
+            }
         }
         .sheet(item: consentBinding, onDismiss: { consentDidDismiss(owner: renderedConsentOwner) }) { presentation in
             ConversationModelConsentView(consent: presentation.consent,
@@ -1110,17 +1229,82 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
         }
     }
 
+    private func fullTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = TimeZone(identifier: intakeTimeZoneID) ?? interpretationTimeZone
+        formatter.dateStyle = .full
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    private func originalArrangementSection(_ original: ParentingArrangement) -> some View {
+        Section {
+            Text(verbatim: original.title).font(.headline)
+            Text(verbatim: fullTime(original.dueAt))
+                .accessibilityIdentifier("parenting.adjustment.originalTime")
+            Text(verbatim: ui("本次解释时区") + " · " + intakeTimeZoneID)
+                .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                .accessibilityIdentifier("parenting.adjustment.interpretationTimeZone")
+        } header: { Text(ui("原安排")) }
+    }
+
+    @ViewBuilder private var adjustmentReviewSection: some View {
+        if let arrangement, let dueAt {
+            Section {
+                Text(verbatim: ui("原来") + " · " + fullTime(arrangement.dueAt))
+                    .accessibilityIdentifier("parenting.adjustment.review.originalTime")
+                Text(verbatim: ui("调整后") + " · " + fullTime(dueAt))
+                    .accessibilityIdentifier("parenting.adjustment.review.newTime")
+                if cleanedTitle != arrangement.title {
+                    Text(verbatim: ui("安排名称") + " · " + arrangement.title + " → " + cleanedTitle)
+                }
+                if goalID != arrangement.goalID {
+                    let before = model.workspace.goals.first { $0.id == arrangement.goalID }?.title ?? ui("不关联目标")
+                    let after = model.workspace.goals.first { $0.id == goalID }?.title ?? ui("不关联目标")
+                    Text(verbatim: ui("关联成长目标") + " · " + before + " → " + after)
+                }
+                Text(ui("请核对这次调整，再点击右上角的“确认调整”。最初的原话会保留。"))
+                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+            } header: { Text(ui("本次调整待确认")) }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("parenting.adjustment.review")
+        }
+    }
+
+    private var sameTimeConflictSection: some View {
+        Section {
+            Text(ui("可能同一时间"))
+                .font(.headline).foregroundStyle(catColors.attention)
+            ForEach(sameTimeConflicts) { item in
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(verbatim: item.title)
+                    Text(verbatim: (model.workspace.children.first { $0.id == item.childID }?.name ?? ui("孩子已删除")) + " · " + fullTime(item.dueAt))
+                        .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("parenting.adjustment.conflict.\(item.id)")
+            }
+            Text(ui("这些已安排事项在同一分钟。没有时长信息，暂不能判断是否重叠或能否同时进行。"))
+                .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+            Toggle(ui("我已核对这些同钟点安排，仍要保存"), isOn: conflictAcknowledgement)
+                .accessibilityIdentifier("parenting.adjustment.acknowledgeConflicts")
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("parenting.adjustment.conflicts")
+    }
+
     private var sourceSection: some View {
         Section {
             TextEditor(text: $sourceText).frame(minHeight: 110)
-                .accessibilityLabel(ui("想为孩子做的一件事"))
+                .accessibilityLabel(ui(arrangement == nil ? "想为孩子做的一件事" : "这次想怎么调整"))
                 .accessibilityIdentifier("parenting.arrangement.source")
             if sourceText.count > 3000 && sourceText.count <= 8000 {
                 Text(ui("AI 整理最多接收 3000 字。你可以缩短原话，或直接手动填写安排。"))
                     .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
             }
             if sourceText.count > 8000 { ParentingFormIssue(message: "原话不能超过 8000 字。") }
-        } header: { Text(ui("先用自己的话交代一件事")) }
+        } header: { Text(ui(arrangement == nil ? "先用自己的话交代一件事" : "这次想怎么调整")) }
         footer: { Text(ui("本页内容尚未保存。可以让小咪在这里整理，也可以手动填写下方安排；整理结果需要你核对和采用。")) }
     }
 
@@ -1128,16 +1312,20 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
         !cleanedSource.isEmpty && sourceText.count <= 3000 &&
             model.workspace.children.contains { $0.id == childID } &&
             !saving && !model.busy && !intake.busy && !intake.deletionPending &&
-            intakeCallID == nil && scenePhase == .active
+            intakeCallID == nil && scenePhase == .active && validReference
     }
 
     private var inlineIntakeSection: some View {
         Section {
-            Text(ui("点击后，将发送选定原话及当前时间、时区到现有已选 AI 服务，不会自动附上家庭档案。需要发送许可时会先请你确认。"))
+            Text(ui(arrangement == nil ? "点击后，将发送选定原话及当前时间、时区到现有已选 AI 服务，不会自动附上家庭档案。需要发送许可时会先请你确认。" : "点击后，只发送原安排名称、原时间、本次原话及当前时间、解释时区到现有已选 AI 服务。不会自动附上孩子档案、目标内容或其他安排；需要发送许可时会先请你确认。"))
                 .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
             Text(ui("原话与回复只在小咪服务端临时内存处理，不写入长期记忆，临时内容最多可读取 15 分钟。模型服务商的数据处理方式以发送许可中的说明为准。"))
                 .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
             DisclosureGroup(ui("查看将发送的原话")) {
+                if let arrangement {
+                    Text(verbatim: arrangement.title).font(.subheadline)
+                    Text(verbatim: fullTime(arrangement.dueAt) + " · " + intakeTimeZoneID).font(.subheadline)
+                }
                 Text(verbatim: sourceText).font(.subheadline).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 6)
             }.font(.subheadline)
@@ -1153,7 +1341,7 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
             case .idle, .ready, .cancelled:
                 Button {
                     beginIntake()
-                } label: { Label(ui("让小咪整理"), systemImage: "sparkles").frame(maxWidth: .infinity) }
+                } label: { Label(ui(arrangement == nil ? "让小咪整理" : "让小咪整理改动"), systemImage: "sparkles").frame(maxWidth: .infinity) }
                 .buttonStyle(ParentingPrimaryButtonStyle()).disabled(!canRequestIntake)
                 .accessibilityIdentifier("parenting.arrangement.aiIntake")
                 if intake.phase == .cancelled {
@@ -1192,7 +1380,7 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
                     .accessibilityIdentifier("parenting.inline.reconcile")
                 stopIntakeButton
             }
-            if intake.phase == .ready, let candidate = intake.candidate {
+            if intake.phase == .ready, let candidate = intake.candidate, candidate.editTarget == editTarget {
                 candidatePreview(candidate)
             }
             if let recoveryNotice {
@@ -1212,7 +1400,7 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
                     }
                     .frame(minHeight: 44).disabled(!canRecoverIntake)
                     .accessibilityIdentifier("parenting.inline.recover")
-                    Text(ui("读取上次整理，不会重新发送。点击会将上次的原话及孩子、目标选择带回此页，替换当前原话；安排名称和时间仍由你核对。"))
+                    Text(ui(arrangement == nil ? "读取上次整理，不会重新发送。点击会将上次的原话及孩子、目标选择带回此页，替换当前原话；安排名称和时间仍由你核对。" : "只恢复同一原安排和版本的整理，不会重新发送。恢复的本次原话会替换当前输入，时间建议仍需你采用和确认。"))
                         .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
                     Text(ui("服务重启或 15 分钟后，服务端内容可能无法读取。恢复的本机原话可继续手动填写，不会因此在后台重复发送。"))
                         .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
@@ -1248,8 +1436,8 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
                     .frame(minHeight: 44).disabled(saving || model.busy || cleanupRunning)
                     .accessibilityIdentifier("parenting.inline.deleteRecord")
             }
-        } header: { Text(ui("让小咪帮你整理")) }
-        footer: { Text(ui("整理不会保存或确认安排，也不会创建日历或提醒。离开或切到后台会停止本页等待并尝试清理临时副本，不影响表单原话和已保存安排。")) }
+        } header: { Text(ui(arrangement == nil ? "让小咪帮你整理" : "让小咪帮你调整")) }
+        footer: { Text(ui(arrangement == nil ? "整理不会保存或确认安排，也不会创建日历或提醒。离开或切到后台会停止本页等待并尝试清理临时副本，不影响表单原话和已保存安排。" : "整理只提出时间建议，采用后仍需点击“确认调整”。不会保存安排或设置提醒；离开或切到后台会停止本页等待并尝试清理临时副本。")) }
     }
 
     private var stopIntakeButton: some View {
@@ -1259,29 +1447,40 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
 
     private func candidatePreview(_ candidate: ParentingIntakeDraft) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(ui("整理建议 · 尚未采用或保存")).font(.headline)
+            Text(ui(arrangement == nil ? "整理建议 · 尚未采用或保存" : "调整建议 · 尚未采用或保存")).font(.headline)
             Text(verbatim: candidate.title).font(.title3)
                 .fixedSize(horizontal: false, vertical: true)
-            if let date = candidate.dueAt {
-                Text(verbatim: date.formatted(date: .abbreviated, time: .shortened))
+            if let arrangement {
+                Text(verbatim: ui("原来") + " · " + fullTime(arrangement.dueAt))
                     .font(.subheadline).foregroundStyle(catColors.calmSecondary)
+            }
+            if let date = candidate.dueAt {
+                if arrangement != nil {
+                    Text(verbatim: ui("调整后") + " · " + fullTime(date))
+                        .font(.subheadline).foregroundStyle(catColors.calmSecondary)
+                        .accessibilityIdentifier("parenting.adjustment.proposedTime")
+                } else {
+                    Text(verbatim: date.formatted(date: .abbreviated, time: .shortened))
+                        .font(.subheadline).foregroundStyle(catColors.calmSecondary)
+                }
             } else {
-                Text(ui("时间待补充，采用后仍需选择明确时间。"))
+                Text(ui(arrangement == nil ? "时间待补充，采用后仍需选择明确时间。" : "新时间还不明确，原安排时间保持不变。"))
                     .font(.subheadline).foregroundStyle(catColors.attention)
+                    .accessibilityIdentifier("parenting.adjustment.clarification")
             }
             if let clarification = candidate.clarification, !clarification.isEmpty {
-                Text(verbatim: clarification).font(.subheadline).foregroundStyle(catColors.calmSecondary)
+                Text(verbatim: ui(clarification)).font(.subheadline).foregroundStyle(catColors.calmSecondary)
             }
-            Text(ui("采用后会替换下方的安排名称和时间。你可以继续修改，原话会保留。"))
+            Text(ui(arrangement == nil ? "采用后会替换下方的安排名称和时间。你可以继续修改，原话会保留。" : "采用只填写新时间，不会更改名称、孩子、目标或最初的原话。请继续核对后确认调整。"))
                 .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
             Button(ui("采用整理结果")) {
-                guard matchesCurrentCandidate(candidate),
+                guard matchesCurrentCandidate(candidate), (editTarget == nil || candidate.dueAt != nil),
                       scenePhase == .active, !saving, !model.busy else { return }
                 fillCandidate(candidate)
                 intake.consumeCandidate()
             }
             .buttonStyle(ParentingSecondaryButtonStyle())
-            .disabled(!matchesCurrentCandidate(candidate) || intakeCallID != nil || saving || model.busy)
+            .disabled(!matchesCurrentCandidate(candidate) || (editTarget != nil && candidate.dueAt == nil) || intakeCallID != nil || saving || model.busy)
             .accessibilityIdentifier("parenting.inline.adopt")
         }
         .padding(.vertical, 8).accessibilityElement(children: .contain)
@@ -1289,40 +1488,64 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
     }
 
     private func fillCandidate(_ candidate: ParentingIntakeDraft) {
-        title = candidate.title
-        dueAt = candidate.dueAt
+        if editTarget != nil {
+            guard let proposedTime = candidate.dueAt else { return }
+            if !imported { preAdoptionTime = dueAt }
+            adoptedEditTime = proposedTime
+            dueAt = proposedTime
+        } else {
+            title = candidate.title
+            dueAt = candidate.dueAt
+        }
         clarification = candidate.clarification
         imported = true
         recoveryNotice = nil
         recoveredInput = nil
     }
     private func matchesCurrentCandidate(_ candidate: ParentingIntakeDraft) -> Bool {
-        intake.isCurrentCandidate(candidate) && candidate.sourceText == sourceText &&
-            candidate.childID == childID && candidate.goalID == goalID
+        let targetChildID = editTarget?.arrangement.childID ?? childID
+        let targetGoalID = editTarget == nil ? goalID : editTarget?.arrangement.goalID
+        return intake.isCurrentCandidate(candidate, editTarget: editTarget) && candidate.sourceText == sourceText &&
+            candidate.editTarget == editTarget && candidate.childID == targetChildID && candidate.goalID == targetGoalID && validReference
     }
     private func beginIntake() {
-        guard canRequestIntake, let childID else { return }
+        guard canRequestIntake, let selectedChildID = editTarget?.arrangement.childID ?? childID else { return }
         let source = sourceText
-        let selectedGoal = goalID
+        let selectedGoal = editTarget == nil ? goalID : editTarget?.arrangement.goalID
+        let target = editTarget
+        intakeTimeZoneID = interpretationTimeZone.identifier
         recoveryRequested = false
         recoveryNotice = nil
-        runIntake { await intake.request(sourceText: source, childID: childID, goalID: selectedGoal) }
+        runIntake { await intake.request(sourceText: source, childID: selectedChildID, goalID: selectedGoal, editTarget: target) }
     }
     private var canRecoverIntake: Bool {
         !saving && !model.busy && !intake.busy && !intake.deletionPending && intakeCallID == nil &&
-            scenePhase == .active && intake.phase != .unknown && intake.consent == nil
+            scenePhase == .active && intake.phase != .unknown && intake.consent == nil && validReference
     }
     private func restoreInput(_ reference: ParentingIntakeRecoveryReference) {
         guard recoveryRequested, scenePhase == .active, admissionGate.active, !saving, !model.busy else { return }
+        guard reference.editTarget == editTarget, validReference else {
+            recoveryRequested = false
+            recoveredInput = nil
+            recoveryNotice = "上次整理不属于本页的原安排和版本，不能填入。请打开原安排后重新核对。"
+            return
+        }
         let child = model.workspace.children.first { $0.id == reference.childID }
         let goal = model.workspace.goals.first { $0.id == reference.goalID && $0.childID == child?.id }
         let missingReference = child == nil || (reference.goalID != nil && goal == nil)
-        let snapshot = ParentingRecoveredInput(sourceText: reference.sourceText, childID: child?.id, goalID: goal?.id)
+        let snapshot = ParentingRecoveredInput(sourceText: reference.sourceText,
+                                               childID: editTarget == nil ? child?.id : childID,
+                                               goalID: editTarget == nil ? goal?.id : goalID,
+                                               editTarget: reference.editTarget)
+        discardAdoptedEditTime()
         recoveredInput = snapshot
         recoveryRequested = false
+        intakeTimeZoneID = reference.timeZoneID
         sourceText = snapshot.sourceText
-        childID = snapshot.childID
-        goalID = snapshot.goalID
+        if editTarget == nil {
+            childID = snapshot.childID
+            goalID = snapshot.goalID
+        }
         imported = false
         clarification = nil
         if missingReference {
@@ -1365,8 +1588,9 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
         intakeTask = nil
     }
     private func invalidateIntake() {
-        if let recoveredInput, recoveredInput.sourceText == sourceText,
-           recoveredInput.childID == childID, recoveredInput.goalID == goalID { return }
+        if validReference, let recoveredInput, recoveredInput.sourceText == sourceText,
+           recoveredInput.childID == childID, recoveredInput.goalID == goalID, recoveredInput.editTarget == editTarget { return }
+        discardAdoptedEditTime()
         recoveredInput = nil
         recoveryRequested = false
         recoveryNotice = nil
@@ -1376,6 +1600,11 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
         intakeTask = nil
         imported = false
         clarification = nil
+    }
+    private func discardAdoptedEditTime() {
+        if editTarget != nil, imported, let adoptedEditTime, dueAt == adoptedEditTime { dueAt = preAdoptionTime }
+        adoptedEditTime = nil
+        preAdoptionTime = nil
     }
     private var consentBinding: Binding<ParentingInlineConsentPresentation?> {
         let renderedOwner = consentPresentation?.id
@@ -1408,8 +1637,9 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
     private func save() {
         guard valid, !saving, !model.busy, !intake.busy, intakeCallID == nil, let childID, let dueAt else { return }
         let command: ParentingCommand
-        if let arrangement {
-            command = .editArrangement(id: arrangement.id, title: cleanedTitle, dueAt: dueAt, goalID: goalID)
+        if let editTarget {
+            command = .reviseArrangement(id: entityID, target: editTarget, title: cleanedTitle, dueAt: dueAt,
+                                         goalID: goalID, sourceText: sourceText, acknowledgedConflictIDs: acknowledgedConflictIDs)
         } else {
             command = .createDraft(id: entityID, childID: childID, title: cleanedTitle,
                                    dueAt: dueAt, goalID: goalID, sourceText: sourceText)
@@ -1419,7 +1649,7 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
         saving = true
         saveError = nil
         Task {
-            let success = await model.apply(command, operationID: operationID)
+            let success = await model.apply(command, operationID: operationID, expectedRevision: editTarget?.workspaceRevision)
             saving = false
             if success { dismiss() }
             else { saveError = model.error ?? "保存未完成，请重试。" }
@@ -1438,6 +1668,7 @@ private struct ParentingRecoveredInput {
     let sourceText: String
     let childID: UUID?
     let goalID: UUID?
+    let editTarget: ParentingArrangementEditTarget?
 }
 
 @MainActor private struct ParentingTimePicker: View {

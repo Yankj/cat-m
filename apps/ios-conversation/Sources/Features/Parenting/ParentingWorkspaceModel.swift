@@ -29,13 +29,13 @@ final class ParentingWorkspaceModel: ObservableObject {
     }
 
     @discardableResult
-    func apply(_ command: ParentingCommand, operationID: UUID = UUID()) async -> Bool {
+    func apply(_ command: ParentingCommand, operationID: UUID = UUID(), expectedRevision: Int? = nil) async -> Bool {
         guard !busy else { return false }
         guard loaded else { error = "请先载入育儿账本，再保存修改。"; return false }
         busy = true; error = nil
         defer { busy = false }
         do {
-            let saved = try await store.apply(command, expectedRevision: workspace.revision, operationID: operationID)
+            let saved = try await store.apply(command, expectedRevision: expectedRevision ?? workspace.revision, operationID: operationID)
             guard store.isCurrentAccount() else { throw catError.unavailable("账号已变更，请重新打开育儿账本。") }
             workspace = saved
             return true

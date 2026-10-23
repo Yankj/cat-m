@@ -18,16 +18,17 @@ public struct ParentingIntakeRecoveryReference: Codable, Sendable, Equatable, Id
     public let goalID: UUID?
     public let startedAt: Date
     public let timeZoneID: String
+    public let editTarget: ParentingArrangementEditTarget?
     public init(requestID: UUID, scope: DataScope, subjectID: UUID, conversationID: UUID, sourceText: String,
-                childID: UUID, goalID: UUID?, startedAt: Date, timeZoneID: String) {
+                childID: UUID, goalID: UUID?, startedAt: Date, timeZoneID: String, editTarget: ParentingArrangementEditTarget? = nil) {
         schemaVersion = 1; self.requestID = requestID; self.scope = scope; self.subjectID = subjectID
         self.conversationID = conversationID; self.sourceText = sourceText; self.childID = childID; self.goalID = goalID
-        self.startedAt = startedAt; self.timeZoneID = timeZoneID
+        self.startedAt = startedAt; self.timeZoneID = timeZoneID; self.editTarget = editTarget
     }
     public func request(accountToken: AccountToken) throws -> ParentingIntakeRequest {
         guard schemaVersion == 1, requestID != conversationID, let zone = TimeZone(identifier: timeZoneID) else { throw ParentingInlineIntakeError.storage }
         return try ParentingIntakeRequest(id: requestID, scope: scope, subjectID: subjectID, accountToken: accountToken,
-            conversationID: conversationID, sourceText: sourceText, childID: childID, goalID: goalID, now: startedAt, timeZone: zone)
+            conversationID: conversationID, sourceText: sourceText, childID: childID, goalID: goalID, now: startedAt, timeZone: zone, editTarget: editTarget)
     }
 }
 
