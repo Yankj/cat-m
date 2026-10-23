@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://mimi.heydusk.com/sitemap.xml
