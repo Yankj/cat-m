@@ -1,0 +1,508 @@
+{
+  "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "audit_head": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "source_files": [
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationSessionContracts.swift",
+      "sha256": "b68b5edfc066b022bdbb16fc2a01a8fddeb6a12b1a329caaa92463e66c81a3ae"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationSessionService.swift",
+      "sha256": "16080a5ecdc88b34f0c83c5ff7b922a2584c65375371ee2affa302fa89547493"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/contract.mjs",
+      "sha256": "7c272f5e4bc75f997497fd7be0ad203332c1d033fe38563e1ca181dc38330c6b"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/explicit-intent.mjs",
+      "sha256": "d6cf5b54b6dc64716c6a0724fb813eed7b3b2ebb9e713275c9f379a6c2cec517"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/pg-store.mjs",
+      "sha256": "51ff077034c25db88e99bc239364e09be5d9a4db92961eb616a66f0cafd6a5f7"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/agent-memory/service.mjs",
+      "sha256": "b5e383bc9c7e6696f2978f8daba2433dadc928665dce2c058786ccb36b1a015a"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/authority.mjs",
+      "sha256": "07472e4fcf95725cdc249f9bdd9046b56dbe97089e5c2882e14bdd4474a6be76"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/patched-openmuse/apps/server/src/errors.ts",
+      "sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/common.mjs",
+      "sha256": "bb37f319f567604ad49ff5739e77be0d0346efe4cdc2ef1ddecd00e46f8976cd"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/facade.mjs",
+      "sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/common.mjs",
+      "sha256": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/foundation.mjs",
+      "sha256": "1852241fd725164c4ea816e31bcf013adaefd2b7ef0a1a0cebe112fcbd825e63"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/accepted-work-execution.mjs",
+      "sha256": "31d44a563eb59cab10b5e6266aef8689ac66fcb2f38c084fda8f10ce510c7f19"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/accepted-work-intent-contract.mjs",
+      "sha256": "1fa4f21f9250c88daa2b3b5ba5881ebdeaa704426c66b2b044841e3300fb9deb"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/device-effect-contract.mjs",
+      "sha256": "3a2f49108789fbc91326f1111f2faafed09de3d286431fe75fe6870657bf8f5c"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/device-effect-service.mjs",
+      "sha256": "2cb283471760eab998387eeb50bbef033b57fe52ac94da16af84b592b28da32d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/local-output-facade.mjs",
+      "sha256": "ab59f1106fcee8c8dc7de9369ece0168b98e75e00678d6280a81f2ab363fda8a"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/memory-contract.mjs",
+      "sha256": "ee8b711b9fba6fe73fce7ff3a1dbbc714d74c52657da9c897d15f7ed84805ee1"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/memory-service.mjs",
+      "sha256": "86eae308ea3ecda4e3d87a41fc3db6e3372d154ca1cb66513db35d79191b6631"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/plan-contract.mjs",
+      "sha256": "f78a14ea9fe3987b1e60dcf486dccad125fd14481344c5f8629afc279c030b20"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/public-source-contract.mjs",
+      "sha256": "e04ea3847d1b622cdd069a47b152e854e838947795b946eedd4ab3ad618fab41"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/report-completion.mjs",
+      "sha256": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/strict-json.mjs",
+      "sha256": "73204250fcd1975ebe45cebe30bdfc466aac33fa962aa892435d041f936661fc"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-action-contract.mjs",
+      "sha256": "cac7f24dfface85b550f28cd9311e4df73e4938d5fd5a28a6c4433b452024502"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-action-service.mjs",
+      "sha256": "0794def66e129ce29774dc30f900983ebb5caa6019c741bbfb14afab330658a9"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-control-contract.mjs",
+      "sha256": "959823cd5fac7dc73a1d5a720eef870d8807d9a14ae2b5301b71d0cfe7079505"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-plan-service.mjs",
+      "sha256": "57b9241e2ae0793a8279948de155ab82dcd0456d06e88c77f8a00699da057389"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-contract.mjs",
+      "sha256": "95a6f245758de49536ccd8b136b30d9d1888b826c887c367c50a7dfeb7ce798a"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-service.mjs",
+      "sha256": "2b3c1255588566c945d44e63d9303ca71e5af4fd01085d8c3a38267e87041384"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-work-contract.mjs",
+      "sha256": "2842900ef482123fd42a7b8d056d8e47c6d1b5d8169d299c64ebf2c5a4c2db75"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-work-service.mjs",
+      "sha256": "91d96637ca2cd5931614205b3a38c20f66f5e4a10e4c7a3786ac26e74a43fe40"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-source-service.mjs",
+      "sha256": "710ef102a7decbe8f4e464e32ba773f640d9ff3e7fd3c9782e56f50c684f1c7c"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-execution-selector.mjs",
+      "sha256": "8beae278b95e8bcf287f8be706d2ba6bf727c2dd162a20a86bdf4f60ffb2b8d6"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-contract.mjs",
+      "sha256": "a191adbef8061bb5259f98b891371f5528b5b0e6ba0618783fa52af59694d459"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-lifecycle.mjs",
+      "sha256": "58dc6fd9ad9a393b798a95079e31078a98fabca91a4573815c58f1bdd769222b"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/contract.mjs",
+      "sha256": "b07d53a97c7826480524687921edc30bd10152f801206b3cf6ce6915229b857c"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/decision.mjs",
+      "sha256": "e7c04b4a9357301449a824a7145fee504021062e4a4927a3b29957db1d20468f"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/recurrence.mjs",
+      "sha256": "4b05c6bfd2a6e61e0885581d0af4375c49489cd6103b68f627158343fb5ee804"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/service.mjs",
+      "sha256": "860332dce13220fa07395ca99a2d456a4e7a20bf3d9bb47e9b6ab2eeed27bb90"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/proactive/throttle.mjs",
+      "sha256": "c626275757bce47b9cdf1b6a41409643d36f591803c46c7a4e737b9effbb590c"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/public-web-reader.mjs",
+      "sha256": "6e75fa1cc8ae41dc7b90ab8c6fd328bda2d5ce04dbd177244c5ad79c7c418ac5"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/sensitivity.mjs",
+      "sha256": "4002ea6e28a38b24f9482266d22bc5b275710f2d5cbe35280efe65ef4dc95376"
+    },
+    {
+      "path": "services/edge/supabase/functions/catpaw-proactive/index.ts",
+      "sha256": "7f39216190e6b1fa7456b1dd9434e2da8219ca800365b7f5afb797dcc1cb0b30"
+    },
+    {
+      "path": "services/edge/supabase/migrations/20261016110000_feature_enrollment.sql",
+      "sha256": "8ae9d40fd177ea66021a8e68d24cd52e1fb9f9b206ae66b8308e33d3bf5ab8eb"
+    }
+  ],
+  "source_pin": "MATCH",
+  "contract_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+  "scope": "Read-only Git blob anchors; no database or runtime semantic claims.",
+  "family_module_paths": [],
+  "family_v1_route_literal_present": false,
+  "anchor_total": 16,
+  "all_patterns_located": true,
+  "results": [
+    {
+      "id": "ST-01",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/_shared/authority.mjs",
+      "sha256": "07472e4fcf95725cdc249f9bdd9046b56dbe97089e5c2882e14bdd4474a6be76",
+      "pattern": "check(session?.subject_id===source.subject_id",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Current source checks session and scope membership, not proposed family membership.",
+      "hits": [
+        {
+          "line": 49,
+          "text": " check(session?.subject_id===source.subject_id&&session.state==='active'&&m?.state==='active'&&source.issued_at>=m.tokens_valid_after&&!m.revoked_session_ids?.includes(source.session_id)&&m.scopes?.some(s=>s.scope_id===scope.scope_id&&s.profile_id===scope.profile_id&&s.workspace_id===scope.workspace_id&&s.local_output===true),409,'grant_conflict');"
+        }
+      ]
+    },
+    {
+      "id": "ST-02",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/_shared/authority.mjs",
+      "sha256": "07472e4fcf95725cdc249f9bdd9046b56dbe97089e5c2882e14bdd4474a6be76",
+      "pattern": "auth_service_unavailable",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Official-user verifier distinguishes availability from identity rejection.",
+      "hits": [
+        {
+          "line": 145,
+          "text": "  }catch{throw new ApiError(503,'auth_service_unavailable');}"
+        },
+        {
+          "line": 146,
+          "text": "  check(![408,429].includes(r.status)&&r.status<500,503,'auth_service_unavailable');"
+        },
+        {
+          "line": 148,
+          "text": "  try{user=await r.json();}catch{throw new ApiError(503,'auth_service_unavailable');}"
+        },
+        {
+          "line": 149,
+          "text": "  check(user&&typeof user==='object',503,'auth_service_unavailable');"
+        }
+      ]
+    },
+    {
+      "id": "ST-03",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/migrations/20261016110000_feature_enrollment.sql",
+      "sha256": "8ae9d40fd177ea66021a8e68d24cd52e1fb9f9b206ae66b8308e33d3bf5ab8eb",
+      "pattern": "create policy memories_catpaw_api",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "catpaw_records memory policy permits all rows; application query scoping remains critical.",
+      "hits": [
+        {
+          "line": 102,
+          "text": "create policy memories_catpaw_api on agent_memory.memories for all to catpaw_records using (true) with check (true);"
+        }
+      ]
+    },
+    {
+      "id": "ST-04",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/_shared/agent-memory/pg-store.mjs",
+      "sha256": "51ff077034c25db88e99bc239364e09be5d9a4db92961eb616a66f0cafd6a5f7",
+      "pattern": "where user_id=$1 and id=$2 returning",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Content UPDATE scoped by user and id, without content revision CAS.",
+      "hits": [
+        {
+          "line": 48,
+          "text": "      return fix((await sql.unsafe(`update agent_memory.memories set ${sets.join(',')} where user_id=$1 and id=$2 returning ${COLS}`, args))[0] ?? null);"
+        }
+      ]
+    },
+    {
+      "id": "ST-05",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/_shared/agent-memory/pg-store.mjs",
+      "sha256": "51ff077034c25db88e99bc239364e09be5d9a4db92961eb616a66f0cafd6a5f7",
+      "pattern": "delete from agent_memory.journal_fragments where day=$1 returning",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Journal claims destructively delete fragments before service save.",
+      "hits": [
+        {
+          "line": 60,
+          "text": "      const rows = await sql.unsafe('delete from agent_memory.journal_fragments where day=$1 returning user_id,turn_id,conversation_id,text,at', [day]); const out = new Map();"
+        }
+      ]
+    },
+    {
+      "id": "ST-06",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/_shared/agent-memory/service.mjs",
+      "sha256": "b5e383bc9c7e6696f2978f8daba2433dadc928665dce2c058786ccb36b1a015a",
+      "pattern": "source_conversation_id: ctx.conversation_id",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Basic memory sources are optional; correction does not rebuild source chain.",
+      "hits": [
+        {
+          "line": 44,
+          "text": "      embedding: await vector(content), source_conversation_id: ctx.conversation_id ?? null, source_turn_id: ctx.turn_id ?? null, operation_id: ctx.operation_id ?? null,"
+        }
+      ]
+    },
+    {
+      "id": "ST-07",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/_shared/agent-memory/service.mjs",
+      "sha256": "b5e383bc9c7e6696f2978f8daba2433dadc928665dce2c058786ccb36b1a015a",
+      "pattern": "verifyUser(req.headers.get",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "All verifyUser failures collapse to null and unauthorized in this route.",
+      "hits": [
+        {
+          "line": 160,
+          "text": "    const user = await verifyUser(req.headers.get('authorization') ?? '').catch(() => null); if (!user?.sub) throw bad('unauthorized', 401); const uid = user.sub;"
+        }
+      ]
+    },
+    {
+      "id": "ST-08",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/_shared/proactive/service.mjs",
+      "sha256": "860332dce13220fa07395ca99a2d456a4e7a20bf3d9bb47e9b6ab2eeed27bb90",
+      "pattern": "log('error', e.stack ?? e.message)",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Raw error content may enter logger arguments.",
+      "hits": [
+        {
+          "line": 201,
+          "text": "    async handle(req) { try { return await route(req); } catch (e) { const s = e.status ?? 500; if (s >= 500) log('error', e.stack ?? e.message); return json(s, { error: s >= 500 && !e.status ? 'internal_error' : (e.code ?? 'error') }); } },"
+        }
+      ]
+    },
+    {
+      "id": "ST-09",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/catpaw-proactive/index.ts",
+      "sha256": "7f39216190e6b1fa7456b1dd9434e2da8219ca800365b7f5afb797dcc1cb0b30",
+      "pattern": "log:",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Runtime uses console logging for proactive service.",
+      "hits": [
+        {
+          "line": 44,
+          "text": "  log: (...a: unknown[]) => console.log('[catpaw-proactive]', ...a),"
+        }
+      ]
+    },
+    {
+      "id": "ST-10",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "apps/ios-conversation/Sources/Features/ConversationSessionService.swift",
+      "sha256": "16080a5ecdc88b34f0c83c5ff7b922a2584c65375371ee2affa302fa89547493",
+      "pattern": "privacy: .public",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Native public logging contains payload/error descriptions; inspect selected anchors below.",
+      "hits": [
+        {
+          "line": 351,
+          "text": "                    observeLog.info(\"pump event seq=\\(event.sequence, privacy: .public) \\(String(describing: event.payload).prefix(60), privacy: .public)\")"
+        },
+        {
+          "line": 684,
+          "text": "                    observeLog.info(\"observe event seq=\\(event.sequence, privacy: .public) \\(String(describing: event.payload).prefix(80), privacy: .public)\")"
+        },
+        {
+          "line": 695,
+          "text": "            catch { observeLog.info(\"observe stream error \\(String(describing: error).prefix(120), privacy: .public)\") /* fall back to the snapshot read below */ }"
+        }
+      ]
+    },
+    {
+      "id": "ST-11",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "apps/ios-conversation/Sources/Domain/ConversationSessionContracts.swift",
+      "sha256": "b68b5edfc066b022bdbb16fc2a01a8fddeb6a12b1a329caaa92463e66c81a3ae",
+      "pattern": "textDelta(messageID:",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Native stream payload can contain user-visible text.",
+      "hits": [
+        {
+          "line": 328,
+          "text": "        case thread(String), started(requestHash: String, conversationRevision: Int, grantEpoch: Int,attachmentReceipts:[ConversationImageReceipt]?=nil), textDelta(messageID: UUID, text: String), toolStarted(callID: String, name: String, arguments: String)"
+        }
+      ]
+    },
+    {
+      "id": "ST-12",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/_shared/core/src/device-effect-service.mjs",
+      "sha256": "2cb283471760eab998387eeb50bbef033b57fe52ac94da16af84b592b28da32d",
+      "pattern": "can_redispatch:false",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Device effect unknown state is not a redispatch permit.",
+      "hits": [
+        {
+          "line": 86,
+          "text": " return {schema_version:1,contract:DEVICE_EFFECT_CONTRACT,effect:{...clone(row),state,execution_current:ctx.executionCurrent===true&&leaseCurrent&&row.stop===null,unresolved_subeffects:unresolved,can_redispatch:false},dispatch_permit:null};"
+        }
+      ]
+    },
+    {
+      "id": "ST-13",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/_shared/proactive/decision.mjs",
+      "sha256": "e7c04b4a9357301449a824a7145fee504021062e4a4927a3b29957db1d20468f",
+      "pattern": "idemGet",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Idempotency wrapper read, execute and put require real PG concurrency proof.",
+      "hits": [
+        {
+          "line": 267,
+          "text": "    const prior = await store.idemGet(uid, key);"
+        }
+      ]
+    },
+    {
+      "id": "ST-14",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/foundation.mjs",
+      "sha256": "1852241fd725164c4ea816e31bcf013adaefd2b7ef0a1a0cebe112fcbd825e63",
+      "pattern": "previous_source_ref",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Source-backed memory has a separate versioned correction mechanism.",
+      "hits": [
+        {
+          "line": 249,
+          "text": "      previous_source_ref: target ? { id: target.source_id, content_hash: target.source_hash } : null,"
+        }
+      ]
+    },
+    {
+      "id": "ST-15",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/_shared/core/src/memory-service.mjs",
+      "sha256": "86eae308ea3ecda4e3d87a41fc3db6e3372d154ca1cb66513db35d79191b6631",
+      "pattern": "user_direct",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Source-backed memory checks direct current-user source.",
+      "hits": [
+        {
+          "line": 15,
+          "text": " check(source.scope_id===scopeID&&source.authenticated_actor_id===principal.subject_id&&source.trust==='user_direct'&&['user_message','user_memory_command'].includes(source.type),404,'not_found');"
+        },
+        {
+          "line": 25,
+          "text": " for(const source of await tx.list('sources'))if(source.trust==='user_direct'&&source.authenticated_actor_id)actors.add(source.authenticated_actor_id);"
+        },
+        {
+          "line": 60,
+          "text": " const reference=await tx.get('conversations',cid),stamp=runtime.foundation.now(),source={id:randomUUID(),scope_id:scopeID,conversation_id:cid,turn_id:null,command_id:operationID,type:'user_memory_command',authenticated_actor_id:principal.subject_id,trust:'user_direct',text:command.source_text,content_hash:hash(command.source_text),external_version:1,source_sequence:(reference?.source_watermark??0)+1,memory_generation:(await tx.scope()).generation,data_class:runtime.dataClass,sensitivity:command.sensitive_consent?'sensitive':'low',timezone:'UTC',occurred_at:stamp,ingested_at:stamp,suppressed_for_memory:false,deleted_at:null};"
+        }
+      ]
+    },
+    {
+      "id": "ST-16",
+      "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+      "path": "services/edge/supabase/functions/_shared/agent-memory/contract.mjs",
+      "sha256": "7c272f5e4bc75f997497fd7be0ad203332c1d033fe38563e1ca181dc38330c6b",
+      "pattern": "Separate from the source-backed",
+      "matched": true,
+      "evidence_class": "STATIC",
+      "acceptance_status": "NOT_RUN",
+      "meaning": "Two current memory contracts must not share acceptance credit.",
+      "hits": [
+        {
+          "line": 2,
+          "text": "// Separate from the source-backed catpaw.memory.v1 (core/src/memory-*.mjs); see docs/agent-memory-contract.md"
+        }
+      ]
+    }
+  ],
+  "contract_sources": [
+    {
+      "source_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+      "path": "docs/architecture/family-companion-technical-plan.md",
+      "sha256": "7d423abef57a5870f63a11c5af4c1b109e3c2fd1d08b3b99d823a9e5d630328e"
+    },
+    {
+      "source_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+      "path": "docs/design/family-companion/execution-goal.md",
+      "sha256": "d514b8572d985f0c457c3588c1e6aac2e3ffbb17fed1fe803e9ab100892e9418"
+    },
+    {
+      "source_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+      "path": "docs/design/family-companion/README.md",
+      "sha256": "7f7133e7f3f67cd14fce6ea2342d7144bc88355b529e224c734c25ded4c63086"
+    }
+  ]
+}

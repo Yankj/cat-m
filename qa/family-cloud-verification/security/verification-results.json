@@ -1,0 +1,61 @@
+{
+  "run_id": "family-cloud-security-offline-20261022",
+  "source_sha": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "contract_sha": "2419db9b98e2e3bc0e8c850da62418d216fd3bb8",
+  "recorded_at_utc": "2026-10-22 16:30:22 UTC",
+  "commands": [
+    {
+      "command": "python3 scripts/check-repository-layout.py",
+      "status": "fulfilled",
+      "exit_code": 0,
+      "output": "PASS one active native entry, independent website, two local packages, declared maintenance/history/source paths\nPASS Domain imports and package host/network boundaries; layout validation only\n"
+    },
+    {
+      "command": "python3 scripts/check-repository.py",
+      "status": "fulfilled",
+      "exit_code": 0,
+      "output": "PASS frozen contract, 44 pinned originals (SHA256 + Git blob SHA1), MIT identity\nPASS exact patch reconstruction and all runtime TypeScript copies\nPASS 188 imported bytes/provenance, final v1 source identity, 10 frozen specs, 3 screenshots\nPASS 121 frozen r3 imports, 43 App sources/101-item final manifest, contract/spec/replay and 4 synthetic screenshots\nLIMIT no iOS SDK build, Simulator, service listener, real model/Intelligence/SQL or deployment executed\n"
+    },
+    {
+      "command": "python3 scripts/check-deployed-source.py",
+      "status": "fulfilled",
+      "exit_code": 0,
+      "output": "PASS deployed source snapshots: [50, 43], 14 shared-file differences preserved\n"
+    },
+    {
+      "command": "python3 scripts/scan-repository.py",
+      "status": "fulfilled",
+      "exit_code": 0,
+      "output": "{\"candidate_files\": 1793, \"candidate_bytes\": 65756131, \"blocking_hits\": [], \"manual_review_hits\": [], \"reviewed_false_positives\": 144, \"png_files\": 115}\n"
+    },
+    {
+      "command": "git diff --check",
+      "status": "fulfilled",
+      "exit_code": 0,
+      "output": ""
+    }
+  ],
+  "probe_commands": [
+    {
+      "command": "node qa/family-cloud-verification/security/run-fixtures.mjs",
+      "exit_code": 0,
+      "summary": "32/32 proposed policy fixture checks; real household acceptance 0/32 executed, all NOT_RUN"
+    },
+    {
+      "command": "node qa/family-cloud-verification/security/run-source-probes.mjs",
+      "exit_code": 0,
+      "summary": "9/9 expected behavior assertions reproduced; 7 gaps/2 supported offline observations; 0 fetch attempts"
+    },
+    {
+      "command": "node qa/family-cloud-verification/security/run-log-probe.mjs",
+      "exit_code": 0,
+      "summary": "1/1 synthetic logger gap reproduced; canary true for proactive, false for safe logger and metrics; 0 fetch attempts"
+    },
+    {
+      "command": "node qa/family-cloud-verification/security/source-audit.mjs",
+      "exit_code": 0,
+      "summary": "16/16 static anchors found; 44 related source files matched fixed Git base"
+    }
+  ],
+  "scope": "Read-only repository checks plus bounded synthetic behavior probes; exit 0 for a reproducer does not close a product acceptance gate."
+}

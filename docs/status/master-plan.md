@@ -1,5 +1,27 @@
 # cat 重启 Goal 与交付计划
 
+## 2026-10-23 家庭成长助理 Goal：收口后暂停
+
+用户明确要求安全保存后暂停，本线程家庭成长 Goal 已由控制器读回 **PAUSED**；3名准备Agent均已回报停止，不再启动模块、Agent或产品测试。**M0 未签收、产品代码改造未启动**。本地/云端汇总、工作树/WIP、逐项结果、仍运行服务及恢复步骤统一见[总handoff](../acceptance/family-companion/handoff-2026-10-23.md)与[停工库存](../acceptance/family-companion/handoff-inventory-2026-10-23.json)。原 FINAL-G3 暂停记录属于此前线程/日期，不由本轮创建替代或签收。家庭三旅程与 AF-A01–18 / AF-U01–12 / CP-01–03 同版门保留，其余既有合同亦未删减。
+
+已核对远端 main `789ad4fe` 与规划 `2419db9b`；Root、QA、记忆用例、来源审计分别使用 `docs/family-m0`、`test/family-m0`、`test/family-memory-cases`、`docs/family-source-audit` 独立工作树，主目录与旧工作树保留。[M0契约](../design/family-companion/m0-contract.md)、[97项初始矩阵](../acceptance/family-companion/acceptance-matrix-v1.json)、[当日证据](../acceptance/family-companion/preparation-2026-10-23.md)已落盘。三名本地准备代理的平台 run 为 `gpt-6.1-sol + ultra`；Root 为 `gpt-6-astra + ultra`，模型分工已询问用户、尚待决定。云端实施的模型/Goal未核验，不计正式实施启动。
+
+独立 QA 与 Root 禁网重放一致：初始化失败后同实例持续503；100次取消先提交后仍有100个提醒事件/假sender调用；claim后合成service重建两周期无法重领；事件写失败丢due；合成敏感标记进入后端错误日志，原生public payload前缀为静态缺口。既有定向22PASS/18PG-SKIP不关闭上述FAIL。100条虚构跨会话记忆集及评分合同已独立审阅、固定hash并整合；补足干扰项、打散候选顺序、明确动作前态，排除已发现的假通过。语料负控macro0.72不是产品质量分数；真实模型未运行。
+
+Supabase只读管理核验API56/tick16/proactive10及21条迁移历史；tick源43项为14同/28异/1缺，另两函数为bundle，完整源码/SQL/运行配置仍未对齐。AF Goal的24项旧hash已逐项溯源，修复两个历史原型共12处既有链接后更新当前map；旧日期字节、初次FAIL与审阅均保留。严格AF Goal检查复跑通过；最终布局、冻结源、相关合同和敏感检查结果见当日证据。
+
+已按dot的`test/family-cloud-verification@b5d365f8` HANDOFF，在本机候选 **`88c71ac753bb2f52fa6ddbe2a1c25b6629293946`** 的独立执行工作树实跑：[回传记录](../acceptance/family-companion/cloud-recheck-2026-10-23.md)。18项新断言6PASS/12FAIL、另一套既有测试222PASS/1SKIP、权限32项真实执行全部NOT_RUN，分母分别保留。本候选只含准备资料与历史原型引用修复，产品源码未变、产品修复0项；不是对未来修复版本的判定。9项记忆现状探针和日志探针另计；真实PG/多实例/真机/多模态/模型仍NOT_RUN。云端交接已收到，effective model/Goal仍未验证；后端与记忆实施lane未建立。
+
+已取得dot统一入口 `test/family-cloud-verification@a54d7f2b`，43份QA资产按原字节收录，原39份未变。[新增契约接收记录](../acceptance/family-companion/product-contract-alignment-2026-10-23.md)将12个家庭场景/36条可观察断言、10类状态/14项UI对应到既有门和冻结记忆集；72行映射全部NOT_RUN，不能累加为测试通过数。未确认说已安排、一次事项永久记忆、取消后复活、模糊猜事实及提醒负担均保留逐项要求；图片/音频只有脚本，不能关闭多模态验收。S10受控原例须取消先赢且零未授权副作用，未知期间不假报终态；完成先赢另列，不放宽未确认草稿的授权边界。
+
+[初始化恢复首片方案](../design/family-companion/bootstrap-recovery-plan.md)已形成，固定同实例恢复、并发共享、池归属、配置绑定与不重放写请求的边界，仍为待实施提案。先等待用户明确恢复，再收齐M0未决条件；不自动进入实现。产品保存/保留策略、云端实施入口、模型分工和部署对账未齐；每日一条等新策略仍为提案。真实Auth/模型/产品SQL验证/通知/设备安装/部署、新凭据与新增计算均0；本轮新增产品测试0、产品修复0。停工核对另做2次只读cron元数据查询，不是PG产品验收。不得以本轮准备替代真实家庭闭环或同版真机验收。
+
+停工现场及同日 GitHub 同步：原总交接已保存为 `b2f438c6a9ee460917fa601474439ca146c371ca` 并核对远端相同；云规划 `2419db9b` 和 QA `a54d7f2b` 也读回一致，已交付文件全部接收。3个准备lane及独立复跑没有遗留产品进程；本Goal无匹配本机定时任务。用户随后明确要求同步最新项目信息：独立官网任务已完成，4178端口无监听，其18个文件已保存并推送到 `feat/family-website@7ca0c4535dbfb6419a5000eab8275d08be051ceb`，远端精确SHA一致，Desktop工作树干净。[官网固定入口](https://github.com/Yankj/cat-m/tree/7ca0c4535dbfb6419a5000eab8275d08be051ceb/apps/website/family)及[验证记录](https://github.com/Yankj/cat-m/blob/7ca0c4535dbfb6419a5000eab8275d08be051ceb/docs/acceptance/family-website-2026-10-23.md)与集成资料互相链接，未合入本分支或main、未公开部署。保存前14个源码hash/7张截图hash与原证据一致；静态verify、布局/冻结源/部署快照/敏感检查通过，不重复计作新的浏览器或产品验收。
+
+当前仍为 **PAUSED**。既有Supabase API56/tick16/proactive10及两个每分钟生产cron沿用停工只读快照，本次GitHub同步没有重新调用、修改或停止生产服务。两个记忆语料和39份QA执行副本留在原lane，字节已有集成分支版本；ignored原始证据继续仅留本机。原停工库存保留其采集时刻，不改写历史18项官网WIP。GitHub同步补记见[总交接](../acceptance/family-companion/handoff-2026-10-23.md)；此行政收口不恢复产品实现，不启动下一轮。
+
+以下为此前日期记录，保留当时原文；其中“当前”“ACTIVE/PAUSED”和版本号不外推为本次家庭 Goal 或今天部署状态。
+
 ## 2026-10-22 cat 品牌本地迁移
 
 独立分支 `chore/cat-brand` 基于 `cb3bc90` 完成当前显示文案、工程/模块/文件、后端助理身份和两张品牌位图迁移。构建、472项兼容、双语、组件包、SwiftData跨模块合成数据往返及后端874PASS/2SKIP通过。首轮26失败全部基线复现；最终全量528PASS/27FAIL/4SKIP，已确认品牌新增失败0、仍有1项全套上下文失败未归因，独立等待用例两边5/5通过但全套等待边界保留。原设计规则8项基线失败，不签收完整产品。用户2026-10-22明确批准分支推送/draft PR与三张Library预览保存。品牌提交`4dafaeac`已推送，已创建[draft PR #110](https://github.com/Yankj/catpaw-m/pull/110)，未合并。该提交CI [39733200994](https://github.com/Yankj/catpaw-m/actions/runs/39733200994)和基线main CI均在job启动前受账户计费/支出限额限制，steps为空，下游构建/测试跳过，非代码测试通过。未更改付费、权限或凭据设置。Library对应原上传在新增授权后重试一次，官方helper返回`Library prepare_uploads is not available`，未创建附件、无附件ID，已停止且不换路径；无部署或手机安装。详见[最终本地记录](../acceptance/cat-brand-2026-10-22.md)、[逐项归因](../acceptance/cat-brand-attribution-2026-10-22.json)和[兼容说明](../development/cat-brand-migration.md)。
