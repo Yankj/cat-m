@@ -93,7 +93,7 @@ import UniformTypeIdentifiers
                         Button(model.preference("pin:\(id)", fallback: "false") == "true" ? ui("取消置顶") : ui("置顶")) { model.setPreference("pin:\(id)", model.preference("pin:\(id)", fallback: "false") == "true" ? "false" : "true") }
                         Button(ui("重命名")) { name = r.title; rename = true }
                         if let project = c.projectID { Button(ui("项目文件")) { model.path.append(.project(project)) } }
-                        ShareLink(item: ui("Catpaw-m 本地会话 {0}\n", arguments: [String(describing: (id))]) + messages.compactMap { $0.message?.blocks.textValue }.joined(separator: "\n\n")) { Text(ui("分享本地文本")) }
+                        ShareLink(item: ui("cat 本地会话 {0}\n", arguments: [String(describing: (id))]) + messages.compactMap { $0.message?.blocks.textValue }.joined(separator: "\n\n")) { Text(ui("分享本地文本")) }
                         Button(ui("复制会话 ID")) { copyText(id.uuidString) }
                         Button(ui("删除"), role: .destructive) { deleteConfirm = true }
                     } label: { CatpawSymbol(name: "ellipsis").foregroundStyle(CatpawColors.ink).touchTarget() }.accessibilityLabel(ui("更多操作")).accessibilityIdentifier("conversation.more")

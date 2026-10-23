@@ -66,7 +66,7 @@ import Combine
     @ObservedObject var model: AppModel
     var body: some View {
         Page {
-            HStack { Text("Catpaw-m").font(.title2.weight(.semibold)); Spacer(); Button { model.sidebar = false } label: { CatpawSymbol(name: "xmark").touchTarget() }.accessibilityLabel(ui("关闭")) }
+            HStack { Text("cat").font(.title2.weight(.semibold)); Spacer(); Button { model.sidebar = false } label: { CatpawSymbol(name: "xmark").touchTarget() }.accessibilityLabel(ui("关闭")) }
             Picker(ui("环境"), selection: Binding(get: { model.environmentKind }, set: { model.selectEnvironment($0) })) {
                 Text(ui("本机")).tag(EnvironmentKind.local); Text(ui("云端")).tag(EnvironmentKind.cloud); Text(ui("电脑")).tag(EnvironmentKind.computer)
             }.pickerStyle(.segmented).disabled(model.switchingContext)
