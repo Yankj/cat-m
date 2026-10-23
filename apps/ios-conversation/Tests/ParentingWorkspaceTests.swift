@@ -584,6 +584,7 @@ final class ParentingIntakeTests: XCTestCase {
 private actor ParentingInlineTestBackend: ConversationBackend, ParentingIntakeDataDeleting {
     enum ReplyMode: Sendable, Equatable { case completed, notSentOnce, transportUnknown, held, invalidOutput, forbiddenSideChannel }
     struct Calls: Sendable {
+        var prepared: [UUID] = []
         var submitted: [ConversationTurnRequest] = []
         var observed: [ConversationTurnRequest] = []
         var cancelled: [ConversationTurnRequest] = []
@@ -593,6 +594,7 @@ private actor ParentingInlineTestBackend: ConversationBackend, ParentingIntakeDa
     private var calls = Calls()
     private var mode: ReplyMode
     private var needsConsent: Bool
+    private var preparationFailsOnce: Bool
     private var heldReplies: [UUID: CheckedContinuation<Void, Never>] = [:]
     private var replyReleased = false
     private var observationCompletes = false
@@ -602,8 +604,9 @@ private actor ParentingInlineTestBackend: ConversationBackend, ParentingIntakeDa
     private let cancelStarted: (@Sendable () -> Void)?
     private let routeHash = textHash("parenting-inline-synthetic-route")
 
-    init(mode: ReplyMode = .completed, needsConsent: Bool = false, replyStarted: (@Sendable () -> Void)? = nil, cancelStarted: (@Sendable () -> Void)? = nil) {
-        self.mode = mode; self.needsConsent = needsConsent; self.replyStarted = replyStarted; self.cancelStarted = cancelStarted
+    init(mode: ReplyMode = .completed, needsConsent: Bool = false, preparationFailsOnce: Bool = false, replyStarted: (@Sendable () -> Void)? = nil, cancelStarted: (@Sendable () -> Void)? = nil) {
+        self.mode = mode; self.needsConsent = needsConsent; self.preparationFailsOnce = preparationFailsOnce
+        self.replyStarted = replyStarted; self.cancelStarted = cancelStarted
     }
     func captured() -> Calls { calls }
     func completeOnObservation() { observationCompletes = true }
@@ -617,7 +620,14 @@ private actor ParentingInlineTestBackend: ConversationBackend, ParentingIntakeDa
         .init(state: .providerUnverified, provider: "Synthetic inline test boundary", detail: "No HTTP, Auth or model")
     }
     func modelConsent(scope: DataScope, conversationID: UUID) async throws -> ConversationModelConsent? {
-        needsConsent ? .init(conversationID: conversationID, title: "Synthetic model consent", body: "Injected reply only; no production service", routeHash: routeHash, expectedRevision: 0) : nil
+        calls.prepared.append(conversationID)
+        if preparationFailsOnce {
+            preparationFailsOnce = false
+            // The real HTTP adapter prepares its remote conversation at this boundary.
+            // Refuse before that remote create; no server lifecycle is implemented by this mock.
+            throw URLError(.notConnectedToInternet)
+        }
+        return needsConsent ? .init(conversationID: conversationID, title: "Synthetic model consent", body: "Injected reply only; no production service", routeHash: routeHash, expectedRevision: 0) : nil
     }
     func allowModelConsent(scope: DataScope, consent: ConversationModelConsent) async throws {
         guard needsConsent, consent.routeHash == routeHash, consent.expectedRevision == 0 else { throw ConversationSessionError.invalidEvent }
@@ -705,6 +715,63 @@ private struct ParentingInlineDeletingCipher: ParentingWorkspaceCipher {
         return sealed
     }
     func open(_ sealed: Data, subjectID: UUID) throws -> Data { try ParentingTestCipher().open(sealed, subjectID: subjectID) }
+}
+
+/// Intercepts every request in the injected URLSession, including unexpected URLs.
+/// Replies are fixed wire fixtures; no server deletion or tombstone algorithm lives here.
+private final class ParentingIntakeDeleteWireProtocol: URLProtocol, @unchecked Sendable {
+    enum Reply { case response(status: Int, body: Data), offline }
+    private static let lock = NSLock()
+    private static var replies: [String: Reply] = [:]
+    private static var captured: [String: [URLRequest]] = [:]
+
+    static func install(_ reply: Reply, host: String) {
+        lock.lock(); defer { lock.unlock() }
+        replies[host] = reply; captured[host] = []
+    }
+    static func requests(host: String) -> [URLRequest] {
+        lock.lock(); defer { lock.unlock() }; return captured[host] ?? []
+    }
+    static func remove(host: String) {
+        lock.lock(); defer { lock.unlock() }; replies.removeValue(forKey: host); captured.removeValue(forKey: host)
+    }
+    private static func receive(_ request: URLRequest) -> Reply? {
+        lock.lock(); defer { lock.unlock() }
+        guard let host = request.url?.host else { return nil }
+        captured[host, default: []].append(request)
+        return replies[host]
+    }
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        guard let reply = Self.receive(request), let url = request.url else {
+            client?.urlProtocol(self, didFailWithError: URLError(.unsupportedURL)); return
+        }
+        switch reply {
+        case .offline:
+            client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
+        case .response(let status, let body):
+            guard let response = HTTPURLResponse(url: url, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"]) else {
+                client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse)); return
+            }
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: body)
+            client?.urlProtocolDidFinishLoading(self)
+        }
+    }
+    override func stopLoading() {}
+}
+
+private actor ParentingIntakeDeleteWireCredentials: NativeChatSessionCredentials {
+    let expectedScope: DataScope
+    private var rejections = 0
+    init(scope: DataScope) { expectedScope = scope }
+    func authorization(scope: DataScope) async throws -> String {
+        guard scope == expectedScope else { throw catError.scopeMismatch }
+        return "Bearer explicit-parenting-delete-fixture"
+    }
+    func rejected(scope: DataScope) async { if scope == expectedScope { rejections += 1 } }
+    func rejectionCount() -> Int { rejections }
 }
 
 @MainActor final class ParentingInlineIntakeTests: XCTestCase {
@@ -1237,6 +1304,141 @@ private struct ParentingInlineDeletingCipher: ParentingWorkspaceCipher {
         XCTAssertFalse(harness.model.deletionPending)
         XCTAssertNil(harness.model.deletionError)
         XCTAssertNil(harness.model.candidate)
+    }
+
+    func testInlinePreparationFailureCleanupSurvivesReopenAndUnblocksNewRequest() async throws {
+        let backend = ParentingInlineTestBackend(preparationFailsOnce: true)
+        let harness = try make(backend: backend, withRecovery: true)
+        let originalSource = "合成远端创建前失败的原话，不应进入清理引用"
+        await harness.model.request(sourceText: originalSource, childID: child, goalID: goal)
+        XCTAssertEqual(harness.model.phase, .failed)
+        XCTAssertNil(harness.model.candidate)
+        let original = try XCTUnwrap(harness.recovery?.read())
+        let failed = await backend.captured()
+        XCTAssertEqual(failed.prepared, [original.conversationID])
+        XCTAssertTrue(failed.submitted.isEmpty, "Preparation failed before any model submission")
+
+        await backend.setDeletionFailure(true)
+        harness.model.cancel()
+        await harness.model.retryDeletion()
+        XCTAssertEqual(harness.model.phase, .cancelled)
+        XCTAssertTrue(harness.model.deletionPending)
+        XCTAssertNotNil(harness.model.deletionError)
+        XCTAssertFalse(harness.model.recoveryAvailable)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: harness.directory.appendingPathComponent("recovery.sealed").path))
+        for entry in harness.entries.values { XCTAssertFalse(FileManager.default.fileExists(atPath: entry.url.path)) }
+        let savedPending = try XCTUnwrap(harness.cleanup).read()
+        XCTAssertEqual(savedPending.map(\.conversationID), [original.conversationID])
+        XCTAssertTrue(savedPending.allSatisfy(\.pending))
+        let pendingJSON = String(decoding: try JSONEncoder().encode(savedPending), as: UTF8.self)
+        XCTAssertFalse(pendingJSON.contains(originalSource))
+        for forbidden in ["sourceText", "prompt", "candidate", "accountToken", "accessToken"] {
+            XCTAssertFalse(pendingJSON.contains(forbidden))
+        }
+        let firstDeleteAttempts = await backend.captured()
+        XCTAssertFalse(firstDeleteAttempts.deleted.isEmpty)
+        XCTAssertTrue(firstDeleteAttempts.deleted.allSatisfy { $0 == original.conversationID })
+
+        harness.epoch.bump() // Fresh wrappers capture the new account generation; old cleanup writers are fenced.
+        let reopened = try coldModel(harness)
+        let coldCleanup = ParentingIntakeCleanupFile(scope: harness.scope, subjectID: subject, epoch: harness.epoch,
+            cipher: ParentingTestCipher(), url: harness.directory.appendingPathComponent("cleanup.sealed"))
+        XCTAssertEqual(try coldCleanup.read().map(\.conversationID), [original.conversationID])
+        XCTAssertTrue(reopened.deletionPending)
+        XCTAssertFalse(reopened.recoveryAvailable)
+        await reopened.request(sourceText: "合成待清理时不得提交的新原话", childID: child, goalID: nil)
+        let blocked = await backend.captured()
+        XCTAssertEqual(blocked.prepared, [original.conversationID])
+        XCTAssertTrue(blocked.submitted.isEmpty)
+        XCTAssertTrue(reopened.deletionPending)
+
+        await backend.setDeletionFailure(false)
+        await reopened.retryDeletion()
+        XCTAssertFalse(reopened.deletionPending)
+        XCTAssertNil(reopened.deletionError)
+        XCTAssertTrue(try coldCleanup.read().isEmpty)
+        let cleaned = await backend.captured()
+        XCTAssertTrue(cleaned.submitted.isEmpty)
+        XCTAssertTrue(cleaned.deleted.allSatisfy { $0 == original.conversationID })
+
+        let newSource = "合成清理完成后主动发起的新安排"
+        await reopened.request(sourceText: newSource, childID: child, goalID: goal)
+        XCTAssertEqual(reopened.phase, .ready)
+        XCTAssertEqual(reopened.candidate?.sourceText, newSource)
+        let resumed = await backend.captured(), sent = try XCTUnwrap(resumed.submitted.first)
+        XCTAssertEqual(resumed.submitted.count, 1)
+        XCTAssertEqual(resumed.prepared, [original.conversationID, sent.conversationID])
+        XCTAssertNotEqual(sent.conversationID, original.conversationID)
+        XCTAssertNotEqual(sent.operationID, original.requestID)
+        XCTAssertTrue(resumed.observed.isEmpty)
+        let newReferences = try coldCleanup.read()
+        XCTAssertEqual(newReferences.map(\.conversationID), [sent.conversationID])
+        XCTAssertFalse(newReferences.contains(where: \.pending))
+        let newReferenceJSON = String(decoding: try JSONEncoder().encode(newReferences), as: UTF8.self)
+        XCTAssertFalse(newReferenceJSON.contains(originalSource))
+        XCTAssertFalse(newReferenceJSON.contains(newSource))
+    }
+
+    func testInlineNativeDeleteRequiresBoundTombstoneReceiptAndRejectsTransportFailures() async throws {
+        let local = AuthenticatedLocalPartition(issuer: "https://parenting-delete-fixture.invalid", subject: subject,
+            serverScopeID: stableID("parenting-delete-fixture-server")).scope
+        let server = stableID("parenting-delete-fixture-server"), conversation = stableID("parenting-delete-fixture-conversation")
+        let exactPurge: [String: Any] = [
+            "conversation_id": conversation.uuidString.lowercased(), "scope_id": server.uuidString.lowercased(),
+            "subject_id": subject.uuidString.lowercased(), "intake_contract": ParentingIntakeRequest.contract,
+            "purged": true, "already_purged": true, "retained": "identity_hash_tombstone_only"
+        ]
+        func receipt(_ overrides: [String: Any] = [:]) throws -> Data {
+            var purge = exactPurge; purge.merge(overrides) { _, replacement in replacement }
+            return try JSONSerialization.data(withJSONObject: ["schema_version": 1, "contract": "catpaw.native-chat.v1", "purge": purge], options: [.sortedKeys])
+        }
+        struct WireCase {
+            let name: String
+            let reply: ParentingIntakeDeleteWireProtocol.Reply
+            let accepts: Bool
+            var credentialRejections = 0
+        }
+        let exact = try receipt()
+        let cases: [WireCase] = [
+            .init(name: "404 is not a confirmed deletion", reply: .response(status: 404, body: exact), accepts: false),
+            .init(name: "401 rejects the authenticated session", reply: .response(status: 401, body: exact), accepts: false, credentialRejections: 1),
+            .init(name: "offline has no deletion receipt", reply: .offline, accepts: false),
+            .init(name: "wrong conversation", reply: .response(status: 200, body: try receipt(["conversation_id": stableID("parenting-delete-wrong-conversation").uuidString.lowercased()])), accepts: false),
+            .init(name: "wrong server scope", reply: .response(status: 200, body: try receipt(["scope_id": stableID("parenting-delete-wrong-scope").uuidString.lowercased()])), accepts: false),
+            .init(name: "wrong subject", reply: .response(status: 200, body: try receipt(["subject_id": stableID("parenting-delete-wrong-subject").uuidString.lowercased()])), accepts: false),
+            .init(name: "wrong purpose", reply: .response(status: 200, body: try receipt(["intake_contract": "catpaw.native-chat.v1"])), accepts: false),
+            .init(name: "purged false", reply: .response(status: 200, body: try receipt(["purged": false])), accepts: false),
+            .init(name: "wrong retention claim", reply: .response(status: 200, body: try receipt(["retained": "raw_content_retained"])), accepts: false),
+            .init(name: "exact bound tombstone", reply: .response(status: 200, body: exact), accepts: true)
+        ]
+        for fixture in cases {
+            let host = "parenting-delete-" + UUID().uuidString.lowercased() + ".invalid"
+            ParentingIntakeDeleteWireProtocol.install(fixture.reply, host: host)
+            defer { ParentingIntakeDeleteWireProtocol.remove(host: host) }
+            let policy = URLSessionConfiguration.ephemeral
+            policy.protocolClasses = [ParentingIntakeDeleteWireProtocol.self]
+            let credentials = ParentingIntakeDeleteWireCredentials(scope: local)
+            let configuration = try NativeChatConfiguration(origin: try XCTUnwrap(URL(string: "https://" + host)),
+                localScope: local, serverScopeID: server, expectedSubjectID: subject)
+            let backend = NativeChatHTTPBackend(configuration: configuration, credentials: credentials,
+                sessionConfiguration: policy, purpose: .parentingIntake)
+            var accepted = false
+            do { try await backend.deleteIntake(scope: local, conversationID: conversation); accepted = true }
+            catch { if fixture.accepts { XCTFail("Exact bound receipt must be accepted: \(error)") } }
+            await backend.close()
+            XCTAssertEqual(accepted, fixture.accepts, fixture.name)
+            let rejected = await credentials.rejectionCount()
+            XCTAssertEqual(rejected, fixture.credentialRejections, fixture.name)
+            let requests = ParentingIntakeDeleteWireProtocol.requests(host: host)
+            XCTAssertEqual(requests.count, 1, "No fallback, create or resend after DELETE: " + fixture.name)
+            let wire = try XCTUnwrap(requests.first)
+            XCTAssertEqual(wire.url?.host, host)
+            XCTAssertEqual(wire.httpMethod, "DELETE")
+            XCTAssertEqual(wire.url?.path, "/catpaw/parenting-intake/v1/scopes/" + server.uuidString.lowercased() + "/conversations/" + conversation.uuidString.lowercased())
+            XCTAssertEqual(wire.value(forHTTPHeaderField: "Authorization"), "Bearer explicit-parenting-delete-fixture")
+            XCTAssertNil(wire.httpBody)
+            XCTAssertNil(wire.httpBodyStream)
+        }
     }
 
     func testInlineConsumeClearsTemporaryCopiesAndAllowsNewExplicitRequest() async throws {
