@@ -1,6 +1,6 @@
 # 交互流畅度复盘（feat/interaction-polish）
 
-分支 tip：`660c530`（基于 `c896dc2`）。测量在 BE5C「Catpaw 最新体验」上，用 `Scripts/measure-interaction.sh` + Time Profiler；hitch = 显示回调间隔 > 25 ms。
+分支 tip：`660c530`（基于 `c896dc2`）。测量在 BE5C「cat 最新体验」上，用 `Scripts/measure-interaction.sh` + Time Profiler；hitch = 显示回调间隔 > 25 ms。
 
 ## 问题清单
 

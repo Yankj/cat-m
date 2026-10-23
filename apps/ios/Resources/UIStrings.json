@@ -7,13 +7,13 @@
     "zh-Hans": "CSV 格式错误，无法安全解析。",
     "en": "Invalid CSV format; unable to parse safely."
   },
-  "Catpaw-m 原生本地版 0.1.0": {
-    "zh-Hans": "Catpaw-m 原生本地版 0.1.0",
-    "en": "Catpaw-m native local edition 0.1.0"
+  "cat 原生本地版 0.1.0": {
+    "zh-Hans": "cat 原生本地版 0.1.0",
+    "en": "cat native local edition 0.1.0"
   },
-  "Catpaw-m 本地会话 {0}\n": {
-    "zh-Hans": "Catpaw-m 本地会话 {0}\n",
-    "en": "Catpaw-m local conversation {0}\n"
+  "cat 本地会话 {0}\n": {
+    "zh-Hans": "cat 本地会话 {0}\n",
+    "en": "cat local conversation {0}\n"
   },
   "Fixture · 模拟": {
     "zh-Hans": "Fixture · 模拟",
@@ -979,9 +979,9 @@
     "zh-Hans": "本机文件",
     "en": "Local file"
   },
-  "本机消息 · Catpaw Fixture v1 模拟回复": {
-    "zh-Hans": "本机消息 · Catpaw Fixture v1 模拟回复",
-    "en": "Local messages · Catpaw Fixture v1 simulated replies"
+  "本机消息 · cat Fixture v1 模拟回复": {
+    "zh-Hans": "本机消息 · cat Fixture v1 模拟回复",
+    "en": "Local messages · cat Fixture v1 simulated replies"
   },
   "本机私有数据可用": {
     "zh-Hans": "本机私有数据可用",

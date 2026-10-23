@@ -1,6 +1,6 @@
 # cat · NoBug B 交付说明（会议出发助理）
 
-> 仓库：`github.com/Yankj/catpaw-m` · 分支 `feat/ios-mvp-integration-v2`
+> 仓库：`github.com/Yankj/cat-m` · 分支 `feat/ios-mvp-integration-v2`
 > **冻结 tip SHA：`f8e86d8`**（2026-10-16 18:30 北京时间）
 > 架构细节：[ARCHITECTURE.md](./ARCHITECTURE.md) · 录屏分镜：[demo-video-plan.md](./demo-video-plan.md)
 > 同内容镜像：仓库 `docs/submission/`
@@ -73,7 +73,7 @@ cat 主动式个人助理的 **NoBug B 切片**：在会前算出 `leave_at`，�
 ## 运行
 
 ```sh
-git clone -b feat/ios-mvp-integration-v2 https://github.com/Yankj/catpaw-m.git
+git clone -b feat/ios-mvp-integration-v2 https://github.com/Yankj/cat-m.git
 cd cat && git checkout f8e86d8
 open apps/ios-conversation/cat.xcodeproj
 # Scheme: DeviceTrial → 目标 BE5C 或真机

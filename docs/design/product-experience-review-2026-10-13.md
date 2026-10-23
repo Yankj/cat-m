@@ -1,10 +1,10 @@
-# Catpaw 产品与视觉交互评审
+# cat 产品与视觉交互评审
 
 日期：2026-10-13；设计修订 R1。按用户给出的“聚焦、直觉、承担复杂性、控制权、保护时间与成果、全过程工艺”标准评审。本文记录理由与取舍；可执行规则已写回 [FINAL-1](../product/catpaw-final-product-spec.md)、[UX-1](ios-codex-experience-spec.md)和[CGUI-1](conversation-generative-ui-spec.md)，不成为第四份产品规格。实时状态只在 [master-plan](../status/master-plan.md)。
 
 ## 结论
 
-Catpaw 已有扎实的信任与执行合同：同工作身份、持久审批、unknown 核对、来源版本、记忆删除、无变化静默。conversation-first 和 Swift 优先应当保留。
+cat 已有扎实的信任与执行合同：同工作身份、持久审批、unknown 核对、来源版本、记忆删除、无变化静默。conversation-first 和 Swift 优先应当保留。
 
 当前规划最需要补的是**产品的选择与层级**：为谁解决什么问题，哪些决定由产品承担，什么时候让用户介入，以及怎样把成果交到用户手上。六种卡和三种可视化都实现，并不自动形成一个轻松的产品。
 
@@ -53,9 +53,9 @@ Catpaw 已有扎实的信任与执行合同：同工作身份、持久审批、u
 
 审批使用 sheet，内容可滚动，决定区在安全区；长表单进入原生详情；大字号下按钮纵排，不通过缩字解决。图表提供数据表与朗读摘要，纸面上的 17pt/44pt 不能代替实际键盘与VoiceOver路径。
 
-Apple 当前材料指南将 Liquid Glass 用于导航与控件，强调内容层的区分和克制使用；据此保留稳定不透明阅读层，优先使用系统组件。[Apple Materials](https://developer.apple.com/design/human-interface-guidelines/materials)。Apple 的生成式AI指南强调可修改/恢复结果和明确修正反馈；Catpaw把这些落实在同工作修改、版本保存和回执反馈。[Apple Generative AI](https://developer.apple.com/design/human-interface-guidelines/generative-ai?changes=lat__5)。
+Apple 当前材料指南将 Liquid Glass 用于导航与控件，强调内容层的区分和克制使用；据此保留稳定不透明阅读层，优先使用系统组件。[Apple Materials](https://developer.apple.com/design/human-interface-guidelines/materials)。Apple 的生成式AI指南强调可修改/恢复结果和明确修正反馈；cat把这些落实在同工作修改、版本保存和回执反馈。[Apple Generative AI](https://developer.apple.com/design/human-interface-guidelines/generative-ai?changes=lat__5)。
 
-产品聚焦和减少概念是本次设计判断。其依据与Apple的目的、用户自主权、简洁和工艺原则一致，但不是Apple对Catpaw的评价。[Apple Design principles](https://developer.apple.com/design/human-interface-guidelines/design-principles/)。2027系统入口和视觉样式属于前瞻；不在本轮加入Siri/Spotlight/Widget/语音或新图标。
+产品聚焦和减少概念是本次设计判断。其依据与Apple的目的、用户自主权、简洁和工艺原则一致，但不是Apple对cat的评价。[Apple Design principles](https://developer.apple.com/design/human-interface-guidelines/design-principles/)。2027系统入口和视觉样式属于前瞻；不在本轮加入Siri/Spotlight/Widget/语音或新图标。
 
 ## 如何交付与评价
 

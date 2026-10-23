@@ -5,7 +5,7 @@
 ## 分支处理结果与保留边界
 
 - 远端 `main` 已按来源顺序通过 PR #10–16 整合至 `b2c5a392e08ab21677044ed9d576777fa80c15fc`。七个已整合的远端短分支由 GitHub 自动删除，完整提交仍在合并历史中。
-- `fix/consent-handoff` 的 build 38 候选在 [PR #9](https://github.com/Yankj/catpaw-m/pull/9) 独立审查。自动审批拒绝最终合并，理由是它仍被识别为从旧 `main` 分叉的 31 提交大分支；不得换路径绕过。此前七次合并不受此拒绝影响。
+- `fix/consent-handoff` 的 build 38 候选在 [PR #9](https://github.com/Yankj/cat-m/pull/9) 独立审查。自动审批拒绝最终合并，理由是它仍被识别为从旧 `main` 分叉的 31 提交大分支；不得换路径绕过。此前七次合并不受此拒绝影响。
 - `feat/s05-bounded-work` 持有主工作区未提交计划，`fix/model-route-review` 持有独立路由候选；不清理其工作树。诊断快照、Grok 和 proactive 内核仍是来源/参考层，不并入当前生产宿主。旧 `legacy-local` 引用继续只读保留。
 - 本地与远端同名发布提交的 Git SHA 不同。逐树核对已证明 build 38 以前对应本地候选的所有远端文本 blob 相同；本地多出的 22 张日期合成 PNG 是既有发布记录明确暂缓上传的媒体，不能因树 SHA 不同宣称源码冲突，也不能自行补传。
 

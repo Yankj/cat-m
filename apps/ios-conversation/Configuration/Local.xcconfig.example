@@ -1,7 +1,7 @@
 // Copy to Configuration/Local.xcconfig (git-ignored). PUBLIC values only: the publishable key
 // is meant for clients. Never put model/provider keys here; those are Edge secrets.
 // xcconfig treats `//` as a comment, so URLs are written with `/$()/`.
-CATPAW_SUPABASE_PROJECT_URL = https:/$()/dbyklgxdvjbutxzsjeth.supabase.co
+CATPAW_SUPABASE_PROJECT_URL = https:/$()/<your-project-ref>.supabase.co
 CATPAW_SUPABASE_PUBLISHABLE_KEY = <sb_publishable_... from Supabase Settings > API>
-CATPAW_BACKEND_ORIGIN = https:/$()/dbyklgxdvjbutxzsjeth.supabase.co/functions/v1/catpaw-api
+CATPAW_BACKEND_ORIGIN = https:/$()/<your-project-ref>.supabase.co/functions/v1/catpaw-api
 CATPAW_SERVER_SCOPE_ID =

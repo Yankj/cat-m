@@ -62,19 +62,19 @@ Tick: claim due tasks (`FOR UPDATE SKIP LOCKED` + occurrence PK) → generate 1�
 - Tasks screen: `GET /tasks`, swipe to done/cancel (`PATCH`), always send `expected_revision`.
 - Push: after `registerForRemoteNotifications`, `PUT /devices/tokens {kind:"apns", token:<hex>, environment:"sandbox"(debug)/"production", bundle_id}`. Live Activity: `pushTokenUpdates` → `kind:"live_activity_update", activity_id`. Notification category `CATPAW_REMINDER`; `userInfo.catpaw = {event_id, task_id, conversation_id, kind}`. Live Activity `content-state` = `{title, body, kind, taskID}` — make the ActivityAttributes.ContentState match.
 
-## Deploy (user runs; needs Supabase CLI login + project ref `dbyklgxdvjbutxzsjeth`)
+## Deploy (user runs; needs Supabase CLI login + project ref `<your-project-ref>`)
 ```bash
 cd services/edge
-supabase link --project-ref dbyklgxdvjbutxzsjeth
+supabase link --project-ref <your-project-ref>
 supabase db push                       # applies both migrations (pg_cron/pg_net must be enabled: Dashboard > Database > Extensions)
 SECRET=$(openssl rand -hex 32)
 supabase secrets set CATPAW_SCHEDULER_SECRET=$SECRET
 # CATPAW_PRIVATE_MODEL_KEY (OpenRouter) is already used by catpaw-api; reuse it. Optional fallback: OPENROUTER_API_KEY
 supabase functions deploy catpaw-proactive --no-verify-jwt
 # Vault secrets read by pg_cron (SQL editor):
-#   select vault.create_secret('https://dbyklgxdvjbutxzsjeth.supabase.co','catpaw_project_url');
+#   select vault.create_secret('https://<your-project-ref>.supabase.co','catpaw_project_url');
 #   select vault.create_secret('<same $SECRET>','catpaw_scheduler_secret');
-curl https://dbyklgxdvjbutxzsjeth.supabase.co/functions/v1/catpaw-proactive/health
+curl https://<your-project-ref>.supabase.co/functions/v1/catpaw-proactive/health
 ```
 Later, when the APNs key exists:
 ```bash
