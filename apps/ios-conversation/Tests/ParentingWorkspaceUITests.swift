@@ -212,11 +212,12 @@ final class ParentingWorkspaceUITests: XCTestCase {
         reveal(app, after)
         XCTAssertFalse(after.label.isEmpty, app.debugDescription)
         XCTAssertNotEqual(before.label, after.label)
-        XCTAssertEqual(input(app, "parenting.arrangement.title").value as? String, title,
-                       "A reschedule candidate must preserve the selected title, not use the model's replacement title.")
         assertSaveDisabled(app)
         capture(app, "adjustment-candidate-not-applied")
         tap(app, app.buttons["parenting.inline.adopt"])
+        // Continue downward through the adopted form; do not scroll below an unadopted proposal and back.
+        XCTAssertEqual(input(app, "parenting.arrangement.title").value as? String, title,
+                       "Adopting a reschedule candidate must preserve the selected title, not use the model's replacement title.")
         let review = element(app, "parenting.adjustment.review")
         reveal(app, review)
         XCTAssertTrue(review.exists, app.debugDescription)
