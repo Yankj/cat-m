@@ -7086,5 +7086,1361 @@
   "切换对话、待办和记录": {
     "en": "Switch conversations, to-dos and records",
     "zh-Hans": "切换对话、待办和记录"
+  },
+  "育儿账本密钥损坏，已停止读写。": {
+    "en": "The parenting ledger key is damaged. Reading and saving are paused.",
+    "zh-Hans": "育儿账本密钥损坏，已停止读写。"
+  },
+  "当前平台不支持安全保存育儿账本密钥。": {
+    "en": "This platform cannot securely store the parenting ledger key.",
+    "zh-Hans": "当前平台不支持安全保存育儿账本密钥。"
+  },
+  "重复操作的内容不一致。": {
+    "en": "This operation was already submitted with different content.",
+    "zh-Hans": "重复操作的内容不一致。"
+  },
+  "育儿账本存储格式损坏，已保留原数据并停止写入。": {
+    "en": "The parenting ledger storage format is damaged. The original data is preserved and saving is paused.",
+    "zh-Hans": "育儿账本存储格式损坏，已保留原数据并停止写入。"
+  },
+  "育儿账本暂时无法解密，已保留原数据并停止写入。": {
+    "en": "The parenting ledger cannot be decrypted right now. The original data is preserved and saving is paused.",
+    "zh-Hans": "育儿账本暂时无法解密，已保留原数据并停止写入。"
+  },
+  "育儿账本内容损坏，已保留原数据并停止写入。": {
+    "en": "The parenting ledger content is damaged. The original data is preserved and saving is paused.",
+    "zh-Hans": "育儿账本内容损坏，已保留原数据并停止写入。"
+  },
+  "育儿账本版本或账号分区不符，已停止写入。": {
+    "en": "The parenting ledger version or account partition does not match. Saving is paused.",
+    "zh-Hans": "育儿账本版本或账号分区不符，已停止写入。"
+  },
+  "当前账号不可用，请重新打开育儿账本。": {
+    "en": "This account is unavailable. Reopen the parenting ledger.",
+    "zh-Hans": "当前账号不可用，请重新打开育儿账本。"
+  },
+  "账号已变更，育儿账本未写入。": {
+    "en": "The account changed. The parenting ledger was not saved.",
+    "zh-Hans": "账号已变更，育儿账本未写入。"
+  },
+  "育儿账本版本不支持，已保留原数据。": {
+    "en": "This parenting ledger version is unsupported. The original data is preserved.",
+    "zh-Hans": "育儿账本版本不支持，已保留原数据。"
+  },
+  "育儿账本标识重复，已停止写入。": {
+    "en": "The parenting ledger contains duplicate identifiers. Saving is paused.",
+    "zh-Hans": "育儿账本标识重复，已停止写入。"
+  },
+  "育儿目标的孩子关联无效。": {
+    "en": "A parenting goal has an invalid child reference.",
+    "zh-Hans": "育儿目标的孩子关联无效。"
+  },
+  "育儿记录的安排关联无效。": {
+    "en": "A parenting record has an invalid arrangement reference.",
+    "zh-Hans": "育儿记录的安排关联无效。"
+  },
+  "育儿账本版本已达上限。": {
+    "en": "The parenting ledger has reached its revision limit.",
+    "zh-Hans": "育儿账本版本已达上限。"
+  },
+  "仅待确认或已安排的内容可以修改。": {
+    "en": "Only drafts and planned arrangements can be edited.",
+    "zh-Hans": "仅待确认或已安排的内容可以修改。"
+  },
+  "已取消或已完成的安排不能确认。": {
+    "en": "Cancelled or completed arrangements cannot be confirmed.",
+    "zh-Hans": "已取消或已完成的安排不能确认。"
+  },
+  "已完成的安排不能取消。": {
+    "en": "Completed arrangements cannot be cancelled.",
+    "zh-Hans": "已完成的安排不能取消。"
+  },
+  "已取消的安排不能完成。": {
+    "en": "Cancelled arrangements cannot be marked complete.",
+    "zh-Hans": "已取消的安排不能完成。"
+  },
+  "请先确认安排，再记录完成。": {
+    "en": "Confirm the arrangement before recording completion.",
+    "zh-Hans": "请先确认安排，再记录完成。"
+  },
+  "请先选择当前账本中的孩子。": {
+    "en": "Choose a child from this ledger first.",
+    "zh-Hans": "请先选择当前账本中的孩子。"
+  },
+  "目标必须属于当前孩子。": {
+    "en": "The goal must belong to the selected child.",
+    "zh-Hans": "目标必须属于当前孩子。"
+  },
+  "内容不能为空，且不能超过{0}字。": {
+    "en": "Enter some text, up to {0} characters.",
+    "zh-Hans": "内容不能为空，且不能超过{0}字。"
+  },
+  "时间无效。": {
+    "en": "The date or time is invalid.",
+    "zh-Hans": "时间无效。"
+  },
+  "育儿账本时间无效，已保留原数据。": {
+    "en": "The parenting ledger contains an invalid timestamp. The original data is preserved.",
+    "zh-Hans": "育儿账本时间无效，已保留原数据。"
+  },
+  "账号已变更，请重新打开育儿账本。": {
+    "en": "The account changed. Reopen the parenting ledger.",
+    "zh-Hans": "账号已变更，请重新打开育儿账本。"
+  },
+  "请先载入育儿账本，再保存修改。": {
+    "en": "Load the parenting ledger before saving changes.",
+    "zh-Hans": "请先载入育儿账本，再保存修改。"
+  },
+  "请先处理聊天中未发送的输入、附件或进行中的回复，再使用 AI 整理。原话会保留，也可以继续手动填写。": {
+    "en": "Finish handling unsent chat text, attachments, or the current reply before using AI. Your original words are kept, and you can continue filling this in yourself.",
+    "zh-Hans": "请先处理聊天中未发送的输入、附件或进行中的回复，再使用 AI 整理。原话会保留，也可以继续手动填写。"
+  },
+  "请将原话控制在 3000 字以内，再交给 AI 整理。原文不会被截断，也可以继续手动填写。": {
+    "en": "Keep your original text within 3,000 characters to use AI. It will not be truncated, and you can continue filling this in yourself.",
+    "zh-Hans": "请将原话控制在 3000 字以内，再交给 AI 整理。原文不会被截断，也可以继续手动填写。"
+  },
+  "账号或登录状态已变化，请回到育儿页重新整理。原话会保留。": {
+    "en": "Your account or sign-in status changed. Return to the parenting page and try again. Your original words are kept.",
+    "zh-Hans": "账号或登录状态已变化，请回到育儿页重新整理。原话会保留。"
+  },
+  "聊天已切换，请回到育儿页重新整理。不会读取其他话题的回复。": {
+    "en": "The conversation changed. Return to the parenting page and try again. Replies from other topics will not be imported.",
+    "zh-Hans": "聊天已切换，请回到育儿页重新整理。不会读取其他话题的回复。"
+  },
+  "尚未找到本次整理的回复。请在聊天里主动发送预填的内容；没有回复时也可以返回手动填写。": {
+    "en": "No reply was found for this request yet. Send the prefilled text in chat, or return here to fill this in yourself.",
+    "zh-Hans": "尚未找到本次整理的回复。请在聊天里主动发送预填的内容；没有回复时也可以返回手动填写。"
+  },
+  "本次整理出现多个匹配回复，无法安全选取。请返回重新整理，或手动填写。": {
+    "en": "More than one reply matches this request. Return to try again, or fill this in yourself.",
+    "zh-Hans": "本次整理出现多个匹配回复，无法安全选取。请返回重新整理，或手动填写。"
+  },
+  "本次回复尚未完整确认。请等待聊天完成；发送失败或结果未知时不会导入。": {
+    "en": "This reply is not fully confirmed yet. Wait for chat to finish. Failed or unconfirmed results will not be imported.",
+    "zh-Hans": "本次回复尚未完整确认。请等待聊天完成；发送失败或结果未知时不会导入。"
+  },
+  "这次回复未符合草稿格式，无法导入。原话仍保留，可以返回手动填写。": {
+    "en": "This reply does not match the draft format and cannot be imported. Your original words are kept; you can return and fill this in yourself.",
+    "zh-Hans": "这次回复未符合草稿格式，无法导入。原话仍保留，可以返回手动填写。"
+  },
+  "回复中的时间缺少原话依据，无法导入。请返回补充明确日期和钟点，或手动填写。": {
+    "en": "The time in the reply is not supported by your original words. Add a clear date and time, or fill this in yourself.",
+    "zh-Hans": "回复中的时间缺少原话依据，无法导入。请返回补充明确日期和钟点，或手动填写。"
+  },
+  "小咪育儿": {
+    "en": "mimi Parenting",
+    "zh-Hans": "小咪育儿"
+  },
+  "育儿工作区设置": {
+    "en": "Parenting workspace settings",
+    "zh-Hans": "育儿工作区设置"
+  },
+  "正在保存": {
+    "en": "Saving",
+    "zh-Hans": "正在保存"
+  },
+  "确认删除？": {
+    "en": "Delete this item?",
+    "zh-Hans": "确认删除？"
+  },
+  "解锁后查看育儿记录": {
+    "en": "Unlock to view parenting records",
+    "zh-Hans": "解锁后查看育儿记录"
+  },
+  "育儿工作区暂时无法打开": {
+    "en": "The parenting workspace cannot be opened right now",
+    "zh-Hans": "育儿工作区暂时无法打开"
+  },
+  "正在读取此设备上的育儿记录": {
+    "en": "Loading parenting records from this device",
+    "zh-Hans": "正在读取此设备上的育儿记录"
+  },
+  "把今天的照顾，留给以后回看": {
+    "en": "Keep today’s moments of care to look back on",
+    "zh-Hans": "把今天的照顾，留给以后回看"
+  },
+  "记下安排和观察，慢慢看见孩子的变化。": {
+    "en": "Save arrangements and observations, and notice your child’s changes over time.",
+    "zh-Hans": "记下安排和观察，慢慢看见孩子的变化。"
+  },
+  "记一件事": {
+    "en": "Add an arrangement",
+    "zh-Hans": "记一件事"
+  },
+  "先存为待确认，确认后才进入安排。": {
+    "en": "Save a draft first. It becomes an arrangement after you confirm it.",
+    "zh-Hans": "先存为待确认，确认后才进入安排。"
+  },
+  "待确认": {
+    "en": "Awaiting confirmation",
+    "zh-Hans": "待确认"
+  },
+  "还没有待确认的事。记下一件事后，可以在这里核对。": {
+    "en": "No drafts to confirm yet. Add an arrangement to review it here.",
+    "zh-Hans": "还没有待确认的事。记下一件事后，可以在这里核对。"
+  },
+  "今天的安排": {
+    "en": "Today’s arrangements",
+    "zh-Hans": "今天的安排"
+  },
+  "今天没有已确认的安排。可以留白，也可以记下一件事。": {
+    "en": "No confirmed arrangements for today. Leave the day open, or add something.",
+    "zh-Hans": "今天没有已确认的安排。可以留白，也可以记下一件事。"
+  },
+  "待重新安排": {
+    "en": "Needs rescheduling",
+    "zh-Hans": "待重新安排"
+  },
+  "时间已经过去，仍未标记完成。可调整时间或取消，不会自动算作完成。": {
+    "en": "The scheduled time has passed and this is still open. Reschedule or cancel it; it will not be marked complete automatically.",
+    "zh-Hans": "时间已经过去，仍未标记完成。可调整时间或取消，不会自动算作完成。"
+  },
+  "以后的安排": {
+    "en": "Upcoming arrangements",
+    "zh-Hans": "以后的安排"
+  },
+  "查看哪个孩子": {
+    "en": "Choose a child to view",
+    "zh-Hans": "查看哪个孩子"
+  },
+  "全部孩子": {
+    "en": "All children",
+    "zh-Hans": "全部孩子"
+  },
+  "从孩子的昵称开始": {
+    "en": "Start with your child’s nickname",
+    "zh-Hans": "从孩子的昵称开始"
+  },
+  "不用填写生日和健康信息。添加昵称后，就能记录安排、观察与成长目标。": {
+    "en": "No birthday or health details are needed. Add a nickname to save arrangements, observations, and growth goals.",
+    "zh-Hans": "不用填写生日和健康信息。添加昵称后，就能记录安排、观察与成长目标。"
+  },
+  "添加孩子": {
+    "en": "Add a child",
+    "zh-Hans": "添加孩子"
+  },
+  "还没有完成的安排。": {
+    "en": "No completed arrangements yet.",
+    "zh-Hans": "还没有完成的安排。"
+  },
+  "已完成的安排": {
+    "en": "Completed arrangements",
+    "zh-Hans": "已完成的安排"
+  },
+  "还没有取消的安排。": {
+    "en": "No cancelled arrangements yet.",
+    "zh-Hans": "还没有取消的安排。"
+  },
+  "已取消的安排": {
+    "en": "Cancelled arrangements",
+    "zh-Hans": "已取消的安排"
+  },
+  "取消这件事": {
+    "en": "Cancel this arrangement",
+    "zh-Hans": "取消这件事"
+  },
+  "删除安排": {
+    "en": "Delete arrangement",
+    "zh-Hans": "删除安排"
+  },
+  "安排操作": {
+    "en": "Arrangement actions",
+    "zh-Hans": "安排操作"
+  },
+  "查看原始记录与时间": {
+    "en": "View original text and timestamps",
+    "zh-Hans": "查看原始记录与时间"
+  },
+  "来源：家长填写": {
+    "en": "Source: entered by a parent",
+    "zh-Hans": "来源：家长填写"
+  },
+  "创建时间": {
+    "en": "Created",
+    "zh-Hans": "创建时间"
+  },
+  "更新时间": {
+    "en": "Updated",
+    "zh-Hans": "更新时间"
+  },
+  "待确认 · 尚未进入安排": {
+    "en": "Awaiting confirmation · Still a draft",
+    "zh-Hans": "待确认 · 尚未进入安排"
+  },
+  "家长已标记完成": {
+    "en": "Marked complete by a parent",
+    "zh-Hans": "家长已标记完成"
+  },
+  "查看完成记录": {
+    "en": "View completion record",
+    "zh-Hans": "查看完成记录"
+  },
+  "完成记录已删除。安排仍保留完成状态。": {
+    "en": "The completion record was deleted. The arrangement remains marked complete.",
+    "zh-Hans": "完成记录已删除。安排仍保留完成状态。"
+  },
+  "已取消 · 不会作为待办或完成记录": {
+    "en": "Cancelled · Excluded from open arrangements and completion records",
+    "zh-Hans": "已取消 · 不会作为待办或完成记录"
+  },
+  "另记一件事": {
+    "en": "Add another arrangement",
+    "zh-Hans": "另记一件事"
+  },
+  "确认安排": {
+    "en": "Confirm arrangement",
+    "zh-Hans": "确认安排"
+  },
+  "调整安排": {
+    "en": "Edit arrangement",
+    "zh-Hans": "调整安排"
+  },
+  "完成并记录": {
+    "en": "Complete and record",
+    "zh-Hans": "完成并记录"
+  },
+  "留一条成长的线索": {
+    "en": "Keep a trace of their growth",
+    "zh-Hans": "留一条成长的线索"
+  },
+  "目标由你定义。安排是打算做的事，观察和完成记录是已经记下的事。": {
+    "en": "You define the goals. Arrangements are plans; observations and completion records capture what you have noted.",
+    "zh-Hans": "目标由你定义。安排是打算做的事，观察和完成记录是已经记下的事。"
+  },
+  "开始记录于": {
+    "en": "Records started",
+    "zh-Hans": "开始记录于"
+  },
+  "修改昵称": {
+    "en": "Edit nickname",
+    "zh-Hans": "修改昵称"
+  },
+  "删除孩子": {
+    "en": "Delete child",
+    "zh-Hans": "删除孩子"
+  },
+  "孩子资料操作": {
+    "en": "Child profile actions",
+    "zh-Hans": "孩子资料操作"
+  },
+  "成长目标": {
+    "en": "Growth goals",
+    "zh-Hans": "成长目标"
+  },
+  "添加目标": {
+    "en": "Add a goal",
+    "zh-Hans": "添加目标"
+  },
+  "还没有成长目标。也可以先记观察，之后再建立目标。": {
+    "en": "No growth goals yet. You can save observations first and add goals later.",
+    "zh-Hans": "还没有成长目标。也可以先记观察，之后再建立目标。"
+  },
+  "正在回顾这个目标": {
+    "en": "Reviewing this goal",
+    "zh-Hans": "正在回顾这个目标"
+  },
+  "查看相关安排与记录": {
+    "en": "View related arrangements and records",
+    "zh-Hans": "查看相关安排与记录"
+  },
+  "删除目标": {
+    "en": "Delete goal",
+    "zh-Hans": "删除目标"
+  },
+  "选择孩子": {
+    "en": "Choose a child",
+    "zh-Hans": "选择孩子"
+  },
+  "成长回顾": {
+    "en": "Growth review",
+    "zh-Hans": "成长回顾"
+  },
+  "正在查看这个孩子的全部目标与未关联记录。": {
+    "en": "Showing all goals and unlinked records for this child.",
+    "zh-Hans": "正在查看这个孩子的全部目标与未关联记录。"
+  },
+  "查看全部": {
+    "en": "View all",
+    "zh-Hans": "查看全部"
+  },
+  "计划与待确认": {
+    "en": "Plans and drafts",
+    "zh-Hans": "计划与待确认"
+  },
+  "这个范围内还没有安排。": {
+    "en": "No arrangements in this view yet.",
+    "zh-Hans": "这个范围内还没有安排。"
+  },
+  "为这个目标记一件事": {
+    "en": "Add an arrangement for this goal",
+    "zh-Hans": "为这个目标记一件事"
+  },
+  "日常观察": {
+    "en": "Observations",
+    "zh-Hans": "日常观察"
+  },
+  "这个范围内还没有观察。": {
+    "en": "No observations in this view yet.",
+    "zh-Hans": "这个范围内还没有观察。"
+  },
+  "家长完成记录": {
+    "en": "Parent completion records",
+    "zh-Hans": "家长完成记录"
+  },
+  "这个范围内还没有完成记录。": {
+    "en": "No completion records in this view yet.",
+    "zh-Hans": "这个范围内还没有完成记录。"
+  },
+  "记下观察": {
+    "en": "Add an observation",
+    "zh-Hans": "记下观察"
+  },
+  "把发生过的事留住": {
+    "en": "Keep what happened",
+    "zh-Hans": "把发生过的事留住"
+  },
+  "日常观察和家长标记完成的内容分开保存，可回看原话、修正或删除。": {
+    "en": "Observations and parent completion records are saved separately. Review the original words, make corrections, or delete a record.",
+    "zh-Hans": "日常观察和家长标记完成的内容分开保存，可回看原话、修正或删除。"
+  },
+  "记录类型": {
+    "en": "Record type",
+    "zh-Hans": "记录类型"
+  },
+  "这里还没有记录。观察可以直接保存；安排完成后会生成独立的完成记录。": {
+    "en": "No records here yet. Save observations directly; completing an arrangement creates a separate completion record.",
+    "zh-Hans": "这里还没有记录。观察可以直接保存；安排完成后会生成独立的完成记录。"
+  },
+  "更正记录": {
+    "en": "Edit record",
+    "zh-Hans": "更正记录"
+  },
+  "删除记录": {
+    "en": "Delete record",
+    "zh-Hans": "删除记录"
+  },
+  "记录操作": {
+    "en": "Record actions",
+    "zh-Hans": "记录操作"
+  },
+  "来自安排": {
+    "en": "From arrangement",
+    "zh-Hans": "来自安排"
+  },
+  "原安排已删除，完成记录仍保留。": {
+    "en": "The original arrangement was deleted. Its completion record is kept.",
+    "zh-Hans": "原安排已删除，完成记录仍保留。"
+  },
+  "查看来源与更正时间": {
+    "en": "View source and edit timestamps",
+    "zh-Hans": "查看来源与更正时间"
+  },
+  "来源：家长观察": {
+    "en": "Source: parent observation",
+    "zh-Hans": "来源：家长观察"
+  },
+  "来源：家长标记完成": {
+    "en": "Source: marked complete by a parent",
+    "zh-Hans": "来源：家长标记完成"
+  },
+  "家长确认完成，未填写补充说明。": {
+    "en": "A parent confirmed completion without adding a note.",
+    "zh-Hans": "家长确认完成，未填写补充说明。"
+  },
+  "更正时间": {
+    "en": "Edited",
+    "zh-Hans": "更正时间"
+  },
+  "尚未更正": {
+    "en": "Not edited",
+    "zh-Hans": "尚未更正"
+  },
+  "回顾提示": {
+    "en": "Review prompts",
+    "zh-Hans": "回顾提示"
+  },
+  "你有待确认的事。可以先核对孩子、时间和内容，再决定是否安排。": {
+    "en": "You have a draft to review. Check the child, time, and details before confirming it.",
+    "zh-Hans": "你有待确认的事。可以先核对孩子、时间和内容，再决定是否安排。"
+  },
+  "有安排的时间已经过去。可以按实际情况调整、取消或记录完成。": {
+    "en": "An arrangement’s scheduled time has passed. Update it, cancel it, or record completion based on what happened.",
+    "zh-Hans": "有安排的时间已经过去。可以按实际情况调整、取消或记录完成。"
+  },
+  "已保存成长目标。下次记录观察时，可以关联一个目标，方便以后回顾。": {
+    "en": "A growth goal is saved. Link your next observation to a goal to make future reviews easier.",
+    "zh-Hans": "已保存成长目标。下次记录观察时，可以关联一个目标，方便以后回顾。"
+  },
+  "已保存的安排会留在这里。完成后可写下实际发生的事，再回看记录。": {
+    "en": "Saved arrangements stay here. When one is complete, note what happened and return to the record later.",
+    "zh-Hans": "已保存的安排会留在这里。完成后可写下实际发生的事，再回看记录。"
+  },
+  "仅根据已保存内容整理，不评估孩子，不会自动创建或执行安排。": {
+    "en": "Based only on saved content. These prompts do not assess your child or create or carry out arrangements automatically.",
+    "zh-Hans": "仅根据已保存内容整理，不评估孩子，不会自动创建或执行安排。"
+  },
+  "需要整理想法时，问问小咪": {
+    "en": "Ask mimi when you want to organize your thoughts",
+    "zh-Hans": "需要整理想法时，问问小咪"
+  },
+  "打开辅助对话；对话不会自动变成安排。": {
+    "en": "Open a supporting chat. Messages do not automatically become arrangements.",
+    "zh-Hans": "打开辅助对话；对话不会自动变成安排。"
+  },
+  "仅在此设备加密保存 · 尚未云同步 · 不会发送提醒 · 保留直到你删除": {
+    "en": "Encrypted on this device only · No cloud sync · No reminders · Kept until you delete it",
+    "zh-Hans": "仅在此设备加密保存 · 尚未云同步 · 不会发送提醒 · 保留直到你删除"
+  },
+  "已填写的内容会保留。请在原操作处重试。": {
+    "en": "Your entries are kept. Retry the original action.",
+    "zh-Hans": "已填写的内容会保留。请在原操作处重试。"
+  },
+  "收起提示": {
+    "en": "Dismiss message",
+    "zh-Hans": "收起提示"
+  },
+  "孩子已删除": {
+    "en": "Child deleted",
+    "zh-Hans": "孩子已删除"
+  },
+  "孩子与成长": {
+    "en": "Children and growth",
+    "zh-Hans": "孩子与成长"
+  },
+  "全部记录": {
+    "en": "All records",
+    "zh-Hans": "全部记录"
+  },
+  "家长完成": {
+    "en": "Parent completions",
+    "zh-Hans": "家长完成"
+  },
+  "将删除这个孩子的资料、目标、全部安排和记录。删除后无法恢复。": {
+    "en": "This deletes the child’s profile, goals, arrangements, and records. This cannot be undone.",
+    "zh-Hans": "将删除这个孩子的资料、目标、全部安排和记录。删除后无法恢复。"
+  },
+  "只删除这个成长目标。相关安排和记录会保留，并解除目标关联。删除后无法恢复。": {
+    "en": "This deletes only the growth goal. Related arrangements and records are kept and unlinked from it. This cannot be undone.",
+    "zh-Hans": "只删除这个成长目标。相关安排和记录会保留，并解除目标关联。删除后无法恢复。"
+  },
+  "删除这条安排。已经生成的完成记录会独立保留。删除后无法恢复。": {
+    "en": "This deletes the arrangement. Any completion record is kept separately. This cannot be undone.",
+    "zh-Hans": "删除这条安排。已经生成的完成记录会独立保留。删除后无法恢复。"
+  },
+  "删除这条记录。原安排的完成状态不会改变。删除后无法恢复。": {
+    "en": "This deletes the record. The original arrangement remains marked complete. This cannot be undone.",
+    "zh-Hans": "删除这条记录。原安排的完成状态不会改变。删除后无法恢复。"
+  },
+  "今天的安排，慢慢理清": {
+    "en": "Make room for today’s arrangements",
+    "zh-Hans": "今天的安排，慢慢理清"
+  },
+  "正在打开你的本机育儿记录…": {
+    "en": "Opening your local parenting records…",
+    "zh-Hans": "正在打开你的本机育儿记录…"
+  },
+  "正在打开育儿工作区…": {
+    "en": "Opening the parenting workspace…",
+    "zh-Hans": "正在打开育儿工作区…"
+  },
+  "育儿工作区没能打开": {
+    "en": "The parenting workspace could not be opened",
+    "zh-Hans": "育儿工作区没能打开"
+  },
+  "育儿的点滴，有处安放": {
+    "en": "A place for the little moments of parenting",
+    "zh-Hans": "育儿的点滴，有处安放"
+  },
+  "记下今天的安排，\n看见孩子的成长": {
+    "en": "Save today’s arrangements.\nSee your child grow.",
+    "zh-Hans": "记下今天的安排，\n看见孩子的成长"
+  },
+  "安排先确认，成长慢慢记。家里的事，少一点挂心。": {
+    "en": "Confirm arrangements first. Keep growth memories over time. A little less to keep in mind at home.",
+    "zh-Hans": "安排先确认，成长慢慢记。家里的事，少一点挂心。"
+  },
+  "内容不能为空，且不能超过40字。": {
+    "en": "Enter some text, up to 40 characters.",
+    "zh-Hans": "内容不能为空，且不能超过40字。"
+  },
+  "内容不能为空，且不能超过120字。": {
+    "en": "Enter some text, up to 120 characters.",
+    "zh-Hans": "内容不能为空，且不能超过120字。"
+  },
+  "内容不能为空，且不能超过160字。": {
+    "en": "Enter some text, up to 160 characters.",
+    "zh-Hans": "内容不能为空，且不能超过160字。"
+  },
+  "内容不能为空，且不能超过8000字。": {
+    "en": "Enter some text, up to 8,000 characters.",
+    "zh-Hans": "内容不能为空，且不能超过8000字。"
+  },
+  "onboarding.parenting.today": {
+    "en": "Today’s plans",
+    "zh-Hans": "今天安排"
+  },
+  "onboarding.parenting.arrangements": {
+    "en": "Child arrangements",
+    "zh-Hans": "孩子安排"
+  },
+  "onboarding.parenting.goals": {
+    "en": "Small goals",
+    "zh-Hans": "小目标"
+  },
+  "onboarding.parenting.observations": {
+    "en": "Growth observations",
+    "zh-Hans": "成长观察"
+  },
+  "onboarding.parenting.confirm": {
+    "en": "Confirm first",
+    "zh-Hans": "先确认"
+  },
+  "onboarding.parenting.completions": {
+    "en": "Completion records",
+    "zh-Hans": "完成记录"
+  },
+  "onboarding.parenting.encryption": {
+    "en": "Local encryption",
+    "zh-Hans": "本机加密"
+  },
+  "onboarding.parenting.sources": {
+    "en": "Keep sources",
+    "zh-Hans": "保留来源"
+  },
+  "把原话整理成待确认草稿": {
+    "en": "Turn your words into a draft to review",
+    "zh-Hans": "把原话整理成待确认草稿"
+  },
+  "下一步会把整理请求放入现有聊天输入框。请在聊天里检查内容，主动发送并完成原有授权；收到完整回复后，再带回这里核对。": {
+    "en": "Next, the request will be placed in the existing chat composer. Review it, send it yourself, and complete the usual authorization. Bring the completed reply back here to review.",
+    "zh-Hans": "下一步会把整理请求放入现有聊天输入框。请在聊天里检查内容，主动发送并完成原有授权；收到完整回复后，再带回这里核对。"
+  },
+  "保留的原话": {
+    "en": "Your original words",
+    "zh-Hans": "保留的原话"
+  },
+  "AI 只提供建议。孩子和目标沿用你在本机的选择；日期或钟点不明确时，带回后由你补充。此处不会保存安排或创建提醒。": {
+    "en": "AI only offers suggestions. Your local child and goal selections are kept. If the date or time is unclear, you can add it afterward. This step does not save an arrangement or create a reminder.",
+    "zh-Hans": "AI 只提供建议。孩子和目标沿用你在本机的选择；日期或钟点不明确时，带回后由你补充。此处不会保存安排或创建提醒。"
+  },
+  "打开聊天整理": {
+    "en": "Open chat to organize",
+    "zh-Hans": "打开聊天整理"
+  },
+  "继续查看本次聊天": {
+    "en": "Continue this chat",
+    "zh-Hans": "继续查看本次聊天"
+  },
+  "正在检查本次回复…": {
+    "en": "Checking this reply…",
+    "zh-Hans": "正在检查本次回复…"
+  },
+  "检查本次回复": {
+    "en": "Check this reply",
+    "zh-Hans": "检查本次回复"
+  },
+  "建议草稿 · 尚未保存": {
+    "en": "Suggested draft · Not saved",
+    "zh-Hans": "建议草稿 · 尚未保存"
+  },
+  "时间来自 AI 整理，请在下一步再次核对。": {
+    "en": "This time came from the AI reply. Check it again in the next step.",
+    "zh-Hans": "时间来自 AI 整理，请在下一步再次核对。"
+  },
+  "时间待补充": {
+    "en": "Time needed",
+    "zh-Hans": "时间待补充"
+  },
+  "原话未提供完整日期和钟点；不会替你选择时间。": {
+    "en": "Your original words did not specify a complete date and time. No time will be chosen for you.",
+    "zh-Hans": "原话未提供完整日期和钟点；不会替你选择时间。"
+  },
+  "带回待确认草稿": {
+    "en": "Bring back the draft for review",
+    "zh-Hans": "带回待确认草稿"
+  },
+  "返回手动填写，保留原话": {
+    "en": "Return to fill it in yourself; keep your original words",
+    "zh-Hans": "返回手动填写，保留原话"
+  },
+  "AI 整理": {
+    "en": "Organize with AI",
+    "zh-Hans": "AI 整理"
+  },
+  "发送后返回核对育儿草稿": {
+    "en": "Return after sending to review the parenting draft",
+    "zh-Hans": "发送后返回核对育儿草稿"
+  },
+  "返回核对": {
+    "en": "Return to review",
+    "zh-Hans": "返回核对"
+  },
+  "解锁后查看育儿草稿": {
+    "en": "Unlock to view the parenting draft",
+    "zh-Hans": "解锁后查看育儿草稿"
+  },
+  "添加成长目标": {
+    "en": "Add a growth goal",
+    "zh-Hans": "添加成长目标"
+  },
+  "孩子的昵称": {
+    "en": "Child’s nickname",
+    "zh-Hans": "孩子的昵称"
+  },
+  "你想持续关注什么": {
+    "en": "What would you like to keep track of?",
+    "zh-Hans": "你想持续关注什么"
+  },
+  "昵称": {
+    "en": "Nickname",
+    "zh-Hans": "昵称"
+  },
+  "只填写你想使用的称呼，最多 40 字。": {
+    "en": "Use any name you prefer, up to 40 characters.",
+    "zh-Hans": "只填写你想使用的称呼，最多 40 字。"
+  },
+  "用自己的话写下想关注的变化，最多 120 字。目标可随时删除，不会自动生成任务。": {
+    "en": "Describe the change you want to follow in your own words, up to 120 characters. You can delete goals anytime. They do not generate tasks automatically.",
+    "zh-Hans": "用自己的话写下想关注的变化，最多 120 字。目标可随时删除，不会自动生成任务。"
+  },
+  "昵称不能超过 40 字。": {
+    "en": "Keep the nickname within 40 characters.",
+    "zh-Hans": "昵称不能超过 40 字。"
+  },
+  "目标不能超过 120 字。": {
+    "en": "Keep the goal within 120 characters.",
+    "zh-Hans": "目标不能超过 120 字。"
+  },
+  "保存未完成，请重试。": {
+    "en": "Saving did not finish. Try again.",
+    "zh-Hans": "保存未完成，请重试。"
+  },
+  "想为孩子做的一件事": {
+    "en": "Something you want to do for your child",
+    "zh-Hans": "想为孩子做的一件事"
+  },
+  "用 AI 整理": {
+    "en": "Organize with AI",
+    "zh-Hans": "用 AI 整理"
+  },
+  "先用自己的话交代一件事": {
+    "en": "Start by describing it in your own words",
+    "zh-Hans": "先用自己的话交代一件事"
+  },
+  "写下想做什么、什么时候做。AI 整理会打开辅助对话，发送前仍需按对话里的提示确认；也可手动填写下方安排。": {
+    "en": "Write what you want to do and when. Using AI opens a supporting chat, where you still review the prompts before sending. You can also fill in the arrangement below yourself.",
+    "zh-Hans": "写下想做什么、什么时候做。AI 整理会打开辅助对话，发送前仍需按对话里的提示确认；也可手动填写下方安排。"
+  },
+  "AI 整理最多接收 3000 字。你可以缩短原话，或直接手动填写安排。": {
+    "en": "AI can organize up to 3,000 characters. Shorten your text, or fill in the arrangement yourself.",
+    "zh-Hans": "AI 整理最多接收 3000 字。你可以缩短原话，或直接手动填写安排。"
+  },
+  "原话不能超过 8000 字。": {
+    "en": "Keep the original text within 8,000 characters.",
+    "zh-Hans": "原话不能超过 8000 字。"
+  },
+  "请核对整理结果。保存后仍是待确认，需要再次明确确认才进入安排。": {
+    "en": "Review the result. Saving keeps it as a draft. Confirm it separately to make it an arrangement.",
+    "zh-Hans": "请核对整理结果。保存后仍是待确认，需要再次明确确认才进入安排。"
+  },
+  "AI 整理结果待核对": {
+    "en": "Review the AI result",
+    "zh-Hans": "AI 整理结果待核对"
+  },
+  "安排名称": {
+    "en": "Arrangement title",
+    "zh-Hans": "安排名称"
+  },
+  "用原话作为安排名称": {
+    "en": "Use the original words as the title",
+    "zh-Hans": "用原话作为安排名称"
+  },
+  "安排时间": {
+    "en": "Arrangement time",
+    "zh-Hans": "安排时间"
+  },
+  "请选择时间": {
+    "en": "Choose a time",
+    "zh-Hans": "请选择时间"
+  },
+  "还没有明确时间，请选择后再保存。": {
+    "en": "No time is set yet. Choose one before saving.",
+    "zh-Hans": "还没有明确时间，请选择后再保存。"
+  },
+  "安排名称不能超过 160 字。": {
+    "en": "Keep the arrangement title within 160 characters.",
+    "zh-Hans": "安排名称不能超过 160 字。"
+  },
+  "核对安排内容": {
+    "en": "Review arrangement details",
+    "zh-Hans": "核对安排内容"
+  },
+  "调整安排内容": {
+    "en": "Edit arrangement details",
+    "zh-Hans": "调整安排内容"
+  },
+  "安排只保存在本机，不会添加系统日历，也不会发送提醒。": {
+    "en": "Arrangements are saved only on this device. They are not added to the system calendar and do not send reminders.",
+    "zh-Hans": "安排只保存在本机，不会添加系统日历，也不会发送提醒。"
+  },
+  "调整名称和时间不会覆盖当时填写的原话。": {
+    "en": "Changing the title or time keeps your original words.",
+    "zh-Hans": "调整名称和时间不会覆盖当时填写的原话。"
+  },
+  "最初的原话": {
+    "en": "Original words",
+    "zh-Hans": "最初的原话"
+  },
+  "保存为待确认": {
+    "en": "Save as a draft",
+    "zh-Hans": "保存为待确认"
+  },
+  "保存调整": {
+    "en": "Save changes",
+    "zh-Hans": "保存调整"
+  },
+  "选择安排日期和时间": {
+    "en": "Choose the arrangement date and time",
+    "zh-Hans": "选择安排日期和时间"
+  },
+  "只有点击“使用这个时间”，才会填写到安排中。": {
+    "en": "The arrangement time is set only when you tap “Use this time”.",
+    "zh-Hans": "只有点击“使用这个时间”，才会填写到安排中。"
+  },
+  "使用这个时间": {
+    "en": "Use this time",
+    "zh-Hans": "使用这个时间"
+  },
+  "孩子": {
+    "en": "Child",
+    "zh-Hans": "孩子"
+  },
+  "请选择孩子": {
+    "en": "Choose a child",
+    "zh-Hans": "请选择孩子"
+  },
+  "关联成长目标": {
+    "en": "Link a growth goal",
+    "zh-Hans": "关联成长目标"
+  },
+  "不关联目标": {
+    "en": "No linked goal",
+    "zh-Hans": "不关联目标"
+  },
+  "成长目标可选，不影响保存。": {
+    "en": "A growth goal is optional. You can save without one.",
+    "zh-Hans": "成长目标可选，不影响保存。"
+  },
+  "这表示由家长确认完成，不代表已核验孩子的成长结果。": {
+    "en": "This records a parent’s confirmation of completion. It does not verify a child’s growth outcome.",
+    "zh-Hans": "这表示由家长确认完成，不代表已核验孩子的成长结果。"
+  },
+  "要标记完成的安排": {
+    "en": "Arrangement to mark complete",
+    "zh-Hans": "要标记完成的安排"
+  },
+  "完成说明，可选": {
+    "en": "Completion note, optional",
+    "zh-Hans": "完成说明，可选"
+  },
+  "记录内容": {
+    "en": "Record text",
+    "zh-Hans": "记录内容"
+  },
+  "记录不能超过 8000 字。": {
+    "en": "Keep the record within 8,000 characters.",
+    "zh-Hans": "记录不能超过 8000 字。"
+  },
+  "实际发生了什么（可选）": {
+    "en": "What happened? (Optional)",
+    "zh-Hans": "实际发生了什么（可选）"
+  },
+  "写下实际发生的事": {
+    "en": "Write what happened",
+    "zh-Hans": "写下实际发生的事"
+  },
+  "不填写说明时，将用安排名称生成一条家长完成记录。": {
+    "en": "If you leave the note blank, the arrangement title is used for the parent completion record.",
+    "zh-Hans": "不填写说明时，将用安排名称生成一条家长完成记录。"
+  },
+  "用自己的话记录看到或听到的事。最多 8000 字，不会自动变成安排。": {
+    "en": "Describe what you saw or heard in your own words, up to 8,000 characters. It will not become an arrangement automatically.",
+    "zh-Hans": "用自己的话记录看到或听到的事。最多 8000 字，不会自动变成安排。"
+  },
+  "最初保存的内容": {
+    "en": "Originally saved text",
+    "zh-Hans": "最初保存的内容"
+  },
+  "更正只更新记录正文，最初的内容与创建时间会保留。": {
+    "en": "Editing changes only the record text. The original text and creation time are kept.",
+    "zh-Hans": "更正只更新记录正文，最初的内容与创建时间会保留。"
+  },
+  "确认完成并保存记录": {
+    "en": "Confirm completion and save the record",
+    "zh-Hans": "确认完成并保存记录"
+  },
+  "保存记录": {
+    "en": "Save record",
+    "zh-Hans": "保存记录"
+  },
+  "本机账户": {
+    "en": "Local account",
+    "zh-Hans": "本机账户"
+  },
+  "此设备上的育儿记录会加密保留，重新登录同一账户后可继续查看。": {
+    "en": "Parenting records stay encrypted on this device. Sign in to the same account to view them again.",
+    "zh-Hans": "此设备上的育儿记录会加密保留，重新登录同一账户后可继续查看。"
+  },
+  "显示回顾提示": {
+    "en": "Show review prompts",
+    "zh-Hans": "显示回顾提示"
+  },
+  "仅根据已保存的安排和目标整理提示，可随时关闭。不会评估孩子，也不会自动执行任何事。": {
+    "en": "Prompts use only saved arrangements and goals. Turn them off anytime. They do not assess your child or carry out actions automatically.",
+    "zh-Hans": "仅根据已保存的安排和目标整理提示，可随时关闭。不会评估孩子，也不会自动执行任何事。"
+  },
+  "育儿资料仅在此设备加密保存，尚未云同步。更换设备不会自动带回这些记录。": {
+    "en": "Parenting data is encrypted on this device only, with no cloud sync. These records do not transfer automatically to another device.",
+    "zh-Hans": "育儿资料仅在此设备加密保存，尚未云同步。更换设备不会自动带回这些记录。"
+  },
+  "安排不会添加系统日历，也不会发送提醒。记录会保留直到你主动删除。": {
+    "en": "Arrangements are not added to the system calendar and do not send reminders. Records are kept until you delete them.",
+    "zh-Hans": "安排不会添加系统日历，也不会发送提醒。记录会保留直到你主动删除。"
+  },
+  "辅助对话沿用现有模型连接和发送授权。只有你明确发送的内容才会交给已连接的服务处理。": {
+    "en": "The supporting chat uses the existing model connection and sending authorization. Only content you explicitly send is processed by the connected service.",
+    "zh-Hans": "辅助对话沿用现有模型连接和发送授权。只有你明确发送的内容才会交给已连接的服务处理。"
+  },
+  "重新读取本机记录": {
+    "en": "Reload local records",
+    "zh-Hans": "重新读取本机记录"
+  },
+  "数据与边界": {
+    "en": "Data and limits",
+    "zh-Hans": "数据与边界"
+  },
+  "成长也在日常里": {
+    "en": "Growth happens in everyday moments",
+    "zh-Hans": "成长也在日常里"
+  },
+  "孩子的小目标": {
+    "en": "Your child’s small goals",
+    "zh-Hans": "孩子的小目标"
+  },
+  "去成长页回顾": {
+    "en": "Review on the growth page",
+    "zh-Hans": "去成长页回顾"
+  },
+  "最近的成长观察": {
+    "en": "Recent growth observations",
+    "zh-Hans": "最近的成长观察"
+  },
+  "查看完整记录": {
+    "en": "View all records",
+    "zh-Hans": "查看完整记录"
+  },
+  "本页内容尚未保存。写下想做什么、什么时候做；AI 整理会打开辅助对话，发送前仍需按对话里的提示确认，也可手动填写下方安排。": {
+    "en": "Nothing on this page is saved yet. Write what you want to do and when. Using AI opens a supporting chat, where you still review the prompts before sending. You can also fill in the arrangement below yourself.",
+    "zh-Hans": "本页内容尚未保存。写下想做什么、什么时候做；AI 整理会打开辅助对话，发送前仍需按对话里的提示确认，也可手动填写下方安排。"
+  },
+  "AI 整理结果待核对 · 尚未保存": {
+    "en": "Review the AI result · Not saved",
+    "zh-Hans": "AI 整理结果待核对 · 尚未保存"
+  },
+  "放弃未保存的内容？": {
+    "en": "Discard unsaved changes?",
+    "zh-Hans": "放弃未保存的内容？"
+  },
+  "继续填写": {
+    "en": "Keep editing",
+    "zh-Hans": "继续填写"
+  },
+  "放弃并关闭": {
+    "en": "Discard and close",
+    "zh-Hans": "放弃并关闭"
+  },
+  "当前表单尚未保存，关闭后将丢弃这里的填写内容；已经发送的辅助对话会按对话原有方式保留。": {
+    "en": "This form has not been saved. Closing it discards your entries here. Messages already sent in the supporting chat are kept under the chat’s usual rules.",
+    "zh-Hans": "当前表单尚未保存，关闭后将丢弃这里的填写内容；已经发送的辅助对话会按对话原有方式保留。"
+  },
+  "这项内容不存在或已删除。": {
+    "en": "This item is missing or has been deleted.",
+    "zh-Hans": "这项内容不存在或已删除。"
+  },
+  "内容已更新，请重新打开后再保存。未保存输入仍保留。": {
+    "en": "This content has changed. Reopen it before saving. Your unsaved entries are kept.",
+    "zh-Hans": "内容已更新，请重新打开后再保存。未保存输入仍保留。"
+  },
+  "无法访问其他数据分区的内容。": {
+    "en": "Content in another data partition cannot be accessed.",
+    "zh-Hans": "无法访问其他数据分区的内容。"
+  },
+  "体验身份暂时无法找回。退出后，育儿记录仍加密保留在本机，但你可能无法再次访问。": {
+    "en": "The trial identity cannot be recovered right now. If you sign out, parenting records stay encrypted on this device, but you may no longer be able to access them.",
+    "zh-Hans": "体验身份暂时无法找回。退出后，育儿记录仍加密保留在本机，但你可能无法再次访问。"
+  },
+  "打开辅助对话": {
+    "en": "Open supporting chat",
+    "zh-Hans": "打开辅助对话"
+  },
+  "仅在此设备加密保存 · 尚未云同步 · 本机安排不会发送提醒 · 保留直到你删除": {
+    "en": "Encrypted on this device only · No cloud sync · Local arrangements send no reminders · Kept until you delete it",
+    "zh-Hans": "仅在此设备加密保存 · 尚未云同步 · 本机安排不会发送提醒 · 保留直到你删除"
+  },
+  "孩子资料已变更，请关闭此页后重新选择孩子。": {
+    "en": "The child’s profile has changed. Close this page and select the child again.",
+    "zh-Hans": "孩子资料已变更，请关闭此页后重新选择孩子。"
+  },
+  "这条安排已变更或删除，请关闭此页后查看最新内容。": {
+    "en": "This arrangement has changed or been deleted. Close this page to view the latest details.",
+    "zh-Hans": "这条安排已变更或删除，请关闭此页后查看最新内容。"
+  },
+  "原记录或安排已变更，请关闭此页后查看最新内容。": {
+    "en": "The original record or arrangement has changed. Close this page to view the latest details.",
+    "zh-Hans": "原记录或安排已变更，请关闭此页后查看最新内容。"
+  },
+  "已重新读取。请核对填写内容，再点击保存。": {
+    "en": "Reloaded. Review your entries, then tap Save.",
+    "zh-Hans": "已重新读取。请核对填写内容，再点击保存。"
+  },
+  "重新读取会保留表单内容，不会自动重试保存。": {
+    "en": "Reloading keeps your form entries. It does not retry saving automatically.",
+    "zh-Hans": "重新读取会保留表单内容，不会自动重试保存。"
+  },
+  "本机安排不会添加系统日历，也不会发送提醒。记录会保留直到你主动删除。": {
+    "en": "Local arrangements are not added to the system calendar and do not send reminders. Records are kept until you delete them.",
+    "zh-Hans": "本机安排不会添加系统日历，也不会发送提醒。记录会保留直到你主动删除。"
+  },
+  "当前使用辅助对话接续：需要在聊天发送并返回带回草稿，尚未提供原位 AI 整理。": {
+    "zh-Hans": "当前使用辅助对话接续：需要在聊天发送并返回带回草稿，尚未提供原位 AI 整理。",
+    "en": "This interim flow uses the helper chat: send there, then return to bring back the draft. In-place AI intake is not available yet."
+  },
+  "AI 整理暂时不可用。原话仍保留，可以继续手动填写。": {
+    "en": "AI organization is unavailable right now. Your original words are kept, and you can fill this in yourself.",
+    "zh-Hans": "AI 整理暂时不可用。原话仍保留，可以继续手动填写。"
+  },
+  "账号、输入或页面状态已变化，本次结果不会填回。原话仍保留。": {
+    "en": "The account, input, or page state changed. This result will not be filled in. Your original words are kept.",
+    "zh-Hans": "账号、输入或页面状态已变化，本次结果不会填回。原话仍保留。"
+  },
+  "本次整理尚未发送。原话已保留，可以重试原请求。": {
+    "en": "This request has not been sent. Your original words are kept. You can retry the same request.",
+    "zh-Hans": "本次整理尚未发送。原话已保留，可以重试原请求。"
+  },
+  "本次整理结果尚未确认。请读取原请求状态，不要重复发送。": {
+    "en": "The result is not confirmed yet. Check the original request instead of sending it again.",
+    "zh-Hans": "本次整理结果尚未确认。请读取原请求状态，不要重复发送。"
+  },
+  "本次整理未能完成。原话仍保留，可以手动填写或重新发起整理。": {
+    "en": "This request did not finish. Your original words are kept. Fill this in yourself or start a new request.",
+    "zh-Hans": "本次整理未能完成。原话仍保留，可以手动填写或重新发起整理。"
+  },
+  "整理记录无法安全保存，已停止请求。原文件与原话会保留。": {
+    "en": "The request record could not be saved securely, so the request was stopped. The original file and text are kept.",
+    "zh-Hans": "整理记录无法安全保存，已停止请求。原文件与原话会保留。"
+  },
+  "整理回复未通过格式或来源校验。原话仍保留，可以继续手动填写。": {
+    "en": "The reply did not pass format or source checks. Your original words are kept, and you can fill this in yourself.",
+    "zh-Hans": "整理回复未通过格式或来源校验。原话仍保留，可以继续手动填写。"
+  },
+  "当前表单尚未保存。关闭后将丢弃填写内容并停止接收本次整理结果；已经发出的请求不保证在服务端停止。": {
+    "en": "This form is not saved. Closing it discards your entries and stops receiving this result. A request already sent may still continue on the server.",
+    "zh-Hans": "当前表单尚未保存。关闭后将丢弃填写内容并停止接收本次整理结果；已经发出的请求不保证在服务端停止。"
+  },
+  "本页内容尚未保存。可以让小咪在这里整理，也可以手动填写下方安排；整理结果需要你核对和采用。": {
+    "en": "Nothing on this page is saved yet. Ask mimi to organize it here, or fill in the arrangement yourself. Review and adopt any suggested result explicitly.",
+    "zh-Hans": "本页内容尚未保存。可以让小咪在这里整理，也可以手动填写下方安排；整理结果需要你核对和采用。"
+  },
+  "点击后，将发送选定原话及当前时间、时区到现有已选 AI 服务，不会自动附上家庭档案。需要发送许可时会先请你确认。": {
+    "en": "This sends your selected words, the current time, and time zone to the selected AI service. Family profiles are not attached automatically. You will be asked to confirm any required sending permission first.",
+    "zh-Hans": "点击后，将发送选定原话及当前时间、时区到现有已选 AI 服务，不会自动附上家庭档案。需要发送许可时会先请你确认。"
+  },
+  "原话与回复只在小咪服务端临时内存处理，不写入长期记忆，临时内容最多可读取 15 分钟。模型服务商的数据处理方式以发送许可中的说明为准。": {
+    "en": "Your text and the reply are processed in temporary memory on mimi’s server, without being saved to long-term memory. Temporary content can be read for up to 15 minutes. The model provider handles data as described in the sending permission notice.",
+    "zh-Hans": "原话与回复只在小咪服务端临时内存处理，不写入长期记忆，临时内容最多可读取 15 分钟。模型服务商的数据处理方式以发送许可中的说明为准。"
+  },
+  "查看将发送的原话": {
+    "en": "Review the words to send",
+    "zh-Hans": "查看将发送的原话"
+  },
+  "整理记录的保存与清理": {
+    "en": "Request storage and cleanup",
+    "zh-Hans": "整理记录的保存与清理"
+  },
+  "本机为中断恢复加密暂存本次整理记录。超过 24 小时不再恢复，到期记录在下次打开或清理时处理。": {
+    "en": "An encrypted temporary record is kept on this device for interrupted requests. Records older than 24 hours cannot be restored and are handled the next time you open this page or run cleanup.",
+    "zh-Hans": "本机为中断恢复加密暂存本次整理记录。超过 24 小时不再恢复，到期记录在下次打开或清理时处理。"
+  },
+  "采用、取消或修改原话会清理独立的临时整理记录；表单中的原话和已保存安排的来源不受影响。清理失败时会提示，并保留不含原话的清理重试标识。": {
+    "en": "Adopting a result, cancelling, or changing your words clears the separate temporary request record. Your form text and saved arrangement sources are unaffected. If cleanup fails, a notice appears and identifiers containing no original text are kept for retry.",
+    "zh-Hans": "采用、取消或修改原话会清理独立的临时整理记录；表单中的原话和已保存安排的来源不受影响。清理失败时会提示，并保留不含原话的清理重试标识。"
+  },
+  "采用、取消或删除时会请求清理服务端临时内容，服务器仅保留请求标识和哈希以防重复。清理不能撤回已经发送给模型服务商的数据。": {
+    "en": "Adopting, cancelling, or deleting requests cleanup of temporary server content. The server keeps only request identifiers and hashes to prevent duplicates. Cleanup cannot retract data already sent to the model provider.",
+    "zh-Hans": "采用、取消或删除时会请求清理服务端临时内容，服务器仅保留请求标识和哈希以防重复。清理不能撤回已经发送给模型服务商的数据。"
+  },
+  "让小咪整理": {
+    "en": "Let mimi organize it",
+    "zh-Hans": "让小咪整理"
+  },
+  "已停止等待，本次结果不会填入。已经发出的请求不保证在服务端停止。": {
+    "en": "Waiting stopped. This result will not be filled in. A request already sent may still continue on the server.",
+    "zh-Hans": "已停止等待，本次结果不会填入。已经发出的请求不保证在服务端停止。"
+  },
+  "正在准备整理请求": {
+    "en": "Preparing your request",
+    "zh-Hans": "正在准备整理请求"
+  },
+  "小咪正在整理": {
+    "en": "mimi is organizing your words",
+    "zh-Hans": "小咪正在整理"
+  },
+  "等待你确认发送许可。未允许前不会发送这次整理。": {
+    "en": "Waiting for your sending permission. This request will not be sent before you allow it.",
+    "zh-Hans": "等待你确认发送许可。未允许前不会发送这次整理。"
+  },
+  "查看发送许可": {
+    "en": "Review sending permission",
+    "zh-Hans": "查看发送许可"
+  },
+  "重试本次整理": {
+    "en": "Retry this request",
+    "zh-Hans": "重试本次整理"
+  },
+  "重新发起整理": {
+    "en": "Start a new request",
+    "zh-Hans": "重新发起整理"
+  },
+  "本次整理的结果尚未确认。请检查原请求，避免重复发送。": {
+    "en": "This result is not confirmed yet. Check the original request to avoid sending it twice.",
+    "zh-Hans": "本次整理的结果尚未确认。请检查原请求，避免重复发送。"
+  },
+  "检查本次结果": {
+    "en": "Check this result",
+    "zh-Hans": "检查本次结果"
+  },
+  "恢复上次整理": {
+    "en": "Restore the previous request",
+    "zh-Hans": "恢复上次整理"
+  },
+  "读取上次整理，不会重新发送。点击会将上次的原话及孩子、目标选择带回此页，替换当前原话；安排名称和时间仍由你核对。": {
+    "en": "Read the previous request without sending it again. This brings back its original text, child, and goal selections, replacing the current original text. You still review the arrangement title and time.",
+    "zh-Hans": "读取上次整理，不会重新发送。点击会将上次的原话及孩子、目标选择带回此页，替换当前原话；安排名称和时间仍由你核对。"
+  },
+  "服务重启或 15 分钟后，服务端内容可能无法读取。恢复的本机原话可继续手动填写，不会因此在后台重复发送。": {
+    "en": "Server content may be unavailable after a restart or 15 minutes. You can use the restored local text to fill this in yourself. It will not be resent in the background.",
+    "zh-Hans": "服务重启或 15 分钟后，服务端内容可能无法读取。恢复的本机原话可继续手动填写，不会因此在后台重复发送。"
+  },
+  "本次临时整理记录尚未完成清理": {
+    "en": "Temporary request cleanup is incomplete",
+    "zh-Hans": "本次临时整理记录尚未完成清理"
+  },
+  "请先重试清理，再发起新的整理。表单原话和已保存的安排不受影响。": {
+    "en": "Retry cleanup before starting a new request. Your form text and saved arrangements are unaffected.",
+    "zh-Hans": "请先重试清理，再发起新的整理。表单原话和已保存的安排不受影响。"
+  },
+  "正在重试清理": {
+    "en": "Retrying cleanup",
+    "zh-Hans": "正在重试清理"
+  },
+  "重试清理": {
+    "en": "Retry cleanup",
+    "zh-Hans": "重试清理"
+  },
+  "删除本次整理记录": {
+    "en": "Delete this request record",
+    "zh-Hans": "删除本次整理记录"
+  },
+  "让小咪帮你整理": {
+    "en": "Let mimi help organize it",
+    "zh-Hans": "让小咪帮你整理"
+  },
+  "整理不会保存或确认安排，也不会创建日历或提醒。离开或切到后台会停止本页等待并尝试清理临时副本，不影响表单原话和已保存安排。": {
+    "en": "Organizing does not save or confirm an arrangement or create calendar events or reminders. Leaving this page or putting the app in the background stops waiting and attempts to clear temporary copies. Your form text and saved arrangements are unaffected.",
+    "zh-Hans": "整理不会保存或确认安排，也不会创建日历或提醒。离开或切到后台会停止本页等待并尝试清理临时副本，不影响表单原话和已保存安排。"
+  },
+  "停止等待本次整理": {
+    "en": "Stop waiting for this request",
+    "zh-Hans": "停止等待本次整理"
+  },
+  "整理建议 · 尚未采用或保存": {
+    "en": "Suggested result · Not adopted or saved",
+    "zh-Hans": "整理建议 · 尚未采用或保存"
+  },
+  "时间待补充，采用后仍需选择明确时间。": {
+    "en": "A time is still needed. Choose a specific time after adopting this result.",
+    "zh-Hans": "时间待补充，采用后仍需选择明确时间。"
+  },
+  "采用后会替换下方的安排名称和时间。你可以继续修改，原话会保留。": {
+    "en": "Adopting replaces the arrangement title and time below. You can keep editing, and your original words are kept.",
+    "zh-Hans": "采用后会替换下方的安排名称和时间。你可以继续修改，原话会保留。"
+  },
+  "采用整理结果": {
+    "en": "Adopt this result",
+    "zh-Hans": "采用整理结果"
+  },
+  "上次的原话已带回，但关联的孩子或目标已删除。请明确改选后重新整理，也可以手动填写。": {
+    "en": "The previous text is restored, but its child or goal has been deleted. Make a new selection before requesting AI again, or fill this in yourself.",
+    "zh-Hans": "上次的原话已带回，但关联的孩子或目标已删除。请明确改选后重新整理，也可以手动填写。"
+  },
+  "已读取上次整理。原话与选择已恢复；整理建议仍需你明确采用，才会填入安排。": {
+    "en": "The previous request has been read. Its text and selections are restored. Adopt the suggestion explicitly to fill in the arrangement.",
+    "zh-Hans": "已读取上次整理。原话与选择已恢复；整理建议仍需你明确采用，才会填入安排。"
+  },
+  "临时整理记录尚未清理完成。现有表单内容不变，请重试清理后再开始新的整理。": {
+    "en": "Temporary request cleanup is incomplete. Your current form stays unchanged. Retry cleanup before starting a new request.",
+    "zh-Hans": "临时整理记录尚未清理完成。现有表单内容不变，请重试清理后再开始新的整理。"
+  },
+  "当前服务版本尚未支持原位整理，未发送 AI 请求；原话已保留，可以继续手动填写。": {
+    "en": "This service version does not support inline organization. No AI request was sent. Your original words are kept, and you can fill this in yourself.",
+    "zh-Hans": "当前服务版本尚未支持原位整理，未发送 AI 请求；原话已保留，可以继续手动填写。"
+  },
+  "云端临时整理数据尚未确认清理，可以稍后重试清理。": {
+    "en": "Cleanup of temporary server data is not confirmed yet. You can retry cleanup later.",
+    "zh-Hans": "云端临时整理数据尚未确认清理，可以稍后重试清理。"
+  },
+  "保存草稿": {
+    "en": "Save draft",
+    "zh-Hans": "保存草稿"
+  },
+  "确认完成": {
+    "en": "Complete",
+    "zh-Hans": "确认完成"
+  },
+  "请补充本次改期的明确日期和钟点；不会沿用原安排时间。": {
+    "en": "Add a clear date and clock time for this change. The original time will not be reused.",
+    "zh-Hans": "请补充本次改期的明确日期和钟点；不会沿用原安排时间。"
+  },
+  "请补充一个明确日期和钟点，例如“明天下午五点”或“2027-02-18 17:00”。有歧义或夏令时变化的时间请手动选择后核对。": {
+    "en": "Add a clear date and clock time, such as tomorrow at 17:00 or 2027-02-18 17:00. For ambiguous times or daylight saving changes, choose and review the time manually.",
+    "zh-Hans": "请补充一个明确日期和钟点，例如“明天下午五点”或“2027-02-18 17:00”。有歧义或夏令时变化的时间请手动选择后核对。"
+  },
+  "育儿调整历史关联无效，已保留原数据。": {
+    "en": "The arrangement change history has invalid references. Original data is preserved.",
+    "zh-Hans": "育儿调整历史关联无效，已保留原数据。"
+  },
+  "请先修改安排，再确认调整。": {
+    "en": "Change the arrangement before confirming.",
+    "zh-Hans": "请先修改安排，再确认调整。"
+  },
+  "安排已发生其他修改，不能撤销这次调整。": {
+    "en": "This arrangement has changed again. This adjustment can no longer be undone.",
+    "zh-Hans": "安排已发生其他修改，不能撤销这次调整。"
+  },
+  "同一时间的安排已变化，请重新核对可能冲突的事项。": {
+    "en": "The arrangements at this time have changed. Review the possible conflicts again.",
+    "zh-Hans": "同一时间的安排已变化，请重新核对可能冲突的事项。"
+  },
+  "上次整理不属于本页的原安排和版本，不能填入。请打开原安排后重新核对。": {
+    "en": "The previous request belongs to a different arrangement or version. Open the original arrangement to review it.",
+    "zh-Hans": "上次整理不属于本页的原安排和版本，不能填入。请打开原安排后重新核对。"
+  },
+  "原安排": {
+    "en": "Original arrangement",
+    "zh-Hans": "原安排"
+  },
+  "原来": {
+    "en": "Before",
+    "zh-Hans": "原来"
+  },
+  "只恢复同一原安排和版本的整理，不会重新发送。恢复的本次原话会替换当前输入，时间建议仍需你采用和确认。": {
+    "en": "Recover only a request for this same arrangement and version, without sending again. Its change instructions replace this input; adopting and confirming the suggested time are still separate.",
+    "zh-Hans": "只恢复同一原安排和版本的整理，不会重新发送。恢复的本次原话会替换当前输入，时间建议仍需你采用和确认。"
+  },
+  "可能同一时间": {
+    "en": "Possibly at the same time",
+    "zh-Hans": "可能同一时间"
+  },
+  "我已核对这些同钟点安排，仍要保存": {
+    "en": "I have reviewed these arrangements at the same time and want to save",
+    "zh-Hans": "我已核对这些同钟点安排，仍要保存"
+  },
+  "撤销上次调整": {
+    "en": "Undo last adjustment",
+    "zh-Hans": "撤销上次调整"
+  },
+  "撤销后时间": {
+    "en": "Time after undo",
+    "zh-Hans": "撤销后时间"
+  },
+  "整理只提出时间建议，采用后仍需点击“确认调整”。不会保存安排或设置提醒；离开或切到后台会停止本页等待并尝试清理临时副本。": {
+    "en": "AI only suggests a time. After adopting it, confirm the adjustment to save. It does not save arrangements or set reminders. Leaving or backgrounding stops this page's wait and attempts to clear temporary copies.",
+    "zh-Hans": "整理只提出时间建议，采用后仍需点击“确认调整”。不会保存安排或设置提醒；离开或切到后台会停止本页等待并尝试清理临时副本。"
+  },
+  "新时间还不明确，原安排时间保持不变。": {
+    "en": "The new time is unclear. The original arrangement time is unchanged.",
+    "zh-Hans": "新时间还不明确，原安排时间保持不变。"
+  },
+  "本次由家长手动调整": {
+    "en": "This change was entered manually",
+    "zh-Hans": "本次由家长手动调整"
+  },
+  "本次解释时区": {
+    "en": "Time zone for this request",
+    "zh-Hans": "本次解释时区"
+  },
+  "本次调整待确认": {
+    "en": "Review this adjustment",
+    "zh-Hans": "本次调整待确认"
+  },
+  "查看调整记录": {
+    "en": "View adjustment history",
+    "zh-Hans": "查看调整记录"
+  },
+  "核对撤销后的同钟点安排": {
+    "en": "Review arrangements at the restored time",
+    "zh-Hans": "核对撤销后的同钟点安排"
+  },
+  "点击后，只发送原安排名称、原时间、本次原话及当前时间、解释时区到现有已选 AI 服务。不会自动附上孩子档案、目标内容或其他安排；需要发送许可时会先请你确认。": {
+    "en": "This sends only the original title and time, these change instructions, the current time, and the interpretation time zone to your selected AI service. Child profiles, goal content, and other arrangements are not attached. Any required sending consent is requested first.",
+    "zh-Hans": "点击后，只发送原安排名称、原时间、本次原话及当前时间、解释时区到现有已选 AI 服务。不会自动附上孩子档案、目标内容或其他安排；需要发送许可时会先请你确认。"
+  },
+  "确认撤销": {
+    "en": "Confirm undo",
+    "zh-Hans": "确认撤销"
+  },
+  "确认调整": {
+    "en": "Confirm adjustment",
+    "zh-Hans": "确认调整"
+  },
+  "让小咪帮你调整": {
+    "en": "Let mimi help adjust",
+    "zh-Hans": "让小咪帮你调整"
+  },
+  "让小咪整理改动": {
+    "en": "Ask mimi to organize the change",
+    "zh-Hans": "让小咪整理改动"
+  },
+  "请核对这次调整，再点击右上角的“确认调整”。最初的原话会保留。": {
+    "en": "Review this change, then use Confirm adjustment in the top corner. The original source is preserved.",
+    "zh-Hans": "请核对这次调整，再点击右上角的“确认调整”。最初的原话会保留。"
+  },
+  "调整后": {
+    "en": "After",
+    "zh-Hans": "调整后"
+  },
+  "调整建议 · 尚未采用或保存": {
+    "en": "Suggested change · not adopted or saved",
+    "zh-Hans": "调整建议 · 尚未采用或保存"
+  },
+  "调整时间": {
+    "en": "Changed at",
+    "zh-Hans": "调整时间"
+  },
+  "这些已安排事项在同一分钟。没有时长信息，暂不能判断是否重叠或能否同时进行。": {
+    "en": "These planned arrangements start in the same minute. Without durations, mimi cannot determine whether they overlap or can happen together.",
+    "zh-Hans": "这些已安排事项在同一分钟。没有时长信息，暂不能判断是否重叠或能否同时进行。"
+  },
+  "这条安排或账本已变更，请关闭此页，查看最新内容后重新调整。": {
+    "en": "This arrangement or ledger has changed. Close this page, review the latest details, and adjust again.",
+    "zh-Hans": "这条安排或账本已变更，请关闭此页，查看最新内容后重新调整。"
+  },
+  "这次想怎么调整": {
+    "en": "What would you like to change?",
+    "zh-Hans": "这次想怎么调整"
+  },
+  "采用只填写新时间，不会更改名称、孩子、目标或最初的原话。请继续核对后确认调整。": {
+    "en": "Adopting fills only the new time. The title, child, goal, and original source stay the same. Review and confirm the adjustment to save.",
+    "zh-Hans": "采用只填写新时间，不会更改名称、孩子、目标或最初的原话。请继续核对后确认调整。"
   }
 }

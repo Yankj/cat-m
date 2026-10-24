@@ -33,9 +33,27 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     }
 }
 
+/// A ready local ledger belongs to this exact chat, scope, subject and verified account generation.
+/// Receipt previews cannot create it; replacing it never reauthorizes an older Store.
+@MainActor struct ParentingWorkspacePresentation {
+    struct Identity: Hashable {
+        let chat: ObjectIdentifier
+        let profile: UUID
+        let workspace: UUID
+        let subject: UUID
+        let token: AccountToken
+    }
+    let id: Identity
+    let model: ParentingWorkspaceModel
+}
+
 @MainActor final class NativeAuthApplicationModel: ObservableObject {
     @Published private(set) var state = NativeAuthSnapshot(phase: .signedOut, user: nil, generation: 0, message: nil)
     @Published private(set) var chat: ConversationFirstModel?
+    @Published private(set) var parentingWorkspace: ParentingWorkspacePresentation?
+    private var confirmedParentingChatID: ObjectIdentifier?
+    private var canonicalOpeningID: UUID?
+    private var parentingCipher: any ParentingWorkspaceCipher = ParentingPersistentCipher()
     @Published private(set) var error: String?
     @Published private(set) var registrationNotice: String?
     @Published private(set) var actionBusy = false
@@ -66,6 +84,10 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     /// recovery task would start an experience.
     static var afterLocalReadHook:(@MainActor () async -> Void)?
     static var offlineRecoveryWillStartExperience:(@MainActor () -> Void)?
+    #if DEBUG
+    /// A paused scope transition for offline lifecycle tests; never installed by production composition.
+    static var canonicalWorkspaceOpeningForTesting: (@MainActor () async -> Void)?
+    #endif
     @Published private(set) var recoveryImpossible=false
     /// Launch-loader fix: the session cannot be resumed without the explicit 「重新开始」. The UI shows a small
     /// non-blocking capsule for this; it is never a reason to hold a full-screen loader.
@@ -183,9 +205,10 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         let gate = catOnboarding.initialState(fixture: fixture); onboarding = gate; needsOnboarding = gate.needsOnboarding
     }
     // Test initializer is mock-only; production continues using the configured Keychain.
-    init(configuration:NativeAuthConfiguration,manager:NativeAuthSessionManager,vault:any NativeAuthVault,barrier:any NativeAuthLogoutBarrier,root:URL,workspaceResolver:(any NativeApplicationScopeResolving)? = nil,connectionMonitor:ConnectionMonitor? = nil,retryClock:any NativeWorkspaceRetryClock = NativeWorkspaceSystemClock(),retrySchedule:NativeWorkspaceRetrySchedule = .production) {
+    init(configuration:NativeAuthConfiguration,manager:NativeAuthSessionManager,vault:any NativeAuthVault,barrier:any NativeAuthLogoutBarrier,root:URL,workspaceResolver:(any NativeApplicationScopeResolving)? = nil,connectionMonitor:ConnectionMonitor? = nil,retryClock:any NativeWorkspaceRetryClock = NativeWorkspaceSystemClock(),retrySchedule:NativeWorkspaceRetrySchedule = .production,parentingCipher:any ParentingWorkspaceCipher = ParentingPersistentCipher()) {
         self.configuration=configuration;self.manager=manager;self.localVault=vault;self.localBarrier=barrier;self.root=root;self.isFixture=true
         self.workspaceResolver=workspaceResolver;self.connectionMonitor=connectionMonitor ?? ConnectionMonitor(start:false);self.retryClock=retryClock;self.retrySchedule=retrySchedule
+        self.parentingCipher=parentingCipher
         onboarding = .completed; needsOnboarding = false
     }
     private var receiptURL:URL { root.appendingPathComponent("last-local-workspace.json") }
@@ -247,12 +270,16 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             #if DEBUG
             selected=catDemoBackendSwitch.select(selected)
             #endif
-            let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:url.deletingLastPathComponent().appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:backend),subjectID:partition.subject)
+            let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:url.deletingLastPathComponent().appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:backend),subjectID:partition.subject,parentingIntakeFactory:isFixture ? nil : NativeParentingIntakeComposition.factory(configuration:chatConfiguration,credentials:credentials,subjectID:partition.subject))
             preview.setNetworkAdmissionAllowed(false);await preview.start()
             guard !Task.isCancelled else { Task { await preview.deactivate(persistDrafts:false) }; return }
             guard attachIfCurrent(preview,openEpoch:openEpoch,token:openToken) else { return }
             self.backend=backend;namespace=partition.namespace
             installUIDecisionSubmitter(preview.service,scope:partition.scope)
+            // Decoding an old receipt proves no canonical scope: older configured-scope
+            // provisional opens wrote the same three fields. Preserve those bytes and wait for
+            // one actual scope resolution before granting ledger writes. Confirmed receipts work offline.
+            if receipt.canonicalScope == true { confirmedParentingChatID = ObjectIdentifier(preview); refreshParentingWorkspace() }
         } catch { self.error=NativeAuthError.storage.localizedDescription }
     }
     /// catpaw.ui.v1 decisions for the chat just built (scope-bound; #36's protocol has no scope).
@@ -560,6 +587,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         // Codex p89c-c: passive invalidation (loginRequired / signedOut / storageBlocked from the session manager) closes the
         // shared account barrier synchronously on arrival — before any await and without waiting for a SwiftUI `.task`.
         Self.applyAccountBarrier(snapshot, fresh: false)
+        refreshParentingWorkspace()
         guard let manager, !Task.isCancelled,!logoutInProgress else { return }
         let openingEpoch=lifecycleEpoch
         let current = await manager.snapshot()
@@ -567,11 +595,12 @@ struct NativeWorkspaceRetrySchedule: Sendable {
               current.phase == snapshot.phase, current.user == snapshot.user else { return }
         Self.applyAccountBarrier(snapshot, fresh: true)   // verified-current snapshot may (re)activate an account
         state = snapshot
+        refreshParentingWorkspace()
         if snapshot.phase == .restoring { chat?.setNetworkAdmissionAllowed(false);return }
         if [.authenticated,.refreshing].contains(snapshot.phase), let user = snapshot.user, let configuration {
             if snapshot.phase == .refreshing {
                 chat?.setNetworkAdmissionAllowed(false)
-                if let flight=workspaceFlight {flight.task.cancel();workspaceFlight=nil;wakeRetry()}
+                if let flight=workspaceFlight {flight.task.cancel();workspaceFlight=nil;canonicalOpeningID=nil;wakeRetry()}
                 workspaceReadyKey=nil;return
             }
             let key=WorkspaceKey(lifecycleEpoch:openingEpoch,generation:snapshot.generation,subject:user.id)
@@ -580,7 +609,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             // A locally opened receipt remains read-only. Logout owns detachment and invalid-session
             // recovery owns the explicit restart action; neither path grants network admission.
             chat?.setNetworkAdmissionAllowed(false)
-            if let flight=workspaceFlight {flight.task.cancel();workspaceFlight=nil;wakeRetry()}
+            if let flight=workspaceFlight {flight.task.cancel();workspaceFlight=nil;canonicalOpeningID=nil;wakeRetry()}
             workspaceReadyKey=nil
             if snapshot.phase == .loginRequired {
                 recoveryImpossible=true;requiresSessionRestart=true;error=NativeAuthError.sessionRecoveryRequired.localizedDescription
@@ -604,7 +633,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     private func beginWorkspaceResolution(key:WorkspaceKey,user:NativeAuthUser,configuration:NativeAuthConfiguration) {
         if workspaceReadyKey == key,chat?.networkAdmissionAllowed == true {return}
         if workspaceFlight?.key == key {return}
-        workspaceFlight?.task.cancel();wakeRetry();workspaceReadyKey=nil
+        workspaceFlight?.task.cancel();canonicalOpeningID=nil;wakeRetry();workspaceReadyKey=nil
         // Open local chat immediately — do not gate UI on workspace/model reachability.
         Task { [weak self] in await self?.admitProvisionalChat(user: user, configuration: configuration) }
         let id=UUID()
@@ -662,7 +691,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     /// that completed while the open was suspended can never reattach a chat. With an account token captured at open start,
     /// the attach itself runs inside AccountEpoch.commit(token) (atomic with signOut / activate).
     private func attachIfCurrent(_ opened: ConversationFirstModel, openEpoch: Int, token: AccountToken?, provisional: Bool = false) -> Bool {
-        let current = chat == nil && !logoutInProgress && lifecycleEpoch == openEpoch && !(provisional && requiresSessionRestart)
+        let current = chat == nil && canonicalOpeningID == nil && !logoutInProgress && lifecycleEpoch == openEpoch && !(provisional && requiresSessionRestart)
         let attached = current && (token.map { t in AccountEpoch.shared.commit(t) { chat = opened; return true } ?? false } ?? { chat = opened; return true }())
         if !attached { Task { await opened.deactivate(persistDrafts:false) } }   // never attached: its draft is stale
         if attached { didAttachChat(opened) }
@@ -671,6 +700,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     /// Every account-chat attach: the deferred first-run flag is written, and a draft typed into the launch shell moves
     /// into the account chat (only into an empty composer; never across a logout). The shell keeps nothing.
     private func didAttachChat(_ opened: ConversationFirstModel) {
+        refreshParentingWorkspace()
         LaunchTrace.mark("chat.attached", opened.loaded ? "loaded" : "loading", once: true)
         launchSlow = false; launchChatStalled = false
         if firstRunMarkPending { firstRunMarkPending = false; catOnboarding.markCompleted() }
@@ -681,6 +711,20 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         if opened.draft.isEmpty { opened.editDraft(carried) }
         shell.editDraft("")
     }
+    private func refreshParentingWorkspace() {
+        guard let chat, let subject = chat.trustedSubjectID,
+              confirmedParentingChatID == ObjectIdentifier(chat),
+              state.user?.id == subject, let token = Self.principal(for: subject),
+              AccountEpoch.shared.isValid(token) else {
+            parentingWorkspace = nil
+            return
+        }
+        let identity = ParentingWorkspacePresentation.Identity(chat: ObjectIdentifier(chat),
+            profile: chat.scope.profileID, workspace: chat.scope.workspaceID, subject: subject, token: token)
+        guard parentingWorkspace?.id != identity else { return }
+        parentingWorkspace = .init(id: identity, model: ParentingWorkspaceModel(repository: chat.repository,
+            scope: chat.scope, subjectID: subject, cipher: parentingCipher))
+    }
     private func workspaceKeyIsCurrent(_ key:WorkspaceKey,user:NativeAuthUser) async -> Bool {
         guard let manager,!logoutInProgress,key.lifecycleEpoch == lifecycleEpoch else{return false}
         let current=await manager.snapshot()
@@ -688,7 +732,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     }
     /// Local chat for entry/offline. Network stays closed until resolveWorkspace admits for real.
     private func admitProvisionalChat(user: NativeAuthUser, configuration: NativeAuthConfiguration) async {
-        guard chat == nil, !logoutInProgress, !requiresSessionRestart else { return }
+        guard chat == nil, canonicalOpeningID == nil, !logoutInProgress, !requiresSessionRestart else { return }
         let openEpoch = lifecycleEpoch, openToken = Self.principal(for: user.id)   // captured at open start
         let serverScope = configuration.serverScopeID
             ?? provisionalScope(for: user.id)
@@ -709,8 +753,10 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             #if DEBUG
             selected = catDemoBackendSwitch.select(selected)
             #endif
-            let opened = ConversationFirstModel(repository: repository, service: ConversationSessionService(repository: repository, backend: selected, resilience: ConnectionMonitorResilience(), outbox: ConversationOutbox(fileURL: directory.appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString), scope: partition.scope, imageStore: imageStore, taskPlanService: isFixture ? nil : ConversationTaskPlanService(repository: repository, scope: partition.scope, backend: http), artifactEditService: isFixture ? nil : ConversationArtifactEditService(repository: repository, scope: partition.scope, backend: http), taskActionService: isFixture ? nil : ConversationTaskActionService(repository: repository, scope: partition.scope, backend: http), taskControlService: isFixture ? nil : ConversationTaskControlService(repository: repository, scope: partition.scope, backend: http), memoryService: memory, inboxService: isFixture ? nil : ConversationInboxService(reference: .init(scope: partition.scope, serverScopeID: chatConfiguration.serverScopeID, subjectID: partition.subject), backend: http), subjectID: partition.subject)
-            try? await saveLocalReceipt(.init(issuer: configuration.issuer, subject: user.id, serverScopeID: serverScope))
+            let opened = ConversationFirstModel(repository: repository, service: ConversationSessionService(repository: repository, backend: selected, resilience: ConnectionMonitorResilience(), outbox: ConversationOutbox(fileURL: directory.appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString), scope: partition.scope, imageStore: imageStore, taskPlanService: isFixture ? nil : ConversationTaskPlanService(repository: repository, scope: partition.scope, backend: http), artifactEditService: isFixture ? nil : ConversationArtifactEditService(repository: repository, scope: partition.scope, backend: http), taskActionService: isFixture ? nil : ConversationTaskActionService(repository: repository, scope: partition.scope, backend: http), taskControlService: isFixture ? nil : ConversationTaskControlService(repository: repository, scope: partition.scope, backend: http), memoryService: memory, inboxService: isFixture ? nil : ConversationInboxService(reference: .init(scope: partition.scope, serverScopeID: chatConfiguration.serverScopeID, subjectID:partition.subject), backend: http), subjectID:partition.subject,parentingIntakeFactory:isFixture ? nil : NativeParentingIntakeComposition.factory(configuration:chatConfiguration,credentials:credentials,subjectID:partition.subject))
+            // An unresolved scope must not replace a confirmed receipt. In particular, this
+            // provisional open may finish after the resolver saved the canonical partition.
+            // Its chat remains internal until resolution; only admitWorkspace writes the receipt.
             guard chat == nil, !logoutInProgress else { return }
             opened.setNetworkAdmissionAllowed(false)
             await opened.start()
@@ -776,14 +822,25 @@ struct NativeWorkspaceRetrySchedule: Sendable {
 
     private func admitWorkspace(serverScope:UUID,key:WorkspaceKey,user:NativeAuthUser,configuration:NativeAuthConfiguration) async {
         guard let manager else{return}
+        // Scope resolution owns the upcoming attachment across disk/teardown awaits. A late receipt
+        // or provisional open cannot steal the empty chat slot and silently abort canonical admission.
+        guard await workspaceKeyIsCurrent(key,user:user) else{return}
+        let openingID=UUID()
+        canonicalOpeningID=openingID
+        defer { if canonicalOpeningID == openingID { canonicalOpeningID=nil } }
         let partition=AuthenticatedLocalPartition(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope)
         if namespace == partition.namespace,let chat {
-            try? await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
+            try? await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope,canonicalScope:true))
             guard await workspaceKeyIsCurrent(key,user:user) else{return}
+            confirmedParentingChatID=ObjectIdentifier(chat);refreshParentingWorkspace()
             if chat.error == error {chat.error=nil}
             chat.setNetworkAdmissionAllowed(true);workspaceReadyKey=key;error=nil;recoveryImpossible=false;requiresSessionRestart=false;return
         }
         await detachChat()
+        guard await workspaceKeyIsCurrent(key,user:user) else{return}
+        #if DEBUG
+        if isFixture, let hook=Self.canonicalWorkspaceOpeningForTesting { await hook() }
+        #endif
         guard await workspaceKeyIsCurrent(key,user:user) else{return}
         do {
             let directory=root.appendingPathComponent(partition.namespace,isDirectory:true)
@@ -802,10 +859,10 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             #if DEBUG
             selected=catDemoBackendSwitch.select(selected)
             #endif
-            let opened=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:directory.appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:http),subjectID:partition.subject)
-            try await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
+            let opened=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:directory.appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:http),subjectID:partition.subject,parentingIntakeFactory:isFixture ? nil : NativeParentingIntakeComposition.factory(configuration:chatConfiguration,credentials:credentials,subjectID:partition.subject))
+            try await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope,canonicalScope:true))
             guard await workspaceKeyIsCurrent(key,user:user),chat == nil else{return}
-            opened.setNetworkAdmissionAllowed(true);chat=opened;didAttachChat(opened);installUIDecisionSubmitter(opened.service,scope:partition.scope);namespace=partition.namespace
+            opened.setNetworkAdmissionAllowed(true);chat=opened;confirmedParentingChatID=ObjectIdentifier(opened);didAttachChat(opened);installUIDecisionSubmitter(opened.service,scope:partition.scope);namespace=partition.namespace
             workspaceReadyKey=key;error=nil;recoveryImpossible=false;requiresSessionRestart=false
         } catch {chat?.setNetworkAdmissionAllowed(false);self.error="此账号的本地存储无法打开；原文件已保留。";recoveryImpossible=true}
     }
@@ -882,6 +939,8 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     private func takeChat() -> (ConversationFirstModel?,NativeChatHTTPBackend?,String?) {
         let previous = chat
         chat = nil
+        parentingWorkspace = nil
+        confirmedParentingChatID = nil
         uiDecisionSubmitter = nil
         GenerativeBlockStore.shared.submitter = nil
         DeviceCallHub.submitter = nil
@@ -1068,7 +1127,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         warmup?.cancel();recoveryPathWait?.cancel();recoveryPathWait=nil
         offlineRecoveryTask?.cancel();offlineRecoveryTask=nil   // p89g-2
         launchShell?.editDraft("")   // B1: a shell draft typed before the identity resolved belongs to no one after logout
-        workspaceFlight?.task.cancel();workspaceFlight=nil;workspaceReadyKey=nil;wakeRetry()
+        workspaceFlight?.task.cancel();workspaceFlight=nil;canonicalOpeningID=nil;workspaceReadyKey=nil;wakeRetry()
         defer {logoutInProgress=false;actionBusy=false;recoveryImpossible=false;requiresSessionRestart=false}
         signOutTrace?("firstAwait")
         Self.registerDeviceParkedSources()

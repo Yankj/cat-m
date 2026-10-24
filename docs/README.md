@@ -17,6 +17,7 @@
 
 | 内容 | 入口 |
 |---|---|
+| 育儿核心交互与本机实现 | [今天、孩子与成长及状态规格](design/family-companion/parenting-core.md)；最新实现与验证只在[主计划](status/master-plan.md)维护 |
 | 家庭成长助理总交接 | [2026-10-23本地与云端总handoff](acceptance/family-companion/handoff-2026-10-23.md)、[工作树与运行库存](acceptance/family-companion/handoff-inventory-2026-10-23.json)；历史报告按其日期与候选解释，实时状态见主计划 |
 | 独立家庭官网候选 | [固定源码与素材](https://github.com/Yankj/mimi/tree/7ca0c4535dbfb6419a5000eab8275d08be051ceb/apps/website/family)、[设计](https://github.com/Yankj/mimi/blob/7ca0c4535dbfb6419a5000eab8275d08be051ceb/docs/design/family-companion/website.md)、[本地验证记录](https://github.com/Yankj/mimi/blob/7ca0c4535dbfb6419a5000eab8275d08be051ceb/docs/acceptance/family-website-2026-10-23.md)；分支独立保存，当前状态见主计划 |
 | 长任务开发与对话交互 | [启动合同](planning/AF-1/development-start-contract.md)、[可复制prompt](planning/AF-1/long-task-development-prompt.md)、[CGUI-1](design/conversation-generative-ui-spec.md)、[10项验收](acceptance/conversation-generative-ui-acceptance.md) |

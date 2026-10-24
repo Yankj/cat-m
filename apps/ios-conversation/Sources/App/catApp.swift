@@ -12,7 +12,7 @@ import AppIntents
     #endif
     var isP0Fixture:Bool {
         #if DEBUG
-        return P0ExperienceFixture.scenario != nil
+        return ParentingUITestFixture.isRequested || P0ExperienceFixture.scenario != nil
         #else
         return false
         #endif
@@ -20,6 +20,11 @@ import AppIntents
     private(set) var loginSession: SupabaseUserAccessSession?
     init() {
         #if DEBUG
+        if ParentingUITestFixture.isRequested {
+            do { p0Model = try ParentingUITestFixture.make() }
+            catch { self.error = error.localizedDescription }
+            return
+        }
         guard let test = P0ExperienceFixture.launchEnvironment["CF_UI_TEST_STORE"], UUID(uuidString:test) != nil else { model = nil; error = nil; return }
         #else
         model = nil; error = nil; return
@@ -77,6 +82,7 @@ import AppIntents
     func startFixture() async {
         #if DEBUG
         guard let pending=p0Model,model == nil else { return }
+        if ParentingUITestFixture.isRequested { model = pending; return }
         do {
             if P0ExperienceFixture.scenario?.hasPrefix("p0-ui-accepted-work")==true,
                let testStore=P0ExperienceFixture.launchEnvironment["CF_UI_TEST_STORE"],UUID(uuidString:testStore) != nil,
@@ -116,7 +122,6 @@ import AppIntents
     @StateObject private var auth = NativeAuthApplicationModel()
     @StateObject private var oauth = NativeOAuthCoordinator()   // feat/oauth-github-google
     @Environment(\.scenePhase) private var scene
-    @State private var calendarScan: Task<Void, Never>?
     /// launch-v2 (方块, /workspace/codex-review/launch-v2/SPEC.md): every launch's first frame is catLaunchStatic, a pixel
     /// copy of Base.lproj/LaunchScreen.storyboard (glyph + slogan), then ONE 220 ms fade-and-rise (Reduce Motion: 200 ms
     /// fade) onto the chat or onboarding. No loop, no loader, no minimum hold; the chat shows its own state if it is slow.
@@ -128,6 +133,9 @@ import AppIntents
         // Launch path: these are a handful of dictionary inserts (measured via LaunchTrace "adapters.registered"). They stay
         // synchronous on purpose — a chat restored from disk on the 2nd launch renders its catpaw-card fences in frame 1.
         LaunchTrace.mark("app.init")
+        #if DEBUG
+        ParentingUITestFixture.installNetworkGuard()
+        #endif
         GenerativeBlockAdapter.registerWithMarkdown()
         MemorySavedChipAdapter.register() // wave2 V1
         DeviceStatusCardAdapter.register() // wave2 V3 receipt + permission cards
@@ -139,7 +147,7 @@ import AppIntents
         #if DEBUG && os(iOS)
         // PR90g (QA only): ProactiveNotificationAuthUITests launches with this flag so the system prompt appears and can be
         // allowed once; simctl privacy cannot pre-grant notifications. Debug builds only; no effect without the flag.
-        if CommandLine.arguments.contains("-CatpawRequestNotificationAuth") {
+        if !ParentingUITestFixture.isRequested, CommandLine.arguments.contains("-CatpawRequestNotificationAuth") {
             Task { _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) }
         }
         #endif
@@ -148,7 +156,9 @@ import AppIntents
         WindowGroup {
             LaunchHandoff { Group {
                 #if DEBUG
-                if let model = synthetic.chat {
+                if ParentingUITestFixture.isRequested {
+                    primaryView
+                } else if let model = synthetic.chat {
                     ConversationFirstView(model:model,accountLabel:synthetic.fixtureIdentity,restrictToFrozenFixture:true)
                         .safeAreaInset(edge:.top) { VStack { Text(synthetic.fixtureIdentity ?? ui("明确合成测试")).font(.caption).accessibilityIdentifier("fixture.identity"); Button(ui("运行冻结合成报告")) { Task { await synthetic.sendFrozenCase() } }.disabled(!synthetic.ready || synthetic.submitted).accessibilityIdentifier("fixture.run"); if let error = synthetic.error { Text(error).accessibilityIdentifier("fixture.error") } }.padding(8).background(catColors.panel) }
                         .task { await synthetic.loadFrozenCase() }
@@ -158,13 +168,26 @@ import AppIntents
                 #endif
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity) }
-            .onOpenURL { url in catRouteCenter.shared.pending = catAppRoute(url: url) }
+            .onOpenURL { url in
+                #if DEBUG
+                if ParentingUITestFixture.isRequested { return }
+                #endif
+                catRouteCenter.shared.pending = catAppRoute(url: url)
+            }
             .catpawInAppBanner()
             .environment(\.catpawOAuth, oauth)
             .nativeOAuthSwitchConfirmation(oauth)
-            .task { bindOAuth() }
+            .task {
+                #if DEBUG
+                if ParentingUITestFixture.isRequested { return }
+                #endif
+                bindOAuth()
+            }
             #if DEBUG || DEVICE_TRIAL
             .task {
+                #if DEBUG
+                if ParentingUITestFixture.isRequested { return }
+                #endif
                 // Acceptance: `defaults write … catOpenURL catpawm://tasks` or env CATPAW_ACCEPTANCE_OPEN_URL.
                 let raw = ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_OPEN_URL"]
                     ?? UserDefaults.standard.string(forKey: "CatpawOpenURL")
@@ -180,43 +203,46 @@ import AppIntents
             }
             #endif
             .task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
-                .onChange(of:scene) { _, phase in if phase == .active { scheduleCalendarScan() }; if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
+                .onChange(of:scene) { _, phase in if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
         }
     }
-    /// SPEC-E §7: the calendar scan never lands in the launch, landing-entrance or tap windows. It runs ≥3 s after the
-    /// landing or chat is stable (landing settled / onboarding finished and the first-run transition done).
-    private func scheduleCalendarScan() {
-        calendarScan?.cancel()
-        calendarScan = Task { @MainActor in
-            // Fixture builds keep their own path; otherwise EventKit is touched only once the account is resolved and its own
-            // chat is up (never for the account-neutral launch chat, the landing, or inside the tap transition).
-            let busy: @MainActor () -> Bool = { bootstrap.model == nil && !bootstrap.isP0Fixture && (!auth.deviceCapabilitiesAllowed || FirstRunTransition.shared.phase == .leaving) }
-            while !Task.isCancelled, busy() { try? await Task.sleep(nanoseconds: 250_000_000) }
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            while !Task.isCancelled, busy() { try? await Task.sleep(nanoseconds: 250_000_000) }
-            guard !Task.isCancelled else { return }
-            LaunchTrace.mark("calendar.scan")
-            await ProactiveEngine.shared.scanCalendar(); await ProactiveEngine.shared.prescheduleNextEvent()
-        }
-    }
-    /// Chat surface for the root gate: the account's chat, or — never a loader and never another account's data — the
-    /// storage-free launch shell rendered by the SAME ConversationFirstView (NoBug B1/B2): identical nav bar, title capsule
-    /// and composer frames, starter-card slots kept empty. The account chat replaces it in place; only content fades in.
+    /// Account resolution has no composer or family data. The existing authentication retry remains available.
     @ViewBuilder private var chatSurface: some View {
         if let model = auth.chat { accountChat(model) }
-        else if let shell = auth.launchShell, !auth.isFixture {
-            ConversationFirstView(model:shell,launchShell:true)
-                .onAppear { LaunchTrace.mark("chat.firstFrame", "shell", once: true) }
-                .overlay(alignment:.top) { LaunchStatusOverlay(auth:auth) }
-                .task { await auth.ensureLaunchChat() }
-        } else {
-            catColors.background.ignoresSafeArea()
+        else {
+            VStack(spacing:20) {
+                BrandMark(size:56,style:.fill)
+                Text(ui("今天的安排，慢慢理清")).font(.title2.weight(.semibold))
+                Text(ui("正在打开你的本机育儿记录…")).foregroundStyle(catColors.secondary)
+            }
+                .frame(maxWidth:.infinity,maxHeight:.infinity)
+                .background(catColors.background.ignoresSafeArea())
                 .overlay(alignment:.top) { LaunchStatusOverlay(auth:auth) }
                 .task { await auth.ensureLaunchChat() }
         }
     }
     @ViewBuilder private func accountChat(_ model: ConversationFirstModel) -> some View {
-        ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ catLeaveActivity.stopAll(); Task { let l2User=auth.state.user?.id; await auth.requestSignOut { AccountLocalData.signOut(userID:l2User); if let l2User { L2SecureStore.wipe(userID:l2User) } } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
+        Group {
+            if auth.isFixture {
+                ConversationFirstView(model:model,accountLabel:ui("合成登录测试 · 无真实 Auth/模型"))
+            } else if let presentation = auth.parentingWorkspace,
+                      presentation.id.chat == ObjectIdentifier(model),
+                      AccountEpoch.shared.isValid(presentation.id.token) {
+                ParentingHomeView(model:model,workspaceModel:presentation.model,accountLabel:auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email,onSignOut:{ catLeaveActivity.stopAll(); Task { let l2User=auth.state.user?.id; await auth.requestSignOut { AccountLocalData.signOut(userID:l2User); if let l2User { L2SecureStore.wipe(userID:l2User) } } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
+                    .id(presentation.id)
+            } else {
+                VStack(spacing: 20) {
+                    BrandMark(size: 56, style: .fill)
+                    Text(ui("正在打开你的本机育儿记录…")).foregroundStyle(catColors.secondary)
+                    Button(ui("重试")) { Task { await auth.foreground() } }
+                        .buttonStyle(.bordered)
+                        .disabled(auth.actionBusy || auth.state.phase == .restoring || auth.state.phase == .signingIn)
+                        .accessibilityIdentifier("parenting.account.retry")
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(catColors.background.ignoresSafeArea())
+                    .overlay(alignment: .top) { LaunchStatusOverlay(auth: auth) }
+            }
+        }
             // p89i: one shared confirmation UI for parked items of the leaving account (#89/#90/#91 sources).
             .onAppear { auth.attachParkedPrompt() }
             // IME fix: a deferred 新对话 commits the marked text by ending editing (resigning the composer).
@@ -247,6 +273,17 @@ import AppIntents
         }, afterSignIn: { await auth.completeOnboardingAfterSignIn() })   // splash/login P0: sign-in opens the gate reactively
     }
     @ViewBuilder private var primaryView: some View {
+        #if DEBUG
+        if ParentingUITestFixture.isRequested {
+            ParentingUITestSurface(model: bootstrap.model, error: bootstrap.error)
+        } else {
+            regularPrimaryView
+        }
+        #else
+        regularPrimaryView
+        #endif
+    }
+    @ViewBuilder private var regularPrimaryView: some View {
         if let model = bootstrap.model {
             #if DEBUG
             if let size=P0ExperienceFixture.textSizeOverride {
@@ -270,7 +307,7 @@ import AppIntents
         // Onboarding gate (SPEC-E §5.3): the landing and the chat share one host. Chat mounts underneath the moment the
         // gate flips, the landing stays on top for the ≤1.15 s handoff. Later launches have no landing at all.
         else {
-            FirstRunTransitionHost(onboarding: auth.needsOnboarding, chat: chatSurface, ctaTitle: ui("开始使用"), placeholder: ui("问问小咪")) {
+            FirstRunTransitionHost(onboarding: auth.needsOnboarding, chat: chatSurface, ctaTitle: ui("开始使用"), placeholder: ui("今天的安排，慢慢理清")) {
                 NativeLoginView(auth:auth)
                     .task { await auth.prewarmEntryChat() }
                     #if DEBUG
@@ -294,7 +331,7 @@ private struct LaunchStatusOverlay:View {
             if auth.sessionRestartNeeded { SessionRestartCapsule(auth:auth).padding(.top,52) }
             else if auth.launchChatStalled { LaunchOpenFailedCapsule(auth:auth).padding(.top,52) }
             else if late {
-                HStack(spacing:8) { ProgressView().controlSize(.small); Text(auth.launchSlow ? ui("仍在连接，请稍候…") : ui("正在打开对话…")).font(catTypography.Role.caption.font.weight(.medium)) }
+                HStack(spacing:8) { ProgressView().controlSize(.small); Text(auth.launchSlow ? ui("仍在连接，请稍候…") : ui("正在打开育儿工作区…")).font(catTypography.Role.caption.font.weight(.medium)) }
                     .foregroundStyle(catColors.ink)
                     .padding(.horizontal,12).padding(.vertical,8)
                     .background(catColors.panel,in:Capsule())
@@ -317,7 +354,7 @@ private struct LaunchOpenFailedCapsule:View {
     var body:some View {
         HStack(spacing:8) {
             Image(systemName:"exclamationmark.circle")
-            Text(ui("对话没能打开")).font(catTypography.Role.caption.font.weight(.medium))
+            Text(ui("育儿工作区没能打开")).font(catTypography.Role.caption.font.weight(.medium))
             Button { auth.retryLaunchChat() } label: { Text(ui("重试")).font(catTypography.Role.caption.font.weight(.semibold)) }
                 .buttonStyle(.plain).frame(minHeight:44)
                 .accessibilityIdentifier("launch.retryOpen")

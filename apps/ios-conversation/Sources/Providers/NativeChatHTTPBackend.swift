@@ -1,6 +1,9 @@
 import Foundation
 import CoreFoundation
 
+/// The dedicated namespace fails closed on servers that do not support read-only parenting intake.
+public enum NativeChatPurpose: Sendable, Equatable { case conversation, parentingIntake }
+
 public struct NativeChatConfiguration: Sendable {
     public let origin: URL
     public let localScope: DataScope
@@ -50,6 +53,9 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     private let credentials: any NativeChatSessionCredentials
     private let session: URLSession
     private let acceptedWorkClock:@Sendable()->Date
+    private let purpose: NativeChatPurpose
+    private static let intakeContract = "mimi.parenting-intake.v1"
+    private static let intakeUnavailable = "当前服务版本尚未支持原位整理，未发送 AI 请求；原话已保留，可以继续手动填写。"
     private var bindingCache: [UUID: [String: ConversationTaskBinding]] = [:]
     private var toolTitles: [UUID: [String: String]] = [:]
     private var continuationReceipts:[UUID:[String:ConversationTaskRevisionReceipt]]=[:]
@@ -63,8 +69,9 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     private var verifiedModel:String?
     private struct ReplyCandidate {let model:String?}
     private var replyCandidates:[UUID:ReplyCandidate]=[:]
-    public init(configuration: NativeChatConfiguration, credentials: any NativeChatSessionCredentials = MissingNativeChatSession(),sessionConfiguration:URLSessionConfiguration?=nil,acceptedWorkClock:@escaping @Sendable()->Date={Date()}) {
+    public init(configuration: NativeChatConfiguration, credentials: any NativeChatSessionCredentials = MissingNativeChatSession(),sessionConfiguration:URLSessionConfiguration?=nil,acceptedWorkClock:@escaping @Sendable()->Date={Date()},purpose:NativeChatPurpose = .conversation) {
         self.configuration = configuration; self.credentials = credentials
+        self.purpose = purpose
         self.acceptedWorkClock=acceptedWorkClock
         let policy = (sessionConfiguration?.copy() as? URLSessionConfiguration) ?? URLSessionConfiguration.ephemeral; policy.urlCache = nil; policy.requestCachePolicy = .reloadIgnoringLocalCacheData
         session = URLSession(configuration: policy, delegate: NativeChatNoRedirect(), delegateQueue: nil)
@@ -173,7 +180,9 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     public func modelConsent(scope: DataScope, conversationID: UUID) async throws -> ConversationModelConsent? {
         guard configuration.publishableKey != nil else { return nil }
         let auth = try await authorization(scope),base = scopePath+"/conversations/"+conversationID.uuidString.lowercased()
-        do { _ = try await json(base,auth:auth) } catch NativeChatHTTPFailure.status(404) { _ = try await json(scopePath+"/conversations",auth:auth,body:["conversation_id":conversationID.uuidString.lowercased()]) }
+        let ready:[String:Any]
+        do { ready = try await json(base,auth:auth) } catch NativeChatHTTPFailure.status(404) { ready = try await json(scopePath+"/conversations",auth:auth,body:["conversation_id":conversationID.uuidString.lowercased()]) }
+        if purpose == .parentingIntake { try validatePurpose(try Self.object(ready["conversation"])) }
         let metadata = try await json("/catpaw/privacy/v1/model-route",auth:auth),ui = try Self.object(metadata["ui"]),routeHash = try Self.sha(metadata["route_hash"])
         let path = "/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+conversationID.uuidString.lowercased()+"/model-consent"
         let stored = try await json(path,auth:auth);let prior = stored["consent"] as? [String:Any]
@@ -324,7 +333,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     public func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         let auth: String, grant: Int, upload: URLRequest
         do { (auth, grant, upload) = try await prepare(request) }
-        catch { sendDiagnostic("catpaw.send prepare refused op=\(request.operationID.uuidString.prefix(8)) error=\(String(describing:error))");throw ConversationDispatchFailure.notSent(reason: Self.friendlyTransportMessage(error)) }
+        catch { sendDiagnostic("catpaw.send prepare refused op=\(request.operationID.uuidString.prefix(8)) category=preflight");throw ConversationDispatchFailure.notSent(reason: Self.friendlyTransportMessage(error)) }
         // NoBug P1: the busy re-POST carries this account's Authorization; it may only go out while the same account is
         // still signed in in the same epoch (captured before the first POST).
         let principal = AccountEpoch.shared.capture()
@@ -339,7 +348,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                     // bubble keeps its in-flight spinner and no error shows unless the budget runs out.
                     let (bytes, response) = try await ChatRuntimeBusyRetry.run(post: {
                         let (wire, reply) = try await self.session.bytes(for: upload)
-                        guard Self.supportsResume(request), let busy = reply as? HTTPURLResponse, busy.statusCode == 503 else { return (wire, reply) }
+                        guard self.purpose == .conversation, Self.supportsResume(request), let busy = reply as? HTTPURLResponse, busy.statusCode == 503 else { return (wire, reply) }
                         var body = Data(); for try await byte in wire { guard body.count < 65536 else { break }; body.append(byte) }
                         guard ChatRuntimeBusyRetry.isBusy(body) else { throw NativeChatHTTPFailure.turnResponse(503) }
                         sendDiagnostic("catpaw.send chat_runtime_busy op=\(request.operationID.uuidString.prefix(8)) quiet retry")
@@ -348,6 +357,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                        exhausted: { NativeChatHTTPFailure.turnResponse(503) })   // same URLRequest → same Idempotency-Key (= turn_id)
                     guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                         let status=(response as? HTTPURLResponse)?.statusCode ?? 0
+                        if self.purpose == .parentingIntake, [404,405].contains(status) { throw ConversationDispatchFailure.notSent(reason:Self.intakeUnavailable) }
                         if status == 401 { await self.credentials.rejected(scope: request.scope) }
                         if request.continuation != nil,(response as? HTTPURLResponse)?.mimeType == "application/json",[403,409,413,422].contains(status) {
                             var errorData=Data();for try await byte in bytes {guard errorData.count<65536 else {throw ConversationSessionError.invalidEvent};errorData.append(byte)}
@@ -371,8 +381,8 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                     }
                     if http.mimeType == "application/json" {
                         var data = Data(); for try await b in bytes { guard data.count < 2_000_000 else { throw ConversationSessionError.invalidEvent }; data.append(b) }
-                        let snapshot = request.continuation == nil && request.acceptedWork==nil ? try Self.object(JSONSerialization.jsonObject(with: data)) : try ConversationStrictJSON.object(data,maxBytes:2_000_000); try Self.turnEnvelope(snapshot,request:request)
-                        let turn = try Self.object(snapshot["turn"]);try Self.validateImageSnapshot(turn,request:request);try Self.validateContinuationSnapshot(turn,request:request,scope:self.configuration.serverScopeID,grant:grant)
+                        let snapshot = self.purpose == .conversation && request.continuation == nil && request.acceptedWork==nil ? try Self.object(JSONSerialization.jsonObject(with: data)) : try ConversationStrictJSON.object(data,maxBytes:2_000_000); try Self.turnEnvelope(snapshot,request:request)
+                        let turn = try Self.object(snapshot["turn"]);try self.validatePurpose(turn);try Self.validateImageSnapshot(turn,request:request);try Self.validateContinuationSnapshot(turn,request:request,scope:self.configuration.serverScopeID,grant:grant)
                         try ConversationAcceptedWorkCodec.validateOriginal(turn,request:request);try validateRevisionWorkOriginal(turn,request:request)
                         for event in try Self.array(turn["events"]) { continuation.yield(try await self.decode(event, request: request, grant: grant, auth: auth)) }
                     } else {
@@ -436,6 +446,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
               UUID(uuidString: cancel["turn_id"] as? String ?? "") == request.operationID,
               let state = cancel["state"] as? String, ["failed", "completed", "outcome_unknown", "running"].contains(state),
               let cancelled = Self.boolean(cancel["cancelled"]), let terminal = Self.boolean(cancel["already_terminal"]) else { throw ConversationTurnCancelFailure.rejected(status: 200) }
+        try validatePurpose(cancel)
         return ConversationTurnCancelReceipt(turnID: request.operationID, state: state, cancelled: cancelled, alreadyTerminal: terminal)
     }
     static let approvalContract = "catpaw.approval.v1"
@@ -665,6 +676,11 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     }
     private func prepare(_ request: ConversationTurnRequest) async throws -> (String, Int, URLRequest) {
         try Task.checkCancellation()
+        if purpose == .parentingIntake {
+            guard request.image == nil, !request.hasUploadedAttachments, request.continuation == nil,
+                  request.acceptedWork == nil, request.revisionWork == nil, request.context.isEmpty,
+                  request.history.count == 1, request.history.first?.role == .user else { throw ConversationSessionError.invalidEvent }
+        }
         let auth = try await authorization(request.scope)
         try Task.checkCancellation()
         if let intent=request.acceptedWork {
@@ -724,11 +740,15 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         else {encoded=bytes}
         var upload = try self.request(turnPath(request), auth: auth); upload.httpMethod = "POST"; upload.httpBody = encoded
         upload.setValue(request.operationID.uuidString.lowercased(),forHTTPHeaderField:"Idempotency-Key") // #63: alias of turn_id (must match)
-        if request.image==nil,!request.hasUploadedAttachments,request.continuation==nil,request.acceptedWork==nil {upload.setValue(ConversationMemoryProposalReceipt.contractName,forHTTPHeaderField:"X-Catpaw-Memory-Proposal-Contract")}
+        if purpose == .conversation,request.image==nil,!request.hasUploadedAttachments,request.continuation==nil,request.acceptedWork==nil {upload.setValue(ConversationMemoryProposalReceipt.contractName,forHTTPHeaderField:"X-Catpaw-Memory-Proposal-Contract")}
         // catpaw.approval.v1 negotiation: only plain chat turns are offered approval-gated tools.
-        if Self.supportsResume(request),request.image==nil,!request.hasUploadedAttachments {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader);upload.setValue(ConversationUIEvent.contract,forHTTPHeaderField:ConversationUIEvent.header);upload.setValue(ConversationUIEvent.kindsHeaderValue,forHTTPHeaderField:ConversationUIEvent.kindsHeader);if ConversationDeviceCall.clientEnabled {upload.setValue(ConversationDeviceCall.contract,forHTTPHeaderField:ConversationDeviceCall.header);if !ConversationDeviceCall.clientTools.isEmpty {upload.setValue(ConversationDeviceCall.clientTools.joined(separator:","),forHTTPHeaderField:ConversationDeviceCall.toolsHeader)}}}
+        if purpose == .conversation,Self.supportsResume(request),request.image==nil,!request.hasUploadedAttachments {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader);upload.setValue(ConversationUIEvent.contract,forHTTPHeaderField:ConversationUIEvent.header);upload.setValue(ConversationUIEvent.kindsHeaderValue,forHTTPHeaderField:ConversationUIEvent.kindsHeader);if ConversationDeviceCall.clientEnabled {upload.setValue(ConversationDeviceCall.contract,forHTTPHeaderField:ConversationDeviceCall.header);if !ConversationDeviceCall.clientTools.isEmpty {upload.setValue(ConversationDeviceCall.clientTools.joined(separator:","),forHTTPHeaderField:ConversationDeviceCall.toolsHeader)}}}
         upload.setValue(TimeZone.current.identifier,forHTTPHeaderField:Self.timeZoneHeader);upload.setValue(ConversationMemorySwitch.headerValue,forHTTPHeaderField:ConversationMemorySwitch.header) // task tools resolve local times
-        if Self.supportsResume(request) {Self.requestLiveText(&upload)}
+        if purpose == .parentingIntake {
+            upload.setValue("0", forHTTPHeaderField: ConversationMemorySwitch.header)
+            upload.setValue("ephemeral", forHTTPHeaderField: "X-Catpaw-Memory-Mode")
+        }
+        if purpose == .conversation,Self.supportsResume(request) {Self.requestLiveText(&upload)}
         try Task.checkCancellation()
         return (auth, grant, upload)
     }
@@ -743,7 +763,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         if request.continuation != nil {try continuationContext(request);_=try await confirmedContinuationBinding(request,auth:auth);continuationSourceHashes[request.operationID]=try await continuationBase(request,inspectCurrent:false)}
         let wrapper = try await json(turnPath(request) + "/" + request.operationID.uuidString.lowercased(), auth: auth)
         try Self.turnEnvelope(wrapper,request:request)
-        let turn = try Self.object(wrapper["turn"]);try Self.validateImageSnapshot(turn,request:request);try Self.validateContinuationSnapshot(turn,request:request,scope:configuration.serverScopeID,grant:currentGrant)
+        let turn = try Self.object(wrapper["turn"]);try validatePurpose(turn);try Self.validateImageSnapshot(turn,request:request);try Self.validateContinuationSnapshot(turn,request:request,scope:configuration.serverScopeID,grant:currentGrant)
         try ConversationAcceptedWorkCodec.validateOriginal(turn,request:request);try validateRevisionWorkOriginal(turn,request:request)
         guard UUID(uuidString: turn["id"] as? String ?? "") == request.operationID,
               UUID(uuidString: turn["conversation_id"] as? String ?? "") == request.conversationID,
@@ -783,12 +803,18 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             wrapper = try await json(scopePath + "/conversations", auth: auth, body: ["conversation_id": value.conversationID.uuidString.lowercased()],strict:strict)
         }
         try Self.chatEnvelope(wrapper); let c = try Self.object(wrapper["conversation"])
+        try validatePurpose(c)
         if strict {guard c["subject_id"] as? String==configuration.expectedSubjectID?.uuidString.lowercased() else {throw ConversationSessionError.invalidEvent}}
         guard UUID(uuidString: c["id"] as? String ?? "") == value.conversationID, UUID(uuidString: c["scope_id"] as? String ?? "") == configuration.serverScopeID,
               c["state"] as? String == "active", c["policy"] as? String == "conversation-local-output-v1" else { throw ConversationSessionError.invalidEvent }
         return c
     }
     private func decode(_ wire: [String: Any], request: ConversationTurnRequest, grant: Int, auth: String, livePreviews: Bool = false) async throws -> ConversationTurnEvent {
+        try validatePurpose(wire)
+        if purpose == .parentingIntake {
+            guard let type = wire["type"] as? String,
+                  ["turn_started", "text_delta", "turn_completed", "turn_failed", "model_route", "reasoning_summary"].contains(type) else { throw ConversationSessionError.invalidEvent }
+        }
         if wire["type"] as? String == "text_preview" {
             // Previews are never stored: inside a JSON snapshot or a read-back `events` array one means a broken server.
             guard livePreviews else { throw ConversationSessionError.invalidEvent }
@@ -1139,7 +1165,15 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         if request.acceptedWork != nil {return "/catpaw/accepted-work/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+request.conversationID.uuidString.lowercased()+"/turns"}
         return request.continuation == nil ? path(request)+"/turns" : "/catpaw/revisions/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+request.conversationID.uuidString.lowercased()+"/turns"
     }
-    private var scopePath: String { "/catpaw/chat/v1/scopes/" + configuration.serverScopeID.uuidString.lowercased() }
+    private var scopePath: String { (purpose == .parentingIntake ? "/catpaw/parenting-intake/v1/scopes/" : "/catpaw/chat/v1/scopes/") + configuration.serverScopeID.uuidString.lowercased() }
+    private func validatePurpose(_ value:[String:Any]) throws {
+        if purpose == .parentingIntake {
+            guard value["intake_contract"] as? String == Self.intakeContract else { throw ConversationSessionError.invalidEvent }
+            for key in ["task_bindings", "pending_approvals", "continuations", "revision_work_receipts"] {
+                if let raw = value[key], !(raw is NSNull) { guard let list = raw as? [Any], list.isEmpty else { throw ConversationSessionError.invalidEvent } }
+            }
+        } else { guard value["intake_contract"] == nil else { throw ConversationSessionError.invalidEvent } }
+    }
     private func path(_ r: ConversationTurnRequest) -> String { scopePath + "/conversations/" + r.conversationID.uuidString.lowercased() }
     private func authorization(_ scope: DataScope) async throws -> String {
         guard scope == configuration.localScope else { throw catError.scopeMismatch }
@@ -1158,10 +1192,14 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let (data, response) = try await session.data(for: request)
         if strict {try Task.checkCancellation()}
         if (response as? HTTPURLResponse)?.statusCode == 401 { await credentials.rejected(scope: configuration.localScope) }
+        if purpose == .parentingIntake, path.hasPrefix("/catpaw/parenting-intake/"),
+           let status = (response as? HTTPURLResponse)?.statusCode, status == 405 || (status == 404 && body != nil) {
+            throw catError.unavailable(Self.intakeUnavailable)
+        }
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw NativeChatHTTPFailure.status((response as? HTTPURLResponse)?.statusCode ?? 0) }
         guard data.count <= 2_000_000 else { throw ConversationSessionError.invalidEvent }
-        if strict || (path.hasPrefix("/catpaw/accepted-work/v1/") || path.hasPrefix("/catpaw/revision-work/v1/")) {guard (response as? HTTPURLResponse)?.mimeType=="application/json" else {throw ConversationSessionError.invalidEvent}}
-        return strict || path.hasPrefix("/catpaw/revisions/v1/") || (path.hasPrefix("/catpaw/accepted-work/v1/") || path.hasPrefix("/catpaw/revision-work/v1/")) ? try ConversationStrictJSON.object(data,maxBytes:2_000_000) : try Self.object(JSONSerialization.jsonObject(with: data))
+        if strict || purpose == .parentingIntake || (path.hasPrefix("/catpaw/accepted-work/v1/") || path.hasPrefix("/catpaw/revision-work/v1/")) {guard (response as? HTTPURLResponse)?.mimeType=="application/json" else {throw ConversationSessionError.invalidEvent}}
+        return strict || purpose == .parentingIntake || path.hasPrefix("/catpaw/revisions/v1/") || (path.hasPrefix("/catpaw/accepted-work/v1/") || path.hasPrefix("/catpaw/revision-work/v1/")) ? try ConversationStrictJSON.object(data,maxBytes:2_000_000) : try Self.object(JSONSerialization.jsonObject(with: data))
     }
     private static func object(_ raw: Any?) throws -> [String: Any] { guard let x = raw as? [String: Any] else { throw ConversationSessionError.invalidEvent }; return x }
     private static func array(_ raw: Any?) throws -> [[String: Any]] { guard let x = raw as? [[String: Any]] else { throw ConversationSessionError.invalidEvent }; return x }
@@ -1182,6 +1220,28 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         guard try positive(x["schema_version"])==1,x["contract"] as? String==(request.revisionWork != nil ? ConversationRevisionWorkCodec.contract : request.acceptedWork != nil ? ConversationAcceptedWorkCodec.contract : request.continuation == nil ? "catpaw.native-chat.v1" : "catpaw.task-revision.v1") else {throw ConversationSessionError.invalidEvent}
     }
     private static func chatEnvelope(_ x: [String: Any]) throws { guard try positive(x["schema_version"]) == 1, x["contract"] as? String == "catpaw.native-chat.v1" else { throw ConversationSessionError.invalidEvent } }
+}
+extension NativeChatHTTPBackend: ParentingIntakeDataDeleting {
+    public func deleteIntake(scope: DataScope, conversationID: UUID) async throws {
+        guard purpose == .parentingIntake, scope == configuration.localScope else { throw ConversationSessionError.invalidEvent }
+        try Task.checkCancellation()
+        let auth = try await authorization(scope)
+        var request = try configuration.makeRequest(route: scopePath + "/conversations/" + conversationID.uuidString.lowercased(), authorization: auth)
+        request.httpMethod = "DELETE"; request.timeoutInterval = 20
+        let (data, response) = try await session.data(for: request)
+        try Task.checkCancellation()
+        guard let response = response as? HTTPURLResponse else { throw ConversationSessionError.invalidEvent }
+        if response.statusCode == 401 { await credentials.rejected(scope: scope) }
+        guard response.statusCode == 200, response.mimeType == "application/json" else { throw catError.unavailable("云端临时整理数据尚未确认清理，可以稍后重试清理。") }
+        let envelope = try ConversationStrictJSON.object(data, maxBytes: 65_536)
+        try Self.chatEnvelope(envelope)
+        let purge = try Self.object(envelope["purge"])
+        guard UUID(uuidString: purge["conversation_id"] as? String ?? "") == conversationID,
+              UUID(uuidString: purge["scope_id"] as? String ?? "") == configuration.serverScopeID,
+              UUID(uuidString: purge["subject_id"] as? String ?? "") == configuration.expectedSubjectID,
+              Self.boolean(purge["purged"]) == true, purge["retained"] as? String == "identity_hash_tombstone_only" else { throw ConversationSessionError.invalidEvent }
+        try validatePurpose(purge)
+    }
 }
 extension NativeChatHTTPBackend: ConversationTaskPlanBackend {
     public func readPlan(_ reference: ConversationTaskPlanReference) async throws -> ConversationTaskPlanEnvelope {

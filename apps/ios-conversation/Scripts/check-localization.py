@@ -4,10 +4,11 @@ import re,json
 from pathlib import Path
 HAN=re.compile('[\u3400-\u9fff]')
 def string_at(s,start):
- i=start+1; parts=[]; text=''
+ quote='"""' if s.startswith('"""',start) else '"'
+ i=start+len(quote); parts=[]; text=''
  while i<len(s):
-  if s[i]=='"':
-   parts.append(('text',text)); return i+1,parts
+  if s.startswith(quote,i):
+   parts.append(('text',text)); return i+len(quote),parts
   if s.startswith('\\(',i):
    parts.append(('text',text));text='';i+=2;a=i;depth=1
    while depth:
@@ -57,6 +58,46 @@ errors=[];lookups=0
 for p in ui:
  found,count=issues(p.read_text(),p.name)
  errors.extend(str(p.relative_to(root))+': '+e for e in found);lookups+=count
+# Parenting lives in nested Features plus Domain/Persistence. Enum titles and
+# LocalizedError values are declared resource keys, consumed by the UI's ui(...).
+# Only the intake protocol's prompt and date-matching regex are source content.
+def parenting_issues(s,name):
+ errors=[];count=0;source_content=0
+ for a,b,parts in literals(s):
+  k=key(parts)
+  if not HAN.search(k):continue
+  prefix=s[:a]
+  if name=='ParentingIntakeDraft.swift' and (
+      re.search(r'\b(?:prompt|originalPrompt)\s*=\s*$',prefix) and s.startswith('"""',a)
+      or re.search(r'\bprompt\s*=\s*originalPrompt\s*\+\s*$',prefix) and s.startswith('"""',a)
+      or re.search(r'\blet\s+(?:date|clock)\s*=\s*$',prefix)):
+   source_content+=1;continue
+  # The bounded edit-time verifier's grammar is source data, while its clarification remains UI text.
+  # Keep this scoped to exact declarations/tokens; a Text/Button/etc. call is never exempted.
+  if name=='ParentingRescheduleTime.swift' and not re.search(r'\b(?:Text|Button|TextField|SecureField|Label|ProgressView|navigationTitle|accessibilityLabel|accessibilityHint)\(\s*$',prefix):
+   grammar_tokens={'今天','明天','后天','凌晨','早上','上午','中午','下午','傍晚','晚上','零','〇','一','二','两','三','四','五','六','七','八','九','十'}
+   if k in grammar_tokens or re.search(r'\bprivate\s+static\s+let\s+(?:datePattern|clockPattern|absolutePattern|unsupportedPattern)\s*=\s*#$',prefix) or re.search(r'\bmatches\(\s*#$',prefix):
+    source_content+=1;continue
+  count+=1
+  if k not in catalog:errors.append('missing parenting resource: '+k)
+  if re.search(r'\b(?:Text|Button|TextField|SecureField|Label|ProgressView|navigationTitle|accessibilityLabel|accessibilityHint)\(\s*$',prefix):
+   errors.append('unlocalized parenting UI literal: '+k)
+ return errors,count,source_content
+parenting_count=0;parenting_source_content=0
+for p in sorted(root.glob('Sources/**/*Parenting*.swift')):
+ found,count,source_content=parenting_issues(p.read_text(),p.name)
+ errors.extend(str(p.relative_to(root))+': '+e for e in found)
+ parenting_count+=count;parenting_source_content+=source_content
+# LocalizedError exposes the already-interpolated string, and UICatalog uses an
+# exact lookup. Audit each finite domain limit as well as its {0} source template.
+parenting_domain=(root/'Sources/Domain/ParentingWorkspace.swift').read_text()
+for limit in set(re.findall(r'\blimit:\s*(\d+)',parenting_domain)):
+ k='内容不能为空，且不能超过'+limit+'字。'
+ if k not in catalog:errors.append('ParentingWorkspace.swift: missing rendered error resource: '+k)
+# Non-Chinese identifiers in the onboarding chip declaration still require a resource.
+for a,b,parts in literals((root/'Sources/Features/NativeLoginView.swift').read_text()):
+ k=key(parts)
+ if k.startswith('onboarding.parenting.') and k not in catalog:errors.append('NativeLoginView.swift: missing declared resource: '+k)
 # Presentation enum values and voice-state keys must also exist in the central resource.
 for p in [root/'Sources/DesignSystem/DisplayNames.swift',root/'Sources/Voice/NativeVoiceController.swift']:
  for a,b,parts in literals(p.read_text()):
@@ -74,6 +115,17 @@ for a,b,parts in literals((package_root/'ios-image-composer/Sources/catImageComp
  if HAN.search(k) and k not in catalog:errors.append('ImageAttachment.swift: missing dynamic resource: '+k)
 assert not errors,'\n'.join(errors)
 print('PASS L10 UI literal scan: %d locale-bound lookups; 0 missing resources; 0 unlocalized owned literals' % lookups)
+print('PASS L10 parenting audit: %d declared/UI/error keys; %d explicit intake protocol source literals excluded' % (parenting_count,parenting_source_content))
+assert parenting_issues('enum Tab { var title:String { "未登记的育儿标题" } }','ParentingProbe.swift')[0]
+assert parenting_issues('Text("设置")','ParentingProbe.swift')[0]
+assert not parenting_issues('enum Tab { var title:String { "设置" } }','ParentingProbe.swift')[0]
+assert parenting_issues('throw catError.invalid("未登记的育儿错误")','ParentingProbe.swift')[0]
+assert not parenting_issues('private static let datePattern = #"今天|明天"#','ParentingRescheduleTime.swift')[0]
+assert parenting_issues('Text("明天")','ParentingRescheduleTime.swift')[0]
+assert parenting_issues('private static let clarification = "未登记的时间澄清"','ParentingRescheduleTime.swift')[0]
+assert not parenting_issues('prompt = """协议内容"""','ParentingIntakeDraft.swift')[0]
+assert parenting_issues('let title = "协议内容"','ParentingIntakeDraft.swift')[0]
+assert key(next(literals('"""inner "quote" and \\(value)"""'))[2])=='inner "quote" and {0}'
 assert issues('Text("遗漏文案")','Probe.swift')[0]
 assert issues('Text(ui("未登记的资源"))','Probe.swift')[0]
 assert not issues('Text(ui("设置"))','Probe.swift')[0]

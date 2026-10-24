@@ -55,4 +55,16 @@ jobs:
         run: python3 Scripts/validate-project.py
       - name: xcodebuild build-for-testing (simulator)
         working-directory: apps/ios-conversation
-        run: xcodebuild -project cat.xcodeproj -scheme cat -destination 'generic/platform=iOS Simulator' build-for-testing CODE_SIGNING_ALLOWED=NO
+        run: |
+          # Simulator-only local signing; no team, provisioning download or physical-device signing.
+          xcodebuild -project cat.xcodeproj -scheme cat -configuration Debug -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$PWD/../../build/parenting-core/SimulatorSigningDerivedData" \
+            build-for-testing CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
+            "CODE_SIGN_ENTITLEMENTS=$PWD/Configuration/SimulatorFixtureAcceptance.entitlements"
+      - name: Parenting synthetic XCTest and UI journeys (fresh simulator, no backend config)
+        # Full 7-journey run reached its last source check at 45 min; retain every assertion.
+        timeout-minutes: 60
+        working-directory: apps/ios-conversation
+        run: bash Scripts/test-parenting-core-simulator.sh
