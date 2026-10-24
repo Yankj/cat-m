@@ -728,7 +728,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         if !isFixture {
             // Local reminders only; every system write re-checks that this account is still the signed-in one.
             scheduler = ParentingReminderScheduler(center: ParentingSystemNotificationCenter(), subjectID: subject,
-                isCurrentAccount: { AccountEpoch.shared.isValid(token) })
+                memory: ParentingReminderMemoryStore(subjectID: subject), isCurrentAccount: { AccountEpoch.shared.isValid(token) })
             settingsStore = ParentingReminderSettingsStore(subjectID: subject)
         }
         #endif

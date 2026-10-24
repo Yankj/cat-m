@@ -788,6 +788,10 @@ import Combine
                 Label(AppLanguage(locale: locale).ui("将在 {0} 提醒", arguments: [fireAt.formatted(date: .abbreviated, time: .shortened)]), systemImage: "bell")
                     .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
                     .accessibilityIdentifier("parenting.arrangement.reminder.\(item.id)")
+            case .reminded(let fireAt):
+                Label(AppLanguage(locale: locale).ui("提醒时间已到：{0}", arguments: [fireAt.formatted(date: .abbreviated, time: .shortened)]), systemImage: "bell")
+                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                    .accessibilityIdentifier("parenting.arrangement.reminder.\(item.id)")
             case .skipped(.pastReminderTime):
                 Label(ui("未提醒：提醒时间已过"), systemImage: "bell.slash")
                     .font(catTypography.Role.caption.font).foregroundStyle(catColors.attention)

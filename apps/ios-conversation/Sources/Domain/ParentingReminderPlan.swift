@@ -46,6 +46,8 @@ public enum ParentingReminderSkipReason: String, Codable, Sendable, Equatable {
 public enum ParentingReminderOutcome: Equatable, Sendable {
     /// Confirmed by reading the pending request back from the system, not merely requested.
     case scheduled(Date)
+    /// This device scheduled it earlier and its time has passed, so the system has delivered it (or the parent dismissed it).
+    case reminded(Date)
     case skipped(ParentingReminderSkipReason)
     /// More than the system allows is pending; this one is scheduled the next time the app opens.
     case deferred
@@ -65,6 +67,8 @@ public struct ParentingReminderPlan: Equatable, Sendable {
     public var reminders: [ParentingPlannedReminder]
     public var skipped: [UUID: ParentingReminderSkipReason]
     public var deferred: Set<UUID>
+    /// Reminders this device scheduled earlier (as remembered) whose time has now passed.
+    public var reminded: [UUID: Date] = [:]
 }
 
 /// Pure planning. Only confirmed (`planned`) arrangements in the future get a reminder; drafts, cancelled
@@ -102,24 +106,34 @@ public enum ParentingReminderPlanner {
         return (moved, true)
     }
 
+    /// `remembered` maps an arrangement to the fire time this device last scheduled for it. It lets a reminder
+    /// that has already gone off be reported as such, and count toward that day's limit, instead of "missed".
     public static func plan(workspace: ParentingWorkspace, settings: ParentingReminderSettings, now: Date,
-                            calendar: Calendar = .autoupdatingCurrent) -> ParentingReminderPlan {
-        guard settings.enabled else { return .init(reminders: [], skipped: [:], deferred: []) }
+                            calendar: Calendar = .autoupdatingCurrent, remembered: [UUID: Date] = [:]) -> ParentingReminderPlan {
+        guard settings.enabled else { return .init(reminders: [], skipped: [:], deferred: [], reminded: [:]) }
         let names = Dictionary(uniqueKeysWithValues: workspace.children.map { ($0.id, $0.name) })
         var candidates: [ParentingPlannedReminder] = []
+        var elapsed: [ParentingPlannedReminder] = []
         var skipped: [UUID: ParentingReminderSkipReason] = [:]
         for item in workspace.arrangements.sorted(by: { ($0.dueAt, $0.id.uuidString) < ($1.dueAt, $1.id.uuidString) })
         where item.state == .planned && item.dueAt > now {
-            guard let name = names[item.childID], let fire = fireDate(due: item.dueAt, lead: settings.lead, calendar: calendar),
-                  fire.date > now.addingTimeInterval(5) else {
+            guard let name = names[item.childID], let fire = fireDate(due: item.dueAt, lead: settings.lead, calendar: calendar) else {
                 skipped[item.id] = .pastReminderTime
                 continue
             }
-            candidates.append(.init(arrangementID: item.id, childName: name, title: item.title, dueAt: item.dueAt,
-                                    fireAt: fire.date, movedForQuietHours: fire.moved))
+            let planned = ParentingPlannedReminder(arrangementID: item.id, childName: name, title: item.title, dueAt: item.dueAt,
+                                                   fireAt: fire.date, movedForQuietHours: fire.moved)
+            if fire.date <= now.addingTimeInterval(5) {
+                if let earlier = remembered[item.id], abs(earlier.timeIntervalSince(fire.date)) < 1 { elapsed.append(planned) }
+                else { skipped[item.id] = .pastReminderTime }
+                continue
+            }
+            candidates.append(planned)
         }
         candidates.sort { ($0.fireAt, $0.arrangementID.uuidString) < ($1.fireAt, $1.arrangementID.uuidString) }
         var perDay: [Date: Int] = [:]
+        // Reminders that already went off use up their day's allowance first.
+        for done in elapsed { perDay[calendar.startOfDay(for: done.fireAt), default: 0] += 1 }
         var kept: [ParentingPlannedReminder] = []
         for candidate in candidates {
             let day = calendar.startOfDay(for: candidate.fireAt)
@@ -128,7 +142,8 @@ public enum ParentingReminderPlanner {
             kept.append(candidate)
         }
         let deferred = Set(kept.dropFirst(maxPending).map(\.arrangementID))
-        return .init(reminders: Array(kept.prefix(maxPending)), skipped: skipped, deferred: deferred)
+        return .init(reminders: Array(kept.prefix(maxPending)), skipped: skipped, deferred: deferred,
+                     reminded: Dictionary(elapsed.map { ($0.arrangementID, $0.fireAt) }, uniquingKeysWith: { first, _ in first }))
     }
 }
 

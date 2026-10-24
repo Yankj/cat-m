@@ -37,6 +37,13 @@ public struct ParentingReminderCopy: Sendable {
     public static let system = ParentingReminderCopy { key, arguments in AppLanguage(locale: .current).ui(key, arguments: arguments) }
 }
 
+/// Remembers, per arrangement, the fire time this device last scheduled, so that a reminder which has since
+/// gone off is not later reported as missed. Not part of the encrypted ledger.
+public protocol ParentingReminderMemory: Sendable {
+    func load() -> [UUID: Date]
+    func save(_ value: [UUID: Date])
+}
+
 /// What the Today screen may claim. `scheduled` only for requests read back from the system.
 public struct ParentingReminderStatus: Equatable, Sendable {
     public var settings: ParentingReminderSettings
@@ -59,13 +66,15 @@ public actor ParentingReminderScheduler {
     private let calendar: Calendar
     private let copy: ParentingReminderCopy
     private let isCurrentAccount: @Sendable () -> Bool
+    private let memory: (any ParentingReminderMemory)?
     private var running = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
     public init(center: any ParentingNotificationCenter, subjectID: UUID, calendar: Calendar = .autoupdatingCurrent,
-                copy: ParentingReminderCopy = .system, isCurrentAccount: @escaping @Sendable () -> Bool) {
+                copy: ParentingReminderCopy = .system, memory: (any ParentingReminderMemory)? = nil,
+                isCurrentAccount: @escaping @Sendable () -> Bool) {
         self.center = center; self.subjectID = subjectID; self.calendar = calendar; self.copy = copy
-        self.isCurrentAccount = isCurrentAccount
+        self.memory = memory; self.isCurrentAccount = isCurrentAccount
     }
 
     public func authorization() async -> ParentingNotificationAuthorization { await center.authorization() }
@@ -98,7 +107,8 @@ public actor ParentingReminderScheduler {
             if !pending.isEmpty { await center.remove(ids: pending.map(\.id)) }
             return status
         }
-        let plan = ParentingReminderPlanner.plan(workspace: workspace, settings: settings, now: now, calendar: calendar)
+        let remembered = memory?.load() ?? [:]
+        let plan = ParentingReminderPlanner.plan(workspace: workspace, settings: settings, now: now, calendar: calendar, remembered: remembered)
         var desired: [String: (ParentingNotificationRequest, ParentingPlannedReminder)] = [:]
         for reminder in plan.reminders {
             let request = makeRequest(reminder, settings: settings)
@@ -129,8 +139,13 @@ public actor ParentingReminderScheduler {
                 status.systemRefused = true
             }
         }
+        for (id, fireAt) in plan.reminded { status.outcomes[id] = .reminded(fireAt) }
         for (id, reason) in plan.skipped { status.outcomes[id] = .skipped(reason) }
         for id in plan.deferred { status.outcomes[id] = .deferred }
+        // Remember what is confirmed scheduled (and what already went off); forget everything else.
+        var next = plan.reminded
+        for reminder in plan.reminders { if case .scheduled = status.outcomes[reminder.arrangementID] { next[reminder.arrangementID] = reminder.fireAt } }
+        if next != remembered { memory?.save(next) }
         return status
     }
 
@@ -165,7 +180,7 @@ public actor ParentingReminderScheduler {
     }
 }
 
-/// Settings live beside, not inside, the encrypted ledger.
+/// Settings and reminder memory live beside, not inside, the encrypted ledger.
 public struct ParentingReminderSettingsStore: @unchecked Sendable {
     private let defaults: UserDefaults
     private let key: String
@@ -181,4 +196,21 @@ public struct ParentingReminderSettingsStore: @unchecked Sendable {
         if let data = try? JSONEncoder().encode(settings) { defaults.set(data, forKey: key) }
     }
     public func erase() { defaults.removeObject(forKey: key) }
+}
+
+public struct ParentingReminderMemoryStore: ParentingReminderMemory, @unchecked Sendable {
+    private let defaults: UserDefaults
+    private let key: String
+    public init(defaults: UserDefaults = .standard, subjectID: UUID) {
+        self.defaults = defaults
+        key = "mimi.parenting.reminders.memory.v1." + subjectID.uuidString.lowercased()
+    }
+    public func load() -> [UUID: Date] {
+        guard let raw = defaults.dictionary(forKey: key) as? [String: Double] else { return [:] }
+        return Dictionary(raw.compactMap { pair in UUID(uuidString: pair.key).map { ($0, Date(timeIntervalSince1970: pair.value)) } },
+                          uniquingKeysWith: { first, _ in first })
+    }
+    public func save(_ value: [UUID: Date]) {
+        defaults.set(Dictionary(uniqueKeysWithValues: value.map { ($0.key.uuidString, $0.value.timeIntervalSince1970) }), forKey: key)
+    }
 }

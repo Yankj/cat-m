@@ -90,7 +90,7 @@ final class ParentingReminderPlannerTests: XCTestCase {
     func testDisabledSettingsPlanNothing() {
         let plan = ParentingReminderPlanner.plan(workspace: workspace([arrangement(1, due: date(26, 15))]),
                                                  settings: .default, now: date(25, 10), calendar: calendar)
-        XCTAssertEqual(plan, .init(reminders: [], skipped: [:], deferred: []))
+        XCTAssertEqual(plan, .init(reminders: [], skipped: [:], deferred: [], reminded: [:]))
     }
 
     func testQuietHoursMoveTheReminderToTheEveningBefore() {
@@ -132,6 +132,24 @@ final class ParentingReminderPlannerTests: XCTestCase {
         let plan = ParentingReminderPlanner.plan(workspace: workspace(items), settings: on, now: date(25, 10), calendar: calendar)
         XCTAssertEqual(plan.reminders.map(\.arrangementID), [items[0].id, items[1].id, items[3].id])
         XCTAssertEqual(plan.skipped, [items[2].id: .dailyLimit])
+    }
+
+    func testAReminderThatAlreadyWentOffIsNotReportedAsMissedAndCountsTowardTheDay() {
+        let a = arrangement(1, due: date(26, 11)), b = arrangement(2, due: date(26, 11, 20)), c = arrangement(3, due: date(26, 15))
+        // At 10:30 on the 26th: a (fire 10:00) and b (fire 10:20) were scheduled earlier and have fired.
+        let remembered: [UUID: Date] = [a.id: date(26, 10), b.id: date(26, 10, 20)]
+        let plan = ParentingReminderPlanner.plan(workspace: workspace([a, b, c]), settings: on, now: date(26, 10, 30), calendar: calendar, remembered: remembered)
+        XCTAssertEqual(plan.reminded, remembered)
+        XCTAssertNil(plan.skipped[a.id]); XCTAssertNil(plan.skipped[b.id])
+        XCTAssertTrue(plan.reminders.isEmpty)
+        XCTAssertEqual(plan.skipped[c.id], .dailyLimit, "Two reminders already went off today")
+        // Without that memory the same items are honestly 'time has passed'.
+        let forgotten = ParentingReminderPlanner.plan(workspace: workspace([a, b]), settings: on, now: date(26, 10, 30), calendar: calendar)
+        XCTAssertEqual(forgotten.skipped, [a.id: .pastReminderTime, b.id: .pastReminderTime])
+        XCTAssertTrue(forgotten.reminded.isEmpty)
+        // A remembered time that no longer matches (the item was moved) does not count as reminded.
+        let moved = ParentingReminderPlanner.plan(workspace: workspace([a]), settings: on, now: date(26, 10, 30), calendar: calendar, remembered: [a.id: date(25, 8)])
+        XCTAssertEqual(moved.skipped[a.id], .pastReminderTime)
     }
 
     func testPlanIsDeterministicAndCapsPendingCount() {
@@ -250,6 +268,26 @@ final class ParentingReminderSchedulerTests: XCTestCase {
         XCTAssertTrue(center.requests.isEmpty)
     }
 
+    func testRemindersRememberedAcrossSyncsAndForgottenWhenNoLongerPlanned() async {
+        let center = FakeParentingNotificationCenter(status: .authorized)
+        let memory = InMemoryReminderMemory()
+        let reminders = ParentingReminderScheduler(center: center, subjectID: subject, calendar: calendar, copy: reminderCopy, memory: memory, isCurrentAccount: { true })
+        let one = item(1, due: date(26, 15))
+        let first = await reminders.reconcile(workspace: workspace([one]), settings: on, now: date(25, 10))
+        XCTAssertEqual(first.outcomes[one.id], .scheduled(date(26, 14)))
+        XCTAssertEqual(memory.load(), [one.id: date(26, 14)])
+        // The system delivered it (nothing pending any more), the app opens at 14:20.
+        await center.remove(ids: center.requests.map(\.id))
+        let later = await reminders.reconcile(workspace: workspace([one]), settings: on, now: date(26, 14, 20))
+        XCTAssertEqual(later.outcomes[one.id], .reminded(date(26, 14)))
+        XCTAssertEqual(later.scheduledCount, 0)
+        XCTAssertEqual(center.addCount, 1, "A reminder that already went off is never scheduled again")
+        // Once the arrangement is no longer planned, the memory is dropped.
+        var done = one; done.state = .completed
+        _ = await reminders.reconcile(workspace: workspace([done]), settings: on, now: date(26, 14, 30))
+        XCTAssertTrue(memory.load().isEmpty)
+    }
+
     func testOffDeniedAndUndeterminedScheduleNothingAndNeverPrompt() async {
         let seeded = item(1, due: date(26, 15))
         // Off removes what exists.
@@ -329,6 +367,13 @@ final class ParentingReminderSchedulerTests: XCTestCase {
         a.erase()
         XCTAssertEqual(a.load(), .default)
     }
+}
+
+private final class InMemoryReminderMemory: ParentingReminderMemory, @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: [UUID: Date] = [:]
+    func load() -> [UUID: Date] { lock.withLock { value } }
+    func save(_ value: [UUID: Date]) { lock.withLock { self.value = value } }
 }
 
 private final class AccountFlag: @unchecked Sendable {

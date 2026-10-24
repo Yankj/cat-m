@@ -8578,5 +8578,9 @@
   "孩子、目标、安排、记录和调整历史都会从此设备删除，同时取消已排好的提醒。无法恢复，也不会影响登录账户。": {
     "en": "Children, goals, plans, records and change history are deleted from this device, and scheduled reminders are cancelled. This can't be undone and doesn't affect your sign-in account.",
     "zh-Hans": "孩子、目标、安排、记录和调整历史都会从此设备删除，同时取消已排好的提醒。无法恢复，也不会影响登录账户。"
+  },
+  "提醒时间已到：{0}": {
+    "en": "Reminder time reached: {0}",
+    "zh-Hans": "提醒时间已到：{0}"
   }
 }
