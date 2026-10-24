@@ -67,7 +67,7 @@
 - **能执行**：写进日历，留下回执。
 - **可信**：先问你，再动手。
 
-官网源码位于公司站仓库 [Yankj/heydusk-site/apps/mimi](https://github.com/Yankj/heydusk-site/tree/feat/company-site/apps/mimi)，与 heydusk.com 同仓分目录部署；本仓库 [apps/website](apps/website) 仅保留迁出说明。演示素材保留 v1.1 版本；当前入口、状态与限制以 [能力清单](docs/product/capabilities/catpaw-capabilities.json) 和 [CHANGELOG](CHANGELOG.md) 为准。
+官网源码位于公司站仓库 [Yankj/heydusk-site/apps/mimi](https://github.com/Yankj/heydusk-site/tree/main/apps/mimi)，与 heydusk.com 同仓分目录部署；本仓库 [apps/website](apps/website) 仅保留迁出说明。演示素材保留 v1.1 版本；当前入口、状态与限制以 [能力清单](docs/product/capabilities/catpaw-capabilities.json) 和 [CHANGELOG](CHANGELOG.md) 为准。
 <!-- CATPAW-WEBSITE:END -->
 
 ## 背景
@@ -475,6 +475,28 @@ CATPAW_DENO_BIN=<Deno路径> CATPAW_PUBLIC_NPM_CACHE=<公开cache目录> sh scri
 完整索引见 [docs/README.md](docs/README.md)。
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
+
+## 仓库分工与协作约定
+
+**仓库分工**
+
+| 仓库 | 内容 | 部署 |
+|---|---|---|
+| [Yankj/mimi](https://github.com/Yankj/mimi)（本仓库） | iOS App、Supabase 后端、协议与产品文档、品牌源（`docs/brand/`） | App 走 TestFlight / 签名包；后端由维护者按批准流程部署 |
+| [Yankj/heydusk-site](https://github.com/Yankj/heydusk-site) | 官网：`apps/company` → heydusk.com，`apps/mimi` → mimi.heydusk.com | 两个独立 Vercel 项目，同一仓库、不同 Root Directory |
+
+**官网已迁出**：mimi 产品站和公司站都在 heydusk-site 维护，改文案、改页面请去那个仓库提 PR。本仓库 [apps/website](apps/website) 只保留迁出说明，不再放官网源码。
+
+**顶层目录**（完整树见上方「目录结构」）：`apps/ios-conversation` 是唯一维护的 iOS 工程；`services/edge` 是后端维护源；`packages/` 是本地 Swift package；`docs/`、`qa/`、`design/`、`research/` 是文档与验收材料；`scripts/` 是仓库检查与扫描；`apps/ios`、`apps/ios-openmuse-demo`、`services/facade`、`services/offline`、`vendor/` 为冻结或固定来源，不改。
+
+**分支与 PR 约定**（细则见 [CONTRIBUTING.md](CONTRIBUTING.md)、[分支规范](docs/development/branch-management.md)）
+
+- 从最新 `main` 拉短分支，名称 `feat|fix|docs|chore|refactor|test/<topic>`，一个分支一个主题；不在 `main` 直接提交，不对公开分支 force-push。
+- 小步提交，每个提交说明一件事。
+- 所有改动通过 PR 进入 `main`，使用 PR 模板；默认 **merge commit**，保留来源与祖先回溯。
+- 提交作者统一为 GitHub noreply 邮箱：`<id>+<用户名>@users.noreply.github.com`。请在 GitHub 开启 *Keep my email addresses private*，并在本地设置 `git config user.email`；网页端合并也使用 noreply 邮箱。
+- PR 合并后删除源分支；已被取代的 PR 关闭并写明原因，原分支 SHA 记录在 PR 评论里。
+- 后端部署、数据库与迁移改动、发版和打 tag 需要仓库所有者明确批准。
 
 ## Contributing
 
