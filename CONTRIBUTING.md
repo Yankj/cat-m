@@ -6,7 +6,7 @@
 
 - **分支**：从最新 `main` 拉，命名 `feat|fix|docs|chore|refactor|test/<topic>`，一个分支一个主题；不在 `main` 直接提交，不 force-push 公开分支，不用 `--no-verify` 跳过 hook。
 - **提交**：小步提交，一个提交一件事，信息写清「改了什么、为什么」。
-- **作者身份**：必须使用 GitHub noreply 邮箱（`git config user.email "<id>+<用户名>@users.noreply.github.com"`），并在 GitHub 开启邮箱隐私。网页端合并同样如此。
+- **作者身份**：统一使用公司邮箱 `Yankj <hello@heydusk.com>`（`git config user.name Yankj` / `git config user.email hello@heydusk.com`）。同时请在 GitHub 开启邮箱隐私，并阻止推送暴露个人邮箱的提交。网页端合并也尽量用同一作者信息。
 - **PR**：base 为 `main`，用 [PR 模板](.github/pull_request_template.md)；默认 **merge commit**（不 squash，保留祖先）；合并后删除分支。被取代的 PR 关闭并注明取代者与原分支 SHA。
 - **官网**：已迁出到 [Yankj/heydusk-site](https://github.com/Yankj/heydusk-site)，官网相关改动请在那个仓库提 PR。
 - **需要所有者批准**：后端部署、数据库/迁移、发版与 tag、`.github/workflows` 改动。

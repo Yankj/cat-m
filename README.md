@@ -494,7 +494,7 @@ CATPAW_DENO_BIN=<Deno路径> CATPAW_PUBLIC_NPM_CACHE=<公开cache目录> sh scri
 - 从最新 `main` 拉短分支，名称 `feat|fix|docs|chore|refactor|test/<topic>`，一个分支一个主题；不在 `main` 直接提交，不对公开分支 force-push。
 - 小步提交，每个提交说明一件事。
 - 所有改动通过 PR 进入 `main`，使用 PR 模板；默认 **merge commit**，保留来源与祖先回溯。
-- 提交作者统一为 GitHub noreply 邮箱：`<id>+<用户名>@users.noreply.github.com`。请在 GitHub 开启 *Keep my email addresses private*，并在本地设置 `git config user.email`；网页端合并也使用 noreply 邮箱。
+- 提交作者统一为 `Yankj <hello@heydusk.com>`。请在 GitHub 开启 *Keep my email addresses private*，并开启 *Block command line pushes that expose my email*；本地 `git config user.email hello@heydusk.com`。
 - PR 合并后删除源分支；已被取代的 PR 关闭并写明原因，原分支 SHA 记录在 PR 评论里。
 - 后端部署、数据库与迁移改动、发版和打 tag 需要仓库所有者明确批准。
 
