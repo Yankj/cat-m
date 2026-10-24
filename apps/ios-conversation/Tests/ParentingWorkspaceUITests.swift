@@ -205,9 +205,9 @@ final class ParentingWorkspaceUITests: XCTestCase {
                        "A change must not silently resend the arrangement's original source.")
         enter(app, id: "parenting.arrangement.source", text: changeSource)
         requestAndAllow(app)
-        let before = app.staticTexts["parenting.adjustment.originalTime"]
+        let before = app.staticTexts["parenting.adjustment.candidate.originalTime"]
         let after = app.staticTexts["parenting.adjustment.proposedTime"]
-        reveal(app, before)
+        reveal(app, before, searchTowardBottom: false)
         XCTAssertFalse(before.label.isEmpty, app.debugDescription)
         reveal(app, after)
         XCTAssertFalse(after.label.isEmpty, app.debugDescription)

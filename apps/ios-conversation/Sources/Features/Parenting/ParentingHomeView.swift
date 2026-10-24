@@ -1457,6 +1457,7 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
             if let arrangement {
                 Text(verbatim: ui("原来") + " · " + fullTime(arrangement.dueAt))
                     .font(.subheadline).foregroundStyle(catColors.calmSecondary)
+                    .accessibilityIdentifier("parenting.adjustment.candidate.originalTime")
             }
             if let date = candidate.dueAt {
                 if arrangement != nil {
