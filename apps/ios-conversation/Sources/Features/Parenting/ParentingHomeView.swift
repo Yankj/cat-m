@@ -10,6 +10,7 @@ import Combine
     private let isAnonymousAccount: Bool
     @Environment(\.locale) private var locale
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
     @State private var tab: ParentingTab = .today
     @State private var selectedChildID: UUID?
     @State private var selectedGoalID: UUID?
@@ -117,7 +118,7 @@ import Combine
         .onChange(of: catRouteCenter.shared.pending) { _, _ in openPendingRoute() }
         .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { now = $0 }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { now = Date() }
+            if phase == .active { now = Date(); Task { await model.refreshReminders() } }
         }
         .onChange(of: workspace.children.map(\.id)) { _, ids in
             if let selectedChildID, !ids.contains(selectedChildID) { self.selectedChildID = nil }
@@ -230,6 +231,7 @@ import Combine
         }
         if workspace.children.isEmpty { firstChildEmpty }
         else {
+            reminderPrompt
             childFilter
             arrangementSection("待确认", items: arrangements.filter { $0.state == .draft },
                                empty: "还没有待确认的事。记下一件事后，可以在这里核对。")
@@ -317,6 +319,7 @@ import Combine
                     Text(verbatim: childName(item.childID) + " · " + item.dueAt.formatted(date: .abbreviated, time: .shortened))
                         .font(.subheadline).foregroundStyle(catColors.calmSecondary)
                         .accessibilityIdentifier("parenting.arrangement.time.\(item.id)")
+                    reminderLine(item)
                     if let goal = goalTitle(item.goalID) {
                         Label { Text(verbatim: goal) } icon: { Image(systemName: "leaf") }
                             .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
@@ -741,8 +744,74 @@ import Combine
         .accessibilityIdentifier("parenting.openChat")
     }
 
+    /// Today's one prompt about reminders: shown until the parent turns them on, or when the system blocks them.
+    @ViewBuilder private var reminderPrompt: some View {
+        if model.remindersAvailable {
+            let settings = model.reminderSettings
+            let authorization = model.reminderStatus?.authorization
+            if !settings.enabled || authorization == .notDetermined {
+                VStack(alignment: .leading, spacing: 10) {
+                    Label(ui("让小咪在开始前提醒你"), systemImage: "bell").font(.subheadline.weight(.semibold))
+                    Text(ui("只提醒你已确认的安排；每天最多 2 条，晚 9 点到早 8 点不打扰。提醒只在本机发送。"))
+                        .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(ui("开启提醒")) { Task { await model.setReminders(enabled: true) } }
+                        .buttonStyle(ParentingSecondaryButtonStyle()).disabled(model.busy)
+                        .accessibilityIdentifier("parenting.reminders.enable")
+                }
+                .parentingCard()
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("parenting.reminders.prompt")
+            } else if authorization == .denied {
+                VStack(alignment: .leading, spacing: 10) {
+                    Label(ui("系统通知已关闭，小咪现在无法提醒你"), systemImage: "bell.slash").font(.subheadline.weight(.semibold))
+                    Text(ui("在系统设置里允许小咪发送通知后，回到这里会自动补上提醒。"))
+                        .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                    Button(ui("打开系统设置")) {
+                        if let url = URL(string: "app-settings:") { openURL(url) }
+                    }
+                    .buttonStyle(ParentingSecondaryButtonStyle())
+                    .accessibilityIdentifier("parenting.reminders.openSettings")
+                }
+                .foregroundStyle(catColors.failure).parentingCard()
+                .accessibilityIdentifier("parenting.reminders.denied")
+            }
+        }
+    }
+
+    /// Only claims what the system confirmed. Drafts and finished items never show a reminder line.
+    @ViewBuilder private func reminderLine(_ item: ParentingArrangement) -> some View {
+        if model.remindersAvailable, item.state == .planned, item.dueAt > now,
+           let status = model.reminderStatus, status.settings.enabled, status.authorization == .authorized {
+            switch status.outcomes[item.id] {
+            case .scheduled(let fireAt):
+                Label(AppLanguage(locale: locale).ui("将在 {0} 提醒", arguments: [fireAt.formatted(date: .abbreviated, time: .shortened)]), systemImage: "bell")
+                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                    .accessibilityIdentifier("parenting.arrangement.reminder.\(item.id)")
+            case .skipped(.pastReminderTime):
+                Label(ui("未提醒：提醒时间已过"), systemImage: "bell.slash")
+                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.attention)
+                    .accessibilityIdentifier("parenting.arrangement.reminder.\(item.id)")
+            case .skipped(.dailyLimit):
+                Label(ui("未提醒：当天已有 2 条提醒"), systemImage: "bell.slash")
+                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.attention)
+                    .accessibilityIdentifier("parenting.arrangement.reminder.\(item.id)")
+            case .deferred:
+                Label(ui("临近时打开小咪会补上提醒"), systemImage: "bell.badge")
+                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                    .accessibilityIdentifier("parenting.arrangement.reminder.\(item.id)")
+            case nil:
+                Label(ui("提醒状态未确认，请稍后重新打开"), systemImage: "bell.slash")
+                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.attention)
+                    .accessibilityIdentifier("parenting.arrangement.reminder.\(item.id)")
+            }
+        }
+    }
+
     private var localStorageNote: some View {
-        Label(ui("仅在此设备加密保存 · 尚未云同步 · 本机安排不会发送提醒 · 保留直到你删除"), systemImage: "lock.shield")
+        Label(ui(model.remindersAvailable
+                 ? "仅在此设备加密保存 · 尚未云同步 · 提醒只在本机发送 · 保留直到你删除"
+                 : "仅在此设备加密保存 · 尚未云同步 · 本机安排不会发送提醒 · 保留直到你删除"), systemImage: "lock.shield")
             .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("parenting.storageBoundary")
@@ -1145,7 +1214,9 @@ private struct ParentingSecondaryButtonStyle: ButtonStyle {
                     }
                     if cleanedTitle.count > 160 { ParentingFormIssue(message: "安排名称不能超过 160 字。") }
                 } header: { Text(ui(arrangement == nil ? "核对安排内容" : "调整安排内容")) }
-                footer: { Text(ui("安排只保存在本机，不会添加系统日历，也不会发送提醒。")) }
+                footer: { Text(ui(model.remindersAvailable
+                                  ? "安排只保存在本机，不会添加系统日历。确认后，按你的提醒设置在本机提醒。"
+                                  : "安排只保存在本机，不会添加系统日历，也不会发送提醒。")) }
                 if arrangement != nil && hasArrangementChanges { adjustmentReviewSection }
                 if !sameTimeConflicts.isEmpty { sameTimeConflictSection }
                 if let arrangement {
@@ -1919,7 +1990,51 @@ private struct ParentingFormIssue: View {
     @State private var operationID = UUID()
     @State private var signOutConfirmation = false
     @State private var signingOut = false
+    @State private var eraseConfirmation = false
+    @Environment(\.openURL) private var openURL
     private func ui(_ key: String) -> String { AppLanguage(locale: locale).ui(key) }
+    private var reminderAuthorization: ParentingNotificationAuthorization? { model.reminderStatus?.authorization }
+    @ViewBuilder private var remindersSection: some View {
+        if model.remindersAvailable {
+            Section {
+                Toggle(ui("到点提醒"), isOn: Binding(
+                    get: { model.reminderSettings.enabled },
+                    set: { value in Task { await model.setReminders(enabled: value) } }))
+                    .disabled(model.busy || !model.loaded)
+                    .accessibilityIdentifier("parenting.reminders.toggle")
+                if model.reminderSettings.enabled {
+                    Picker(ui("提醒时间"), selection: Binding(
+                        get: { model.reminderSettings.lead },
+                        set: { value in Task { await model.setReminderLead(value) } })) {
+                        ForEach(ParentingReminderLead.allCases) { lead in Text(ui(lead.title)).tag(lead) }
+                    }
+                    .disabled(model.busy || !model.loaded)
+                    .accessibilityIdentifier("parenting.reminders.lead")
+                    Toggle(ui("锁屏上隐藏孩子和事项"), isOn: Binding(
+                        get: { model.reminderSettings.hideContent },
+                        set: { value in Task { await model.setReminderContentHidden(value) } }))
+                        .disabled(model.busy || !model.loaded)
+                        .accessibilityIdentifier("parenting.reminders.hideContent")
+                    if reminderAuthorization == .denied {
+                        Label(ui("系统通知已关闭，小咪现在无法提醒你"), systemImage: "bell.slash")
+                            .foregroundStyle(catColors.failure)
+                        Button(ui("打开系统设置")) { if let url = URL(string: "app-settings:") { openURL(url) } }
+                            .frame(minHeight: 44)
+                    } else if let status = model.reminderStatus, reminderAuthorization == .authorized {
+                        Text(AppLanguage(locale: locale).ui("已为 {0} 件安排在本机排好提醒", arguments: [String(status.scheduledCount)]))
+                            .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+                            .accessibilityIdentifier("parenting.reminders.count")
+                        if status.systemRefused {
+                            Text(ui("有提醒未能确认已排好，请重新打开小咪后再看。"))
+                                .font(catTypography.Role.caption.font).foregroundStyle(catColors.attention)
+                        }
+                    }
+                }
+                Text(ui("只提醒已确认的安排；每天最多 2 条，晚 9 点到早 8 点不提醒（会改在前一晚 8:30）。提醒只在本机发送，不经过服务器，也不会添加系统日历。"))
+                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.calmSecondary)
+            } header: { Text(ui("提醒")) }
+        }
+    }
     var body: some View {
         NavigationStack {
             Form {
@@ -1943,6 +2058,7 @@ private struct ParentingFormIssue: View {
                             }
                     }
                 } header: { Text(ui("账户")) }
+                remindersSection
                 Section {
                     Toggle(ui("显示回顾提示"), isOn: Binding(
                         get: { model.workspace.suggestionsEnabled },
@@ -1959,10 +2075,24 @@ private struct ParentingFormIssue: View {
                 } header: { Text(ui("回顾提示")) }
                 Section {
                     Text(ui("育儿资料仅在此设备加密保存，尚未云同步。更换设备不会自动带回这些记录。"))
-                    Text(ui("本机安排不会添加系统日历，也不会发送提醒。记录会保留直到你主动删除。"))
+                    Text(ui(model.remindersAvailable
+                            ? "本机安排不会添加系统日历。提醒只在本机发送。记录会保留直到你主动删除。"
+                            : "本机安排不会添加系统日历，也不会发送提醒。记录会保留直到你主动删除。"))
                     Text(ui("辅助对话沿用现有模型连接和发送授权。只有你明确发送的内容才会交给已连接的服务处理。"))
                     Button(ui("重新读取本机记录")) { Task { await model.load() } }
                         .frame(minHeight: 44).disabled(model.busy)
+                    Button(ui("删除全部育儿记录"), role: .destructive) { eraseConfirmation = true }
+                        .frame(minHeight: 44).disabled(model.busy || !model.loaded)
+                        .accessibilityIdentifier("parenting.eraseAll")
+                        .alert(ui("删除全部育儿记录？"), isPresented: $eraseConfirmation) {
+                            Button(ui("取消"), role: .cancel) { }
+                            Button(ui("全部删除"), role: .destructive) {
+                                Task { if await model.apply(.deleteAllRecords, operationID: operationID) { operationID = UUID() } }
+                            }
+                            .accessibilityIdentifier("parenting.eraseAll.confirm")
+                        } message: {
+                            Text(ui("孩子、目标、安排、记录和调整历史都会从此设备删除，同时取消已排好的提醒。无法恢复，也不会影响登录账户。"))
+                        }
                     if let error = model.error { ParentingFormIssue(message: error) }
                 } header: { Text(ui("数据与边界")) }
                 Section {

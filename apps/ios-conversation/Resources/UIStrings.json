@@ -8442,5 +8442,141 @@
   "采用只填写新时间，不会更改名称、孩子、目标或最初的原话。请继续核对后确认调整。": {
     "en": "Adopting fills only the new time. The title, child, goal, and original source stay the same. Review and confirm the adjustment to save.",
     "zh-Hans": "采用只填写新时间，不会更改名称、孩子、目标或最初的原话。请继续核对后确认调整。"
+  },
+  "提前 15 分钟": {
+    "en": "15 minutes before",
+    "zh-Hans": "提前 15 分钟"
+  },
+  "提前 30 分钟": {
+    "en": "30 minutes before",
+    "zh-Hans": "提前 30 分钟"
+  },
+  "提前 1 小时": {
+    "en": "1 hour before",
+    "zh-Hans": "提前 1 小时"
+  },
+  "前一天晚上 8 点": {
+    "en": "8 PM the evening before",
+    "zh-Hans": "前一天晚上 8 点"
+  },
+  "小咪提醒": {
+    "en": "mimi reminder",
+    "zh-Hans": "小咪提醒"
+  },
+  "有一件孩子的安排即将开始，打开小咪查看。": {
+    "en": "A plan for your child is about to start. Open mimi to see it.",
+    "zh-Hans": "有一件孩子的安排即将开始，打开小咪查看。"
+  },
+  "为避开夜间安静时段，已提前到前一晚提醒": {
+    "en": "Moved to the evening before to keep the night quiet",
+    "zh-Hans": "为避开夜间安静时段，已提前到前一晚提醒"
+  },
+  "按你的设置，{0}提醒": {
+    "en": "As you set it: {0}",
+    "zh-Hans": "按你的设置，{0}提醒"
+  },
+  "{0}：{1}": {
+    "en": "{0}: {1}",
+    "zh-Hans": "{0}：{1}"
+  },
+  "{0} 开始 · {1}": {
+    "en": "Starts {0} · {1}",
+    "zh-Hans": "{0} 开始 · {1}"
+  },
+  "让小咪在开始前提醒你": {
+    "en": "Let mimi remind you before it starts",
+    "zh-Hans": "让小咪在开始前提醒你"
+  },
+  "只提醒你已确认的安排；每天最多 2 条，晚 9 点到早 8 点不打扰。提醒只在本机发送。": {
+    "en": "Only confirmed plans get a reminder, at most 2 a day, and none between 9 PM and 8 AM. Reminders are sent on this device only.",
+    "zh-Hans": "只提醒你已确认的安排；每天最多 2 条，晚 9 点到早 8 点不打扰。提醒只在本机发送。"
+  },
+  "开启提醒": {
+    "en": "Turn on reminders",
+    "zh-Hans": "开启提醒"
+  },
+  "系统通知已关闭，小咪现在无法提醒你": {
+    "en": "Notifications are off, so mimi can't remind you right now",
+    "zh-Hans": "系统通知已关闭，小咪现在无法提醒你"
+  },
+  "在系统设置里允许小咪发送通知后，回到这里会自动补上提醒。": {
+    "en": "Allow notifications in Settings, then come back here and mimi will set the reminders up.",
+    "zh-Hans": "在系统设置里允许小咪发送通知后，回到这里会自动补上提醒。"
+  },
+  "打开系统设置": {
+    "en": "Open Settings",
+    "zh-Hans": "打开系统设置"
+  },
+  "将在 {0} 提醒": {
+    "en": "Reminder at {0}",
+    "zh-Hans": "将在 {0} 提醒"
+  },
+  "未提醒：提醒时间已过": {
+    "en": "No reminder: the reminder time has passed",
+    "zh-Hans": "未提醒：提醒时间已过"
+  },
+  "未提醒：当天已有 2 条提醒": {
+    "en": "No reminder: that day already has 2",
+    "zh-Hans": "未提醒：当天已有 2 条提醒"
+  },
+  "临近时打开小咪会补上提醒": {
+    "en": "Open mimi closer to the time to set this reminder",
+    "zh-Hans": "临近时打开小咪会补上提醒"
+  },
+  "提醒状态未确认，请稍后重新打开": {
+    "en": "Reminder not confirmed. Please reopen mimi later",
+    "zh-Hans": "提醒状态未确认，请稍后重新打开"
+  },
+  "仅在此设备加密保存 · 尚未云同步 · 提醒只在本机发送 · 保留直到你删除": {
+    "en": "Encrypted on this device only · Not synced to the cloud · Reminders are sent on this device only · Kept until you delete",
+    "zh-Hans": "仅在此设备加密保存 · 尚未云同步 · 提醒只在本机发送 · 保留直到你删除"
+  },
+  "安排只保存在本机，不会添加系统日历。确认后，按你的提醒设置在本机提醒。": {
+    "en": "Plans stay on this device and are not added to the system calendar. Once confirmed, you are reminded on this device as you set it.",
+    "zh-Hans": "安排只保存在本机，不会添加系统日历。确认后，按你的提醒设置在本机提醒。"
+  },
+  "到点提醒": {
+    "en": "Reminders",
+    "zh-Hans": "到点提醒"
+  },
+  "提醒时间": {
+    "en": "When to remind",
+    "zh-Hans": "提醒时间"
+  },
+  "锁屏上隐藏孩子和事项": {
+    "en": "Hide child and plan on the lock screen",
+    "zh-Hans": "锁屏上隐藏孩子和事项"
+  },
+  "已为 {0} 件安排在本机排好提醒": {
+    "en": "Reminders are set on this device for {0} plans",
+    "zh-Hans": "已为 {0} 件安排在本机排好提醒"
+  },
+  "有提醒未能确认已排好，请重新打开小咪后再看。": {
+    "en": "Some reminders could not be confirmed. Please reopen mimi and check again.",
+    "zh-Hans": "有提醒未能确认已排好，请重新打开小咪后再看。"
+  },
+  "只提醒已确认的安排；每天最多 2 条，晚 9 点到早 8 点不提醒（会改在前一晚 8:30）。提醒只在本机发送，不经过服务器，也不会添加系统日历。": {
+    "en": "Only confirmed plans get a reminder, at most 2 a day. Nothing is sent between 9 PM and 8 AM (it moves to 8:30 PM the evening before). Reminders are sent on this device only, never through a server, and are not added to the system calendar.",
+    "zh-Hans": "只提醒已确认的安排；每天最多 2 条，晚 9 点到早 8 点不提醒（会改在前一晚 8:30）。提醒只在本机发送，不经过服务器，也不会添加系统日历。"
+  },
+  "本机安排不会添加系统日历。提醒只在本机发送。记录会保留直到你主动删除。": {
+    "en": "Plans are not added to the system calendar. Reminders are sent on this device only. Records are kept until you delete them.",
+    "zh-Hans": "本机安排不会添加系统日历。提醒只在本机发送。记录会保留直到你主动删除。"
+  },
+  "删除全部育儿记录": {
+    "en": "Delete all parenting records",
+    "zh-Hans": "删除全部育儿记录"
+  },
+  "删除全部育儿记录？": {
+    "en": "Delete all parenting records?",
+    "zh-Hans": "删除全部育儿记录？"
+  },
+  "全部删除": {
+    "en": "Delete all",
+    "zh-Hans": "全部删除"
+  },
+  "孩子、目标、安排、记录和调整历史都会从此设备删除，同时取消已排好的提醒。无法恢复，也不会影响登录账户。": {
+    "en": "Children, goals, plans, records and change history are deleted from this device, and scheduled reminders are cancelled. This can't be undone and doesn't affect your sign-in account.",
+    "zh-Hans": "孩子、目标、安排、记录和调整历史都会从此设备删除，同时取消已排好的提醒。无法恢复，也不会影响登录账户。"
   }
 }
