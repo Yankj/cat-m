@@ -1,5 +1,56 @@
 # 小咪重启 Goal 与交付计划
 
+## 2026-10-24 本地与远端同步（当前，产品暂停）
+
+用户本次仅要求将本地与远端代码对齐并推送，不恢复产品 Goal 或后续里程碑。远端已统一作者/提交者邮箱并改写历史，映射以[远端归档记录](https://github.com/Yankj/mimi/blob/ab69aee56720142ac3affd2678d23860141287d3/docs/repo/branch-archive-2026-10-24.md)为准；本次不把旧历史合回新历史，不强推。
+
+| 入口 | 本次核对及处理 |
+|---|---|
+| `main` | 本地引用对齐远端 `ab69aee56720142ac3affd2678d23860141287d3`，不向 main 提交或推送 |
+| `refactor/mimi-roadmap` | 原 `c406817447262b755ae9ee9236d7487d22e51a87` 对应远端 `7ec021b71ad415b68ee51f2205eff5ba68f235d3`；两者 tree 均为 `4d0fdaca6b033c9810764a7481c68af79f8e654d`，文件内容完全相同。在新历史上仅补交本状态文件 |
+| `feat/parenting-core` | 已获取远端 `bde311b75efe5dd75765e392fef4d8f779e07e27` 并建立同 SHA 的本地跟踪分支；它对应改写前最终交接 `4cdb61f591586ea9680d8beeb6ee172a7b8e929b`。不将其后续产品实现混入治理分支 |
+| 本地旧历史/WIP | 三个旧 tip 保存在 `refs/archive/pre-email-sync-20261024/`；`fix/mimi-m1` 原本地独有提交保留。原未提交 master-plan 全文、补丁及 SHA256 清单保存在 ignored `build/mimi-sync-20261024/`，内容继续收录于下方同期记录 |
+
+GitHub 已读回 [#123](https://github.com/Yankj/mimi/pull/123)、[#124](https://github.com/Yankj/mimi/pull/124) 均 closed/unmerged；本次不重新打开、合并或创建 PR。前述 #113/#116/#120 的关闭和来源保留记录继续有效。
+
+**产品交接边界：**云端最终[交接资料](https://github.com/Yankj/mimi/blob/bde311b75efe5dd75765e392fef4d8f779e07e27/docs/acceptance/family-companion/parenting-core-handoff.md)已推进到 M2a，后续暂停；其[日期证据](https://github.com/Yankj/mimi/blob/bde311b75efe5dd75765e392fef4d8f779e07e27/docs/acceptance/family-companion/parenting-ci-2026-10-24.md)及 PR 回执记载最终旧 SHA `4cdb61f5` 的 CI 40049950631 成功、99 模块和 8 UI 通过。这是云端固定版本交接证据，本次仅获取和核对来源，没有重新执行产品测试或独立签收全部修复。真实手机、生产 Auth/模型、部署后 PG/RLS/多实例和线上验收仍未完成；完整 M2（周期/单次例外、本机提醒）及 M3–M6 未完成。本次没有部署、安装或发版。
+
+下方为此前治理候选 `563f07c` 的原审查与失败记录；其中 ACTIVE、未关闭问题、阶段和 PR 状态均是当时事实，不代表上述最新远端交接状态，不删除旧失败或将其改为通过。
+
+## 2026-10-24 mimi Roadmap 与仓库收口（同步前记录）
+
+用户本次 `/goal` 已处于 ACTIVE，按[确认的 M1–M6 Roadmap](../product/mimi-roadmap.md)整理架构、资产和四个存量 PR；本轮不恢复或签收旧 AF/FINAL Goal。只推进 **M1**，其构建和主流程关闭后再进 M2。用户已明确允许与云端「重构 mimi 育儿核心体验」协调：云端负责 #123 产品修复/CI，本地 `refactor/mimi-roadmap` 负责文档、治理和旧 PR 收口；共享文件按明确路径选择性整合，禁止互相覆盖分支。
+
+| 阶段 | 代码 | 自动测试 | 设备验证 | 线上验收 |
+|---|---|---|---|---|
+| M1 先把一件事办清楚 | #123 draft `563f07c`；创建前清理、nil-token冷启动及finalizer故障已补修；新发现临时scope切换使已保存账本不可见的P1待修 | [当前CI 39993290367](https://github.com/Yankj/mimi/actions/runs/39993290367) Edge 911通过/2跳过；Xcode build-for-testing通过；57项模块全部PASS，3条UI全部FAIL：均在添加孩子点击保存后等待表单关闭超时，尚未进入安排旅程。固定输入禁网HTTP20/20通过 | 当前合成原生UI已运行但未通过；真机 NOT_RUN，本机无完整Xcode。未完成创建到完成或失败恢复的UI验证 | NOT_RUN；专用后端未部署 |
+| M2 日常变化与本机提醒 | 未启动 | NOT_RUN | NOT_RUN | NOT_RUN |
+| M3 成长回顾 | 未启动；已有轻目标/记录是 M1 基础 | NOT_RUN | NOT_RUN | NOT_RUN |
+| M4 家庭事实记忆 | 未启动；旧记忆模块仅复用资产 | NOT_RUN | NOT_RUN | NOT_RUN |
+| M5 同步、分工、可靠主动 | 未启动；旧 family 后端不等于育儿端已接通 | NOT_RUN | NOT_RUN | NOT_RUN |
+| M6 真实家庭试用 | 未启动 | NOT_RUN | NOT_RUN | NOT_RUN |
+
+**仓库与 PR：**主线基线 `4ec8118`，治理以 [draft PR #124](https://github.com/Yankj/mimi/pull/124) 独立审阅，base 为 #123 的 `feat/parenting-core`；本地将固定产品候选 `563f07cdb2e87248fa9a0294fd6e08d8abd0f739` 同步到治理分支，候选新增/修改的16文件逐字节保留。治理提交 `5cfdf12`、`0732dcd` 及后续边界澄清已推送；尚未合并任何 PR 或部署。README、产品/设计索引、AGENTS、架构图与目录机器清单已对齐新路线，旧日期证据保留；[资产审计](../architecture/mimi-assets-2026-10-24.md)与[PR 审计](../architecture/mimi-pr-disposition-2026-10-24.md)固定来源。#120 已关闭未合并，独有代码/分支及原描述保留。#113 的43文件已逐blob进入main；#116旧路线被替代。初次关闭被自动审批拒绝后，用户明确批准只关闭；两项现已closed/unmerged，原描述、分支和提交均保留。开放产品候选收敛为#123，#124仅治理与来源修复。
+
+**验证与待处理：**布局/部署来源/AF计划/CGUI/FINAL计划/能力清单/敏感扫描及扫描器回归通过；治理16正负例通过，原17项治理入口259个本地链接有效；加上22份原pin恢复后检查547链接，4条旧本地工作目录引用仅保留历史来源，不伪造当前文件。用户已批准24历史文件恢复例外，按原清单逐hash恢复后，冻结来源检查全通过；原清单和历史变更提交未改。另22项历史AF输入仅有品牌/仓库URL漂移，已按每文件原pin恢复，未改清单；原AF Goal检查实跑通过（9项local-only输入仍不可用）。本地pre-push旧仓库名白名单已精确补入mimi并通过5组/38个真实临时Git回归，未绕过hook。治理结果不证明原生或线上通过。 新增独立 `Repository integrity` workflow，在PR和main push执行上述检查及现有guard回归，权限只读、不保留checkout凭据；`a74c4f2`的[首次GitHub运行39993062579](https://github.com/Yankj/mimi/actions/runs/39993062579)四组检查实际全通过；同步563f07c后的`07b7248`也在[39994447310](https://github.com/Yankj/mimi/actions/runs/39994447310)全通过。原生与后端目录README现补齐维护入口、历史来源和验证边界；旧主动模块README的v1明文叙述按当前源码校正，保留外部提醒元数据仍使用UserDefaults的限制。已删除官网迁出后无构建对象的旧Website workflow，外站未改。不宣称服务器强制合并保护已启用。
+
+**M1 独立审查：**在 `974dbb1` 的真实HTTP handler/ChatService + 合成Repository复现“未创建远端对象的清理请求连续404”；源码链会让 pending 清理阻挡以后整理。云端 `d5f739e` 已补受身份约束的幂等删除墓碑与迟到create围栏，客户端仍严格校验回执、不吞404。固定提交独立禁网复跑实际HTTP模块18/18通过，定点复审未发现该问题剩余P1；日志SHA256为 `9077fdef818e34eb7eb10fa96b2bb0175c54c82bf3a404d8277066a9201026af`，原始复现、复审日志与恢复patch保存在ignored `build/mimi-roadmap-20261024/`。合成Repository不证明真实PG多实例并发，未执行原生UI、生产Auth或模型调用。
+
+**M1 原生组合接续：**`d5f739e`的[原生job120537569259](https://github.com/Yankj/mimi/actions/runs/39989566438/job/120537569259)实际执行56项、0失败，CI合并候选`9b12744`不是main实际合并。随后独立审查发现receipt先挂载chat、Auth稍后恢复时StateObject捕获nil账号token；`563f07c`已在可信快照及chat attach处发布包含chat/profile/workspace/subject/token的presentation，由Home按完整身份重建，旧Store固定token屏障不变。新增生命周期回归实走收据预览、同chat认证恢复、原账本读回/确认/完成和退出拒写，本候选CI中该生命周期用例实际PASS（1.842秒），57模块总计0失败；Auth和cipher端口仍为合成，不能替代真实账号/Keychain或生产验收。
+
+**M1 未关闭的问题：**无receipt且配置scope为空时，认证成功可先挂载provisional scope，并发布可写账本；resolver迟到返回不同canonical scope后换repository，没有迁移，先前“保存成功”的孩子/安排从UI消失，冷重开仍读取新分区。默认配置允许scope空，源码链已确认，尚无SDK复现。已交云端阻止不稳定分区写入或提供明确迁移，并增加nil配置scope＋延迟不同resolver scope的回归；不能一刀切禁止已确认本机账本的离线访问。此P1未关闭，M1继续进行，M2不启动。
+
+**563f07c独立验证边界：**后端finalizer读取故障也会清源文本、释放lease，purged时清临时缓存；固定归档以现有禁网prelude及Node24.19.0实际运行HTTP/ChatService合成Repository测试20/20通过，日志SHA256=`b8819e4a1e31f672526f6527044de8a60bce0b0ca05e3dd636cb6b1abf1f7a35`。初次PATH Node22.12缺loader接口的启动失败另存，未改产品。当前CI的Edge913总/911通过/2跳过，CI合并候选`40b4b22`；真实PG并发/模型不在证据内。DEBUG UI fixture隔离、Xcode成员及57模块＋3UI选中范围已独立静态核对。成功UI旅程包含真实SwiftUI/SwiftData/AES/Store操作和同UUID重开后原记录读回，但尚未重新断言完成安排状态/时间；失败UI仅同进程重开编辑器，不是App冷启动恢复；深色大字仅冒烟。截图留runner xcresult，未上传，未取得可复审渲染结果。主按钮已改用既有CTA梯度，按下不降低背景透明度，静态白字对比4.520/5.427；不替代原生视觉验收。
+
+**563f07c原生失败证据：**[job120550319708](https://github.com/Yankj/mimi/actions/runs/39993290367/job/120550319708)终态FAIL。17:22:27 UTC为TEST BUILD SUCCEEDED；模块57/57通过后，UI三用例全部在`ParentingWorkspaceUITests.swift:212`失败。日志确认已输入昵称并点击`parenting.name.save`，15秒内表单未关闭；不是workflow20分钟上限，也未执行到AI候选/安排/完成/重开。当前helper只报通用超时，没有AX树或可见保存错误，尚不能判定产品持久化、fixture、Keychain或点击问题。已交云端先补合成UI失败诊断并审实际保存链，不能用延长等待或替换测试cipher把条件绕过。真实SwiftUI路径已运行不等于通过，原失败保留。ignored日志摘要`ci-563f07c-ios-excerpt.log`的SHA256=`4d5dbda14b05bfdabe871be0da5ca07e4945f53737de5a46b8b255a10cc4ec98`。
+
+**M1验收覆盖补核：**除上述scope问题外，固定563f07c未发现新的高置信产品缺陷；但现有UI旅程未覆盖已确认安排取消及取消后重开、真正改时刻、独立观察增改删、写盘失败保留输入后重试、unknown结果中断后的原ID核对。模块测试覆盖部分边界，不能推断对应UI已经通过；已交云端按M1补最小实际交互或保留设备待验。关键“不会发送提醒”文案及完成不产生系统效果的源码符合当前范围，仍须原生界面验收。
+
+**线上只读基线（2026-10-24 01:30 +08）：**通过现有Supabase管理连接读回`catpaw-m` / us-east-1：catpaw-api v57、catpaw-tick v16、catpaw-proactive v10，平台均标ACTIVE。取得API v57打包源码后，`catpaw/parenting-intake/v1`、`parenting_intake`及`catpaw.parenting-intake.v1`均无匹配；这支持新整理能力尚未进入该源码的判断，不是线上端点执行验证。平台bundle摘要`f2c15287135a65d16a906475ef225e1ff0b311443340558bd263e3e474785b1e`及精简读回留ignored `build/mimi-roadmap-20261024/platform-readback-20261024.json`，不改旧部署manifest，不把平台bundle哈希当仓库源码哈希。未调用生产Auth/模型/SQL、读取用户日志或变更配置/部署；当前候选通过后仍需具体同版验证及部署审批。
+
+
+以下条目均保留其当日状态；旧“当前”“PAUSED”、版本号与测试数不覆盖本节。
+
 ## 2026-10-23 获批 GitHub 接续与逐步里程碑
 
 用户随后明确批准新分支推送及草稿PR，并要求检查差距、逐个继续里程碑。已将原本地候选 `973a8f2cdc468e60ed007c128194adcac334a2ae` 普通推送到 `feat/parenting-core`，创建 [draft PR #123](https://github.com/Yankj/mimi/pull/123)；main读回仍为 `4ec8118b796f7c983ae4436268441c3c9d3d33db`。没有合并、自动合并、部署、发布或附件上传。仓库内发布workflow仅匹配`release/**`或手动dispatch，本分支/草稿PR无已知生产部署触发。

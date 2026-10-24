@@ -45,13 +45,13 @@ struct ProfileExport: FileDocument {
                 Text(ui("主题与语言等偏好在同一用户的云端、电脑、本机视图共享；会话配置保持创建时快照。")).font(.footnote)
             }
             Text(ui("界面控件提供中英文；文档、用户内容、示例正文及系统或服务错误保留原文。英文布局与原生音频仍需设备验收。")).font(.footnote).foregroundStyle(.secondary)
-            Section(ui("版本与数据")) { Text(ui("cat 原生本地版 0.1.0")); StatusLabel(text: ui("云同步显式关闭")); Text(ui("真实 Provider 未配置，远端执行均标明模拟。")).font(.footnote) }
+            Section(ui("版本与数据")) { Text(ui("Catpaw-m 原生本地版 0.1.0")); StatusLabel(text: ui("云同步显式关闭")); Text(ui("真实 Provider 未配置，远端执行均标明模拟。")).font(.footnote) }
             Section(ui("开发联调")) {
                 NavigationLink(ui("本地 Gateway · 合成数据"), value: AppRoute.localGateway).accessibilityIdentifier("settings.localGateway")
                 NavigationLink(ui("OpenMuse · 合成 Demo"), value: AppRoute.openMuseDemo).accessibilityIdentifier("settings.openMuseDemo")
             }
         }.navigationTitle(ui("设置"))
-        .fileExporter(isPresented: $exporting, document: exportDocument, contentType: .json, defaultFilename: "cat-workspace-export") { result in if case .failure(let error) = result { model.error = error.localizedDescription } }
+        .fileExporter(isPresented: $exporting, document: exportDocument, contentType: .json, defaultFilename: "Catpaw-workspace-export") { result in if case .failure(let error) = result { model.error = error.localizedDescription } }
         .confirmationDialog(ui("只重置全部演示环境；用户分区保留。"), isPresented: $reset) { Button(ui("重置演示"), role: .destructive) { model.perform { await model.suspendRuntimes(); NativeVoiceController.shared.interrupt(); try await model.repository.resetDemo(); model.path = []; model.drafts = [:]; model.loaded = false; await model.start() } } }
     }
     private func booleanPreference(_ key: String, fallback: String) -> Binding<Bool> { Binding(get: { model.preference(key, fallback: fallback) == "true" }, set: { model.setPreference(key, $0 ? "true" : "false") }) }

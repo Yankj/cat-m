@@ -1,5 +1,7 @@
 # 架构与决策
 
+当前入口：[mimi 架构总览](../architecture.md)、[M1–M6 Roadmap](../product/mimi-roadmap.md)、[资产审计](mimi-assets-2026-10-24.md)、[存量 PR 审计](mimi-pr-disposition-2026-10-24.md)。下列 AF/FINAL、v1/r2/r3 和旧审查按其日期及复用模块解释，不另设当前产品方向。
+
 新增[项目目录/依赖/分支审查](repository-review-2026-10-13.md)与[机器目录角色](../development/repository-layout.json)，包括整合优先级、两个未合入候选和已应用的基础规则。
 
 **当前进展只见 [主交付计划](../status/master-plan.md)。** 新主线为自然对话与服务端持久任务；本仓库现有v1/r2/r3实现作为历史基线，不等于以下目标已部署。

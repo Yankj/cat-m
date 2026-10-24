@@ -4,23 +4,19 @@
 
 # mimi
 
-本次育儿核心改造以“今天的孩子安排、家长自定小目标、成长记录”为主入口，聊天辅助整理具体事情。设计与状态约定见 [育儿核心规格](docs/design/family-companion/parenting-core.md)，当前实现与验收边界见 [主计划](docs/status/master-plan.md)。本机加密账本与既有云端 Agent 任务分开；保存本机安排不代表云同步、日历写入或通知成功。
+**帮妈妈把孩子的零碎事情接住，把日常安排与长期成长连起来。**
 
-本地品牌迁移与保留身份见 [兼容说明](docs/development/cat-brand-migration.md)，验证范围见 [本地记录](docs/acceptance/cat-brand-2026-10-22.md)。
+理解交代 → 确认安排 → 跟进变化 → 记录事实 → 回顾调整。默认“今天”，AI 在原界面整理可编辑草稿；确认后才成为安排。衡量妈妈少操多少心，而不是聊了多少句。
 
-家庭成长助理入口：[主计划与当前范围](docs/status/master-plan.md) · [本地与云端总交接](docs/acceptance/family-companion/handoff-2026-10-23.md) · [独立官网候选及验证说明](https://github.com/Yankj/mimi/tree/7ca0c4535dbfb6419a5000eab8275d08be051ceb/apps/website/family)。
+[产品 Roadmap M1–M6](docs/product/mimi-roadmap.md) · [当前进度与验收](docs/status/master-plan.md) · [育儿交互合同](docs/design/family-companion/parenting-core.md) · [架构](docs/architecture.md) · [资产与来源](docs/architecture/mimi-assets-2026-10-24.md) · [存量 PR 审计](docs/architecture/mimi-pr-disposition-2026-10-24.md)
 
-**把今天安排好，把成长点滴留下。**
-
-面向宝妈育儿与孩子长期成长的 iOS App：交代一件事 → 整理可编辑草稿 → 明确确认安排 → 今天调整与完成 → 关联目标回顾。聊天和多模态输入服务具体事情；本轮候选与已发布版本的能力边界分别记录。
+当前开发只推进 M1。本机保存、云同步、系统提醒和家长完成是不同事实。候选源码、已发布包与线上后端分别记录；构建通过不代表原生体验或线上验收通过。品牌显示为 mimi / 小咪，[内部安装、存储与协议身份](docs/internal-identifiers.md)保持兼容。
 
 ![Swift 5](https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white)
 ![iOS 17+](https://img.shields.io/badge/iOS-17%2B-000000?logo=apple&logoColor=white)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-SwiftData-0D96F6?logo=swift&logoColor=white)
 ![Supabase Edge](https://img.shields.io/badge/Supabase-Edge%20Functions-3ECF8E?logo=supabase&logoColor=white)
 ![Deno](https://img.shields.io/badge/Deno-tests-000000?logo=deno&logoColor=white)
-![Backend](https://img.shields.io/badge/catpaw--api-v55%20(prod)-3ECF8E)
-![App](https://img.shields.io/badge/App-v1.2.0%20on%20main-brightgreen)
 [![下载](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Releases-2EA44F?logo=github&logoColor=white)](https://github.com/Yankj/mimi/releases/latest)
 ![License](https://img.shields.io/badge/license-TBD-lightgrey)
 
@@ -33,7 +29,7 @@
 </div>
 
 > [!NOTE]
-> **版本状态（2026-10-18）**：iOS **v1.2.0**（2026-10-18）已发布，见 [Releases](https://github.com/Yankj/mimi/releases/latest)，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。线上后端为 `catpaw-api` **v55**（#104）、`catpaw-proactive` **v10**（#101）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
+> **历史发行快照（2026-10-18，非 M1 验收）**：iOS **v1.2.0**（2026-10-18）已发布，见 [Releases](https://github.com/Yankj/mimi/releases/latest)，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。该快照记录的后端为 `catpaw-api` **v55**（#104）、`catpaw-proactive` **v10**（#101）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
 
 <details>
 <summary><b>目录</b></summary>
@@ -60,6 +56,8 @@
 <!-- CATPAW-WEBSITE:START -->
 ## 产品官网
 
+以下为独立营销站与历史演示入口，不构成当前育儿候选的能力验收。
+
 **先你一步，把事办妥。** 家里的事，交给小咪记着。拍一张、说一句，它整理成待你确认的卡片；今天要办的一目了然，我们家的事它都记得，你点头之前什么都不改。
 
 [浏览官网](https://mimi.heydusk.com/) · [观看产品视频](https://mimi.heydusk.com/#film) · [25 页产品介绍](https://mimi.heydusk.com/assets/catpaw-product-deck.pdf) · [安全与隐私](https://mimi.heydusk.com/trust.html) · [技术设计](https://mimi.heydusk.com/technology.html)
@@ -69,23 +67,18 @@
 - **能执行**：写进日历，留下回执。
 - **可信**：先问你，再动手。
 
-官网源码位于公司站仓库 [Yankj/heydusk-site/apps/mimi](https://github.com/Yankj/heydusk-site/tree/feat/company-site/apps/mimi)，与 heydusk.com 同仓分目录部署；本仓库 [apps/website](apps/website) 仅保留迁出说明。演示素材保留 v1.1 版本；当前入口、状态与限制以 [能力清单](docs/product/capabilities/catpaw-capabilities.json) 和 [CHANGELOG](CHANGELOG.md) 为准。
+官网源码位于公司站仓库 [Yankj/heydusk-site/apps/mimi](https://github.com/Yankj/heydusk-site/tree/feat/company-site/apps/mimi)，与 heydusk.com 同仓分目录部署；本仓库 [apps/website](apps/website) 仅保留迁出说明。演示素材保留 v1.1 版本；当前入口、状态与限制以 [能力清单](docs/product/capabilities/cat-capabilities.json) 和 [CHANGELOG](CHANGELOG.md) 为准。
 <!-- CATPAW-WEBSITE:END -->
 
 ## 背景
 
-传统助理 App 要么是“问一句答一句”的聊天框，要么是需要用户自己拆步骤的工具集合。小咪想做一个**先你一步**的助理：
+孩子的课程、临时变化和成长观察往往散落在消息与记忆里。mimi 把一次交代变成可核对的安排，将实际发生的事留下来，再帮助妈妈回顾和调整。先把一件事办清楚，之后再逐阶段接入变化、成长回顾、家庭记忆、同步与可靠主动提醒。
 
-- **从对话到行动**：用一句话说目标，助理产出计划、报告，或直接调用系统能力（日历、提醒事项、通讯录、地图），而不是只给文字建议。
-- **主动但不打扰**：端上根据日历、提醒等信号判断时机，给出带“为什么找你”解释、可撤销的建议卡片。
-- **人在回路**：任何会改变外部世界的动作都先以审批卡片呈现，确认后才执行；结果未知时按原决定核对，不重复执行。
-- **账号隔离、可恢复**：会话、任务、成果与账号绑定；切换账号时自动停放并在重新登录时恢复，网络中断后按原 turn 续上。
-
-本仓库包含产品架构文档、可运行的 iOS App、后端源码与演示材料。
-
-<p align="right">(<a href="#readme-top">返回顶部</a>)</p>
+本仓库维护一个 iOS App 和既有 Supabase 后端。旧聊天、设备动作、记忆和任务能力按需复用；官网独立维护，历史 App 与来源快照只读保存。
 
 ## 核心功能
+
+本节保留通用助理发行线的能力与代码导航，不是育儿 M1–M6 的完成清单；新阶段验收以[主计划](docs/status/master-plan.md)为准。
 
 “在哪里”一列：**main** = v1.1 之前已在 `main`；**v1.1.0** = 随 v1.1.0 发版（#98）进入 `main`；**线上 v53** = 已部署到生产的后端版本。路径相对 `apps/ios-conversation/Sources/`（iOS）或 `services/edge/supabase/functions/`（Edge）。
 
@@ -124,6 +117,8 @@
 ## Quick Start
 
 > **教程（Tutorial）**：在模拟器里跑起来，不需要任何账号或密钥。
+
+以下是既有宿主与合成评审入口；M1 候选及可用验证方式见[当前进度](docs/status/master-plan.md)。下载历史发行包或运行旧 fixture 不会自动得到育儿主流程。
 
 **前置条件**
 
@@ -197,7 +192,9 @@ xcrun simctl launch booted "$BUNDLE_ID"
 
 ## 使用
 
-> **操作指南（How-to）**：典型对话与期望表现。离线评审模式对应 `run-simulator-review.sh` 的参数，可在无网络时复现界面。
+育儿流程以[育儿交互合同](docs/design/family-companion/parenting-core.md)为准：今天 → 交代一件事 → 编辑草稿 → 确认安排 → 完成与记录。下表保留辅助聊天与旧组件的评审入口；合成展示不证明系统提醒实际执行。
+
+> **历史组件操作指南（How-to）**：离线评审模式对应 `run-simulator-review.sh` 的参数，可在无网络时复现相应合成界面。
 
 | 场景 | 示例对话 | 期望表现 | 离线评审模式 |
 |---|---|---|---|
@@ -238,91 +235,7 @@ zsh apps/ios-conversation/Scripts/run-simulator-review.sh plan
 
 ## 架构
 
-> **原理（Explanation）**：更完整的分层说明见 [docs/architecture.md](docs/architecture.md)。
-
-```mermaid
-flowchart LR
-  subgraph iOS["iOS App · apps/ios-conversation"]
-    UI["Views<br/>对话 · 卡片 · 侧栏 · 设置"]
-    SVC["Services<br/>Session · TaskAction · Proactive"]
-    DOM["Domain<br/>typed contracts"]
-    PERSIST["Persistence<br/>SwiftData"]
-    PROV["Providers<br/>SSE · OAuth · DeviceTools"]
-    UI --> SVC --> DOM
-    SVC --> PERSIST
-    SVC --> PROV
-  end
-  subgraph OS["iOS 系统"]
-    EK["EventKit"]
-    CN["Contacts"]
-    MK["MapKit"]
-    SP["Speech"]
-  end
-  subgraph Edge["Supabase Edge · services/edge"]
-    API["catpaw-api"]
-    PRO["catpaw-proactive"]
-    CORE["_shared/core<br/>context-window · live-text · approval"]
-    API --> CORE
-    PRO --> CORE
-  end
-  PG[("PostgreSQL")]
-  LLM["免费模型路由链"]
-  VIS["视觉路由链"]
-  PROV -->|"HTTPS / SSE"| API
-  PROV --> EK
-  PROV --> CN
-  PROV --> MK
-  PROV --> SP
-  CORE --> PG
-  CORE --> LLM
-  CORE --> VIS
-```
-
-**关键时序 1：设备动作经审批后执行**
-
-```mermaid
-sequenceDiagram
-  actor U as 用户
-  participant App as iOS App
-  participant API as catpaw-api
-  participant EK as EventKit
-  App->>API: 发送消息
-  API-->>App: 待审批动作（如写日历）
-  App->>U: 展示审批卡片
-  U->>App: 确认
-  App->>API: 提交决定（带版本校验）
-  API-->>App: 授权执行
-  App->>EK: 请求权限并写入
-  EK-->>App: 事件标识
-  App->>API: 回报结果（成功 / unknown）
-  Note over App,API: 结果未知时按原决定核对，不重复执行
-```
-
-**关键时序 2：实时逐字预览（live text）**
-
-```mermaid
-sequenceDiagram
-  participant App as iOS App
-  participant API as catpaw-api
-  participant DB as PostgreSQL
-  App->>API: POST 消息（X-cat-Live-Text: 1）
-  API-->>App: 每步第一个 delta 立即发出
-  loop 约每 100 ms
-    API-->>App: text_preview（未落库尾部，不入库）
-  end
-  API->>DB: TextBatcher 落库（512 字符 / 250 ms）
-  API-->>App: 持久化事件（总是先于后续 preview）
-  Note over App: 断线重连按最后持久化 sequence 续传
-```
-
-**核心原则**
-
-1. **授权在后端**：展示层和流结束都不能授予权限或宣告完成。
-2. **人在回路**：外部副作用先审批，再在设备上执行。
-3. **账号隔离**：App 与云端数据随账号停放 / 恢复；只有系统里的外部副作用（如 EventKit 提醒）由用户决定保留或删除。
-4. **证据分层**：fixture、合成、真实模型、云端四层结果严格区分。
-
-<p align="right">(<a href="#readme-top">返回顶部</a>)</p>
+[架构总览](docs/architecture.md)统一说明育儿页面、账本、AI 整理、既有云服务和系统效果的关系。`apps/ios-conversation` 是唯一原生宿主；`services/edge/supabase/functions` 是唯一后端维护源。M1 的安排事实由账号隔离本机账本保存，AI 只产出候选；未来云同步需单独解决权威映射、迁移和冲突。
 
 ## 目录结构
 
@@ -337,7 +250,8 @@ mimi/
 │   │   ├── Resources/           #   资源与 UIStrings 本地化
 │   │   └── Widgets/             #   Widget / Live Activity
 │   ├── ios/                     # 冻结的 v1（只读历史）
-│   └── ios-openmuse-demo/       # 冻结的 r3（只读历史）
+│   ├── ios-openmuse-demo/       # 冻结的 r3（只读历史）
+│   └── website/                 # 官网迁出说明；源码在 heydusk-site
 ├── packages/
 │   ├── ios-navigation/          # 侧栏导航本地 Swift package
 │   └── ios-image-composer/      # 图片输入本地 Swift package
@@ -440,30 +354,15 @@ CATPAW_DENO_BIN=<Deno路径> CATPAW_PUBLIC_NPM_CACHE=<公开cache目录> sh scri
 
 - 分支：不在 `main` 直接开发，按 [分支规范](docs/development/branch-management.md) 用短分支；`.githooks` 提供本地守卫。
 - 部署：Edge 函数与数据库迁移只在用户明确批准后部署，步骤见 [部署清单](services/edge/docs/deploy-checklist.md)。
-- CI：GitHub Actions 当前因额度用尽暂停，PR 需附本地编译与测试记录。
+- CI：[产品检查](.github/workflows/ci.yml)按 PR 变更路径选择任务；[仓库完整性检查](.github/workflows/repository-integrity.yml)验证目录、冻结来源、合同引用、敏感扫描与本地 hook 回归。官网已迁出，原网站构建 workflow 停用。每次以对应 SHA 的终态和实际执行日志为准，当前结果与缺失验收统一见[主计划](docs/status/master-plan.md)。CI 检查不等于服务器已强制合并保护。
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
 
 ## Roadmap 与已知限制
 
-- [x] **v1.1.0 发版**：已通过 #98 合入 `main`（OAuth 登录与账号下拉、iOS live text、语音对话、记忆工具调用、版本管理等）
-- [x] 版本号自动化：构建号自动递增，设置 › 关于显示发布时间与提交号
-- [x] [CHANGELOG](CHANGELOG.md) 记录 1.1.0 发布日期（2026-10-18）
-- [ ] 打 `v1.1.0` 标签，发布首个 GitHub Release（模拟器 zip + 开发签名 ipa），见[下载与安装](#下载与安装)
-- [ ] 1.1.1 修复版：标题溢出、时间格式（见 [CHANGELOG](CHANGELOG.md)）
-- [ ] App 实拍录屏 / GIF 与演示视频
-- [ ] v1.2：EventKit CI 测试、Release / ipa 自动分发
-- [ ] 云电脑托管：仅为[提案](docs/architecture/cloud-computer-proposal.md)
+[用户确认的 M1–M6 Roadmap](docs/product/mimi-roadmap.md)是阶段范围唯一入口，[主计划](docs/status/master-plan.md)记录代码、自动测试、设备验证和线上验收。先关闭 M1 构建与主流程问题，再进入 M2；本机提醒前置到 M2，家庭同步与多人分工在 M5，真实试用在 M6。
 
-**已知限制**
-
-- 无配置时只能跑离线合成路径，不产生真实回答。
-- 主动提醒：后端兜底规则还不读取「提前 N 分钟」偏好，会前 10–25 分钟的提醒可能不出现；修复（`catpaw-proactive` v10）在评审中，部署需用户批准。
-- 记忆：「自动记住新内容」关闭时，明确说「记住」也可能没有保存；修复（`catpaw-api` v54）在开发中。
-- live text：重连到另一实例时退回普通批量推送；未落库尾部超过 4000 字符时暂停预览。
-- 私有仓库计划下 GitHub 分支保护未生效。
-
-<p align="right">(<a href="#readme-top">返回顶部</a>)</p>
+M1 本机账本尚不代表云同步、系统提醒或图片/语音育儿提取。无后端配置只能运行明确的合成路径；原位 AI 的专用接口必须与服务版本匹配。历史发布与已知问题见[CHANGELOG](CHANGELOG.md)及各日期验收，不从旧版本待办推断今天状态。私有仓库服务器保护未被证实生效，本地 hooks 不覆盖 API/连接器操作。
 
 ## 文档地图（Diátaxis）
 
@@ -493,7 +392,7 @@ CATPAW_DENO_BIN=<Deno路径> CATPAW_PUBLIC_NPM_CACHE=<公开cache目录> sh scri
 - **技术栈**：Swift 5 / SwiftUI（部署目标 iOS 17，Xcode 26 编译）、SwiftData（CloudKit 关闭）、URLSession SSE、EventKit / Contacts / MapKit / Speech；后端 Supabase Edge Functions（Deno，`.ts`/`.mjs`）+ PostgreSQL。
 - **维护入口**：iOS 只改 `apps/ios-conversation`；后端只改 `services/edge/supabase/functions`。`apps/ios`、`apps/ios-openmuse-demo`、`services/facade`、`services/edge/deployed-baselines`、`vendor` 为冻结快照。
 - **分层**：`Views → *Service → Domain contracts`；`Providers` 封装网络、认证、系统框架；`Persistence` 封装 SwiftData。UI 不直接持有账号或执行副作用。
-- **核心领域模型**：Conversation / Turn、TaskPlan、TaskAction（审批）、DeviceEffect / DeviceCall、Artifact、Inbox、Memory、GenerativeUI、ProactiveSuggestion。
+- **核心领域模型**：孩子、成长目标、安排草稿/确认/取消/完成、独立记录；既有 Conversation、TaskPlan、审批、DeviceEffect、Memory 等作为复用模块，助手任务完成不等于孩子完成。
 - **约定**：结果未知标 unknown 并按原决定核对；合成结果不得冒充真实验收；不新增依赖或凭据；部署需用户批准；进度只写 [主计划](docs/status/master-plan.md)。
 - 完整规则见 [AGENTS.md](AGENTS.md)。
 

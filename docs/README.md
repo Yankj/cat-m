@@ -4,6 +4,8 @@
 
 本索引按 [Diátaxis](https://diataxis.fr/) 四象限组织。旧文档是其日期 / 源码范围的证据，保留原文，不把历史计数改成当前通过。
 
+当前开工顺序：[M1–M6 产品路线](product/mimi-roadmap.md) → [主计划](status/master-plan.md) → [育儿交互](design/family-companion/parenting-core.md) → [架构与事实权威](architecture.md)。仓库资产及存量 PR 见[资产审计](architecture/mimi-assets-2026-10-24.md)、[PR 处置审计](architecture/mimi-pr-disposition-2026-10-24.md)。旧 AF/FINAL 启动文档保留历史范围，按 Roadmap 的适用映射使用。
+
 | 象限 | 读者目标 | 入口 |
 |---|---|---|
 | **Tutorials 教程** | 第一次跑起来 | [README · Quick Start](../README.md#quick-start)、[接手说明](../handoff.md)、[iOS 工程说明](../apps/ios-conversation/README.md) |
@@ -24,7 +26,7 @@
 | 家庭成长助理执行准备 | [M0契约](design/family-companion/m0-contract.md)、[初始验收矩阵](acceptance/family-companion/acceptance-matrix-v1.json)、[准备证据](acceptance/family-companion/preparation-2026-10-23.md)、[dot验证本机复跑回执](acceptance/family-companion/cloud-recheck-2026-10-23.md)、[新增家庭契约接收与映射](acceptance/family-companion/product-contract-alignment-2026-10-23.md)、[dot原始统一入口](../qa/family-cloud-verification/README.md)、[初始化恢复提案](design/family-companion/bootstrap-recovery-plan.md)；实时进展见主计划 |
 | 终版产品、视觉与技术设计 | [FINAL-1综合规格](product/catpaw-final-product-spec.md)、[日用质量／竞争优势验收](acceptance/catpaw-final-product-acceptance.md)、[可点按状态提案](design/prototypes/catpaw-final/index.html) |
 | 项目架构与开发规则 | [最新代码与分支复核](architecture/repository-review-2026-10-15.md)、[目录角色](development/repository-layout.json)、[分支规范](development/branch-management.md)、[2026-10-13基础审查](architecture/repository-review-2026-10-13.md) |
-| 当前产品与页面/状态/API | [AF-1底座](product/agent-foundation-spec.md)、[UX-1](design/ios-codex-experience-spec.md)、[产品索引](product/README.md) |
+| 当前产品与页面/状态/API | [M1–M6 Roadmap](product/mimi-roadmap.md)、[育儿交互](design/family-companion/parenting-core.md)、[产品索引](product/README.md)；AF/UX合同按复用模块保留 |
 | 设计、tokens、A1图标与历史截图 | [设计索引](design/README.md)、[design-tokens.json](design/design-tokens.json) |
 | 验收记录 | [验收索引](acceptance/README.md)、[连续多模态问题单](acceptance/r1-continuous-multimodal-issues.md) |
 | 主 iOS 来源与 P0 bridge 证据 | [来源清单](status/ios-p0-import-provenance.json)、[原生结果快照](acceptance/evidence/ios-p0-native-bridge/RESULT.json) |

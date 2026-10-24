@@ -1,4 +1,4 @@
-# 小咪终版产品、体验与技术设计
+# cat 终版产品、体验与技术设计
 
 版本：FINAL-1，2026-10-13，产品设计修订R1。综合用户指定的 Grok 分支、现有 AF-1／UX-1、手机观察与四仓源码核读；[本次产品评审](../design/product-experience-review-2026-10-13.md)记录体验取舍。本文固定产品设计和质量标准，不宣称已经实现或优于竞品。当前执行基础仍为 [AF-1-G3-UX1](../planning/AF-1/goal.md)，实时状态只在 [master-plan](../status/master-plan.md)。[终版验收](../acceptance/catpaw-final-product-acceptance.md)定义质量与对照证据。
 
@@ -22,7 +22,7 @@ AF-G5 是 FINAL-G1 的基础放行门，基础完成不自动关闭 FINAL-G2/G3�
 
 ## 2. 如何综合两套设计
 
-Grok 固定分支为 [`38c44457…`](https://github.com/Yankj/mimi/tree/38c44457cb3f360beed9ee0dab5ab87b001db0c9)，17文件身份见[manifest](../research/grok-companion-source-manifest-2026-10-13.json)，采纳决策见[核读报告](../research/grok-companion-integration-review-2026-10-13.md)。
+Grok 固定分支为 [`38c44457…`](https://github.com/Yankj/catpaw-m/tree/38c44457cb3f360beed9ee0dab5ab87b001db0c9)，17文件身份见[manifest](../research/grok-companion-source-manifest-2026-10-13.json)，采纳决策见[核读报告](../research/grok-companion-integration-review-2026-10-13.md)。
 
 | 输入 | 终版采用 | 终版修正 |
 |---|---|---|
@@ -31,13 +31,13 @@ Grok 固定分支为 [`38c44457…`](https://github.com/Yankj/mimi/tree/38c44457
 | 本地：对话、持久工作、审批、成果、记忆、跟进 | 一个工作身份贯通所有入口；版本与故障恢复作为产品行为 | 将抽象六卡合同细化到流中可操作、暂停点、参数更改、过期、未知和结果交付 |
 | 四仓：执行、版本编辑、审批恢复、受控渲染 | 逐模块移植 schema、状态算法和故障用例 | 不整仓混合；Swift保持主交互，Supabase为领域权威，runtime/SDK 采纳先证明收益 |
 
-分支 [AssistantView](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Features/Assistant/AssistantView.swift) 返回固定文本，[AppStore](https://github.com/Yankj/mimi/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Core/Stores/AppStore.swift) 只修改内存；它是设计骨架，不是更完整的执行底座。文档中的竞品强弱排名、4–6周估算和未验证云能力不进入终版承诺。
+分支 [AssistantView](https://github.com/Yankj/catpaw-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Features/Assistant/AssistantView.swift) 返回固定文本，[AppStore](https://github.com/Yankj/catpaw-m/blob/38c44457cb3f360beed9ee0dab5ab87b001db0c9/CatCompanion/Core/Stores/AppStore.swift) 只修改内存；它是设计骨架，不是更完整的执行底座。文档中的竞品强弱排名、4–6周估算和未验证云能力不进入终版承诺。
 
 ## 3. 竞争方向：形成完整手机工作循环
 
 官方资料已经确认这些产品具有移动、后台或审批能力，不能以“它们没有”作为定位：Codex支持手机发起、引导和审批；dots承担长期工作和主动研究；Grok Bot手机可对话、审批、查成果及管理routine，但当前编辑routine指令／计划仍需桌面；Muse是移动个人Agent并具备记忆和敏感动作确认。[Codex mobile](https://openai.com/index/work-with-codex-from-anywhere/)、[dots](https://openai.com/index/introducing-dots/)、[Grok mobile](https://docs.x.ai/grok-bot/mobile)、[Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/)。
 
-小咪的优势目标是：**已开放的能力在手机上有完整闭环；用户少切页面、少重复解释、少处理无意义确认，随时能找回工作与决定。** 这是一项待实测的产品假设。首版不争夺最高模型智力、所有连接器或完整云电脑能力。
+cat 的优势目标是：**已开放的能力在手机上有完整闭环；用户少切页面、少重复解释、少处理无意义确认，随时能找回工作与决定。** 这是一项待实测的产品假设。首版不争夺最高模型智力、所有连接器或完整云电脑能力。
 
 具体目标包括：手机内创建和修改跟进约定；流式回复中出现可行动卡而非等整段文字结束；计划、审批、成果和修改围绕同工作；来源／记忆使用／主动原因可查；掉线、拒绝、过期和结果未知仍有明确下一步。先证明绝对质量，再做同任务配对，避免更多按钮造成更多负担。
 

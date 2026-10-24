@@ -1,0 +1,41 @@
+name: Repository integrity
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-integrity-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Directory roles and frozen source identity
+        run: |
+          python3 scripts/check-repository-layout.py
+          python3 scripts/check-repository.py
+          python3 scripts/check-deployed-source.py
+      - name: Contract and evidence references
+        run: |
+          python3 scripts/check-agent-foundation-goals.py
+          python3 scripts/check-agent-foundation-plan.py
+          python3 scripts/check-final-product-plan.py
+          python3 scripts/check-conversation-ui-plan.py
+          python3 scripts/check-capabilities.py
+      - name: Sensitivity scanner and local hook regression
+        run: |
+          python3 scripts/test-scan-repository.py
+          python3 scripts/test-git-policy.py
+      - name: Scan repository candidates
+        run: python3 scripts/scan-repository.py

@@ -8,7 +8,7 @@
 
 三个项目的分工不同：OpenMuse 是个人 Agent 应用模板；OpenDots 是多个 Specialist 与文档空间的应用模板；CopilotKit 是连接 Agent 与前端的 SDK/运行时。它们适合组合成需求检查表和有限模块复用，不能把三个应用/框架全量拼装就当作一个完整产品。
 
-本次已获知 cat 当前采用 SwiftUI、Supabase 与 OpenRouter，并已受控抽取 OpenMuse worker，外围使用自研 chat/auth/store/model 与最多约 30 秒的 Edge tick。这是当前主审计提供的上下文，**本研究不再把 cat 描述为“从未使用 OpenMuse”**，也没有独立核验上述现状。完整上游与受控抽取版的差距应逐项验收：存储、恢复、任务执行器、工具卡片、审批、监控和模型适配是否被完整接上；仅移植 worker 类不会自动带来这些能力。
+本次已获知 Catpaw-m 当前采用 SwiftUI、Supabase 与 OpenRouter，并已受控抽取 OpenMuse worker，外围使用自研 chat/auth/store/model 与最多约 30 秒的 Edge tick。这是当前主审计提供的上下文，**本研究不再把 Catpaw-m 描述为“从未使用 OpenMuse”**，也没有独立核验上述现状。完整上游与受控抽取版的差距应逐项验收：存储、恢复、任务执行器、工具卡片、审批、监控和模型适配是否被完整接上；仅移植 worker 类不会自动带来这些能力。
 
 旧文件 `旧本地主仓/docs/research/opendot-runtime-assessment.md` 暂定评估的是 `composio-community/open-dot`，并明确身份未确认。**它不是本次用户明确指定的 `CopilotKit/OpenDots`**。旧文件里有关 Electron、Composio、OpenRouter、许可证未核实的结论不能迁移到本项目。本次 OpenMuse 固定版本与旧 `openmuse-runtime-source-review.md` 一致，主要补充 OpenDots 比较、立项细节与三者接入成本。
 
@@ -38,9 +38,9 @@
 
 ## 功能细节矩阵：用于重新立项与验收
 
-“实现”表示存在实际执行代码，**不等于当前 cat 已有、不等于上游真实账户全面验收通过**。
+“实现”表示存在实际执行代码，**不等于当前 Catpaw-m 已有、不等于上游真实账户全面验收通过**。
 
-| 功能 | OpenMuse 事实 / 边界 | OpenDots 事实 / 边界 | cat 应明确的验收细节与源码 |
+| 功能 | OpenMuse 事实 / 边界 | OpenDots 事实 / 边界 | Catpaw-m 应明确的验收细节与源码 |
 | --- | --- | --- | --- |
 | 流式聊天 | AG-UI 文本、工具、状态；server-owned delegate_task | AG-UI + TanStack；同一 Dot thread 有聊天、后台 turn | 首 token、工具参数增量、工具执行结果、RUN_ERROR、取消、最终持久化分别有状态；[Muse tanstack-agent](https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/engine/tanstack-agent.ts)、[Dots dot-agent](https://github.com/CopilotKit/OpenDots/blob/625452e06cde74cb25b0ce319e2c1be0488f5a5f/src/server/dot-agent.ts) |
 | 连续输入 / 队列 | 回复中可输入，后续消息可移除，Stop / 失败暂停队列；队列在 App 内存 | composer 保留草稿并约束当前 run | 已发送、排队、草稿必须可区分；关 App 后是否提交需要独立服务端 inbox；[Muse queue](https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/mobile/src/conversation-queue.ts)、[run error 处理](https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/mobile/src/conversation-run.ts)、[Dots composer](https://github.com/CopilotKit/OpenDots/blob/625452e06cde74cb25b0ce319e2c1be0488f5a5f/src/client/chat-composer.ts) |
@@ -113,7 +113,7 @@
 4. **worker 恢复闭环：** 委派包含两步的小任务；第一步保存 checkpoint 后停止当前 worker/让 tick 到期，再由下一 worker/tick 继续。第二步完成，同一 task 的 plan、events、artifacts 连贯，第一步 effect 不重复。另验收 pause、cancel、lease 被接管时旧执行者不能提交 checkpoint。
 5. **最小主动闭环：** 在本地受控 public-page fixture 上创建条件 watch，建立 baseline；相同内容不提醒，改变内容只产生一个持久通知，重复 tick 不重复提醒；连续失败进入明确退避/暂停状态。通知能回到原 thread/task。做到这些后，才接真实外部来源或 APNs。
 
-每个验证都输出同一份构建信息、数据库/事件证据和手机可见结果。若前一步失败，优先修复该层，不用新 UI、更多 connector 或重新选框架遮盖故障。上述是 cat 的提议验收，并非本次已完成或上游保证。
+每个验证都输出同一份构建信息、数据库/事件证据和手机可见结果。若前一步失败，优先修复该层，不用新 UI、更多 connector 或重新选框架遮盖故障。上述是 Catpaw-m 的提议验收，并非本次已完成或上游保证。
 
 ## 许可证、部署和数据边界
 
@@ -124,7 +124,7 @@
 
 ## 尚未证实与下一个工程门槛
 
-1. **当前用户模型是否真正可用仍未证实。** 参考模板、配置字段、/health、HTTP 通达或模型列表都不能替代一个真实流式回答及一个真实工具调用。应先在 cat 的同一构建上完成：文字输入 → provider first token → final → 持久化 → 重新进入可读；再做工具与审批闭环。
+1. **当前用户模型是否真正可用仍未证实。** 参考模板、配置字段、/health、HTTP 通达或模型列表都不能替代一个真实流式回答及一个真实工具调用。应先在 Catpaw-m 的同一构建上完成：文字输入 → provider first token → final → 持久化 → 重新进入可读；再做工具与审批闭环。
 2. 上游 OpenMuse 验证材料明确区分 fixture、真实 Chromium/Docker 和待做的 Google / Intelligence / live model；OpenDots 官方 README 记录部分 2026-09-29/30 live 检查，但 Slack、spoken compute 与学习云调度仍留有验收边界。本次没有重复这些 live 验证，不能继承成我们的验收证据。[Muse verification](https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/docs/VERIFICATION.md)、[Dots demo evidence](https://github.com/CopilotKit/OpenDots/blob/625452e06cde74cb25b0ce319e2c1be0488f5a5f/docs/demos/README.md)。
 3. OpenMuse 当前源码已含 E2B desktop provider，但旧 README/roadmap 的 graphical desktop 文字有滞后；应按 provider 文件和具体环境验收判断，不能绝对说“没有桌面代码”，也不能把存在 adapter 当做全路径可用。[E2B provider](https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/computer-e2b-desktop.ts)。
-4. 重新立项应把“对标 Dot/Muse”拆成用户场景和验收能力，而不是先写更多页面：先完成可靠的对话/审批/任务闭环，然后选择一个可证实的主动场景（如公开页变化或授权邮件待办建议），最后扩展 Specialist、文档、语音与电脑。这个顺序是基于上述依赖图的工程建议，并非上游承诺或已经批准的 cat 范围。
+4. 重新立项应把“对标 Dot/Muse”拆成用户场景和验收能力，而不是先写更多页面：先完成可靠的对话/审批/任务闭环，然后选择一个可证实的主动场景（如公开页变化或授权邮件待办建议），最后扩展 Specialist、文档、语音与电脑。这个顺序是基于上述依赖图的工程建议，并非上游承诺或已经批准的 Catpaw-m 范围。
