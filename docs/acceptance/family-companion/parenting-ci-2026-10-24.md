@@ -30,3 +30,30 @@ Edge913总数/911通过/0失败/2跳过，51.176秒；12个既有隔离文件仍
 **118尚未关闭M2a**；当前产品字节的编译和99模块通过，原7条UI也通过，但新增主旅程仍需新候选完成。M2b周期/单次例外及M2c本机提醒尚未实现；没有真实手机、真实模型、生产Auth/PG/RLS/系统通知或线上验收，后台未部署。未导入独立治理#124、调用生产、新配凭证、上传源码/截图附件、合并或发布。
 
 118恢复补丁仅本地保存：968808字节，SHA256 `cd8f078421b811ecd01ea412bda88eb66b7912d0b5adda8c3feeac08db316403`，从main基线应用后50个文件逐一字节匹配；不是用户可下载链接。
+
+## ba1234a：M2a编译、99模块及8 UI全部通过，交接后暂停
+
+产品候选 **`ba1234a498d440f823505e3d7d839a29491c85b1`** 的[CI40046503653](https://github.com/Yankj/mimi/actions/runs/40046503653)已终态SUCCESS；changes120729341943、[iOS120729392844](https://github.com/Yankj/mimi/actions/runs/40046503653/job/120729392844)、[Edge120729392912](https://github.com/Yankj/mimi/actions/runs/40046503653/job/120729392912)全部成功。GitHub测试合并候选48e3276320e9ca8a9a4ddf8f799da6dbce2e7c89，base main4ec8118b796f7c983ae4436268441c3c9d3d33db；没有实际合并。
+
+NoBug便携测试、项目成员、Xcode build-for-testing及独立主App签名/生成标识/Keychain group检查通过。**99模块/0失败**，10.613秒（Selected tests壁钟11.623秒），包括Auth8、Account4、ArrangementEdit14、Inline27、Intake8、Reschedule16、Workspace22。
+
+| 同SHA实际UI方法 | 终态 |
+|---|---|
+| 深色accessibility5长输入/放弃 | PASS，139.551秒 |
+| 独立观察新增/更正/来源时间/原ID目标冷读/删除再冷读 | PASS，229.139秒 |
+| 原位AI/确认调整/完成回顾/原ID时间状态记录冷读 | PASS，434.606秒 |
+| planned取消/原ID时间状态冷读/无完成记录及无提醒文案 | PASS，115.575秒 |
+| 准备失败/pending冷恢复/清理/新整理/取消 | PASS，156.429秒 |
+| M2a选中安排改期/同ID时间及来源历史冷读/撤销/原时间冷读 | PASS，310.730秒 |
+| 真实SwiftData保存故障/rollback/输入保留重试/冷读唯一孩子 | PASS，41.533秒 |
+| unknown只核对原请求/不自动采用/显式采用编辑/取消 | PASS，189.603秒 |
+
+**8 UI/0失败**，1617.167秒（Selected tests壁钟1617.187秒）。107个原生方法均实际开始并通过，没有跳过或整方法重试；01:23:23UTC为TEST EXECUTE SUCCEEDED，xcodebuild测试operation1835.227秒。没有删除失败用例、缩减行为断言或放宽15秒条件/16次滚动/60分钟整组预算。ba相对118仅移动新增旅程的名称保留断言至采用之后并更新文档，产品源码/资源/工程/脚本/后端/CI字节相同；本次实际走到了保存、冷读、撤销和再次冷读，不能仅由前序部分绿色推断。
+
+Edge **913总/911通过/0失败/2跳过**，67.220671539秒；12个既有隔离文件仍排除。两项真实PG与CRUD/RLS集成未运行，不证明SQL、多实例或生产。M1固定c37的69模块+7 UI通过保留为独立基线，不与本次重复累计。
+
+实际UI使用Home/controller、默认生产Keychain-AES、SwiftData、终止后重启；身份和模型transport合成。NativeAuth收据/可信代次/同chat恢复另用真实应用model加mock端口。截图只在runner xcresult，未取回、上传或视觉审阅；没有真实手机、真实模型、生产Auth/PG/RLS、APNs或通知验收，后端未部署。没有采集真实儿童数据。
+
+本次关闭M2a代码与合成原生回归门，**不等于完整M2或生产验收**。用户最新要求“在最近一个版本收尾然后理清handoff”，因此完成[版本交接](parenting-core-handoff.md)后停止；M2b周期/例外、M2c提醒及M3后续不再自动推进。交接资料提交位于ba之后，应单独核对最终远端HEAD及其CI，不把ba结果冒充后来文档SHA的实际运行。保持同一草稿PR #123，不合并、不部署、不发版、不上传源码或截图，不导入独立治理#124。
+
+产品补丁仅本地保存：974132字节，SHA256 `41fca9c714d4e8be34182f7daeb26ef1db3ba21a0c6481303d59c05ea13b8845`；从main基线apply-check/apply后51个路径逐字节匹配。最终资料提交的补丁及远端/CI回执写入ignored的`build/parenting-core/m2a-handoff-current.json`，父任务最终摘要另回传精确SHA；执行环境路径不是手机可下载链接。
