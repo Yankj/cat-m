@@ -197,6 +197,9 @@ public struct ParentingWorkspace: Codable, Sendable, Equatable {
             guard next.records.contains(where: { $0.id == id }) else { throw catError.missing }
             next.records.removeAll { $0.id == id }
         case .setSuggestionsEnabled(let enabled): next.suggestionsEnabled = enabled
+        case .deleteAllRecords:
+            // The parent's own erase: every child and everything attached to a child. The review setting stays.
+            next.children = []; next.goals = []; next.arrangements = []; next.records = []; next.editHistory = []
         }
         next.revision += 1
         try next.validate()
@@ -290,4 +293,5 @@ public enum ParentingCommand: Codable, Sendable, Equatable {
     case editRecord(id: UUID, text: String)
     case deleteRecord(id: UUID)
     case setSuggestionsEnabled(Bool)
+    case deleteAllRecords
 }

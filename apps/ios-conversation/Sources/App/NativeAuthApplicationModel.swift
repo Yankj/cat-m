@@ -722,8 +722,18 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         let identity = ParentingWorkspacePresentation.Identity(chat: ObjectIdentifier(chat),
             profile: chat.scope.profileID, workspace: chat.scope.workspaceID, subject: subject, token: token)
         guard parentingWorkspace?.id != identity else { return }
+        var scheduler: ParentingReminderScheduler?
+        var settingsStore: ParentingReminderSettingsStore?
+        #if canImport(UserNotifications)
+        if !isFixture {
+            // Local reminders only; every system write re-checks that this account is still the signed-in one.
+            scheduler = ParentingReminderScheduler(center: ParentingSystemNotificationCenter(), subjectID: subject,
+                memory: ParentingReminderMemoryStore(subjectID: subject), isCurrentAccount: { AccountEpoch.shared.isValid(token) })
+            settingsStore = ParentingReminderSettingsStore(subjectID: subject)
+        }
+        #endif
         parentingWorkspace = .init(id: identity, model: ParentingWorkspaceModel(repository: chat.repository,
-            scope: chat.scope, subjectID: subject, cipher: parentingCipher))
+            scope: chat.scope, subjectID: subject, cipher: parentingCipher, reminders: scheduler, reminderSettingsStore: settingsStore))
     }
     private func workspaceKeyIsCurrent(_ key:WorkspaceKey,user:NativeAuthUser) async -> Bool {
         guard let manager,!logoutInProgress,key.lifecycleEpoch == lifecycleEpoch else{return false}
@@ -1139,6 +1149,9 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         try? FileManager.default.removeItem(at:receiptURL)
         AccountLocalData.signOut(userID: state.user?.id)   // Codex P0-2: local memory, proactive items, pending reports
         if let uid = state.user?.id { L2SecureStore.wipe(userID: uid) }
+        #if canImport(UserNotifications)
+        if !isFixture { await ParentingSystemNotificationCenter.removeAll() }   // no child's reminder stays queued or on the lock screen after logout
+        #endif
         error=nil
         do { try await manager.signOut() } catch { self.error = NativeAuthError.storage.localizedDescription }
         // #90 hook (ProactiveEngine.accountDidChange). The epoch was bumped synchronously at the top; observers run only after

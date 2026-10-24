@@ -93,6 +93,11 @@ struct catNotificationPayload: Equatable, Sendable {
     /// Foreground: show cat's own floating capsule instead of the system banner (V4 / #47).
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         let content = notification.request.content
+        // A parenting reminder is local to the account that scheduled it: shown by the system only for that account.
+        if ParentingReminderPayload.isParenting(content.userInfo) {
+            nonisolated(unsafe) let info = content.userInfo
+            return ParentingReminderPayload.belongsToCurrent(info, currentAccount: AccountEpoch.shared.currentAccount) ? [.banner, .list, .sound] : []
+        }
         // AccountEpoch (b): local + APNs proactive notifications pass the account check and the same device gate.
         nonisolated(unsafe) let gateInfo = content.userInfo
         let verdict: ProactiveAccountGate.Verdict = await MainActor.run {
@@ -116,6 +121,8 @@ struct catNotificationPayload: Equatable, Sendable {
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         let info = response.notification.request.content.userInfo, actionID = response.actionIdentifier
         nonisolated(unsafe) let sendableInfo = info
+        // Tapping a parenting reminder just opens the app on Today (the default screen); other accounts do nothing.
+        if ParentingReminderPayload.isParenting(sendableInfo) { return }
         guard ProactiveAccountGate.belongsToCurrent(sendableInfo, epoch: .shared) else { return }  // other / stale account: no navigation, no action
         if await ProactiveEngine.shared.handleNotification(actionIdentifier: actionID, userInfo: sendableInfo) { return }
         guard let payload = catNotificationPayload(userInfo: response.notification.request.content.userInfo) else { return }
